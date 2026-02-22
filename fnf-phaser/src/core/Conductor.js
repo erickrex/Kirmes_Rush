@@ -50,6 +50,14 @@ class Conductor {
     }
     Conductor._instance = new Conductor();
   }
+  /**
+   * Get the singleton instance of the Conductor (alias for Conductor.instance).
+   * @returns {Conductor} The Conductor singleton instance
+   */
+  static getInstance() {
+    return Conductor.instance;
+  }
+
 
   /**
    * Create a new Conductor instance.

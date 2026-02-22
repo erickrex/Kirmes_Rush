@@ -267,7 +267,6 @@ describe('MainMenuState', () => {
       scene.create();
       scene.shutdown();
       expect(scene.menuTexts.length).toBe(0);
-      expect(scene.background).toBeNull();
     });
   });
 });

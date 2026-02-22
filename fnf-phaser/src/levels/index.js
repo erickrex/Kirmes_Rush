@@ -1,10 +1,6 @@
 /**
- * @fileoverview Levels module - Progressive level system with feature toggles
- * Exports all level-related classes for managing progressive showcase levels.
- *
- * Part of the competitive features and level restructure implementation.
+ * @fileoverview Levels module - Progressive level system with feature toggles.
+ * All classes consolidated in LevelSystem.js.
  */
 
-export { default as LevelSystem } from './LevelSystem.js';
-export { default as LevelManifest } from './LevelManifest.js';
-export { default as FeatureToggles } from './FeatureToggles.js';
+export { default as LevelSystem, FeatureToggles, LevelManifest } from './LevelSystem.js';

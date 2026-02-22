@@ -3,16 +3,14 @@
  * Implements FR-6.5: Options menu with keybinds, calibration, preferences
  */
 
-import Phaser from 'phaser';
+import BaseMenuState from './BaseMenuState.js';
 import * as Constants from '../core/Constants.js';
 
 /**
- * Option item types
  * @typedef {'toggle' | 'slider' | 'keybind' | 'action'} OptionType
  */
 
 /**
- * Option item configuration
  * @typedef {Object} OptionItem
  * @property {string} name - Display name
  * @property {string} key - Storage key
@@ -26,7 +24,6 @@ import * as Constants from '../core/Constants.js';
  */
 
 /**
- * Option category
  * @typedef {Object} OptionCategory
  * @property {string} name - Category name
  * @property {OptionItem[]} items - Options in category
@@ -34,16 +31,13 @@ import * as Constants from '../core/Constants.js';
 
 /**
  * OptionsState - Game settings menu
- * @extends Phaser.Scene
+ * @extends BaseMenuState
  */
-export default class OptionsState extends Phaser.Scene {
+export default class OptionsState extends BaseMenuState {
   constructor() {
     super({ key: 'OptionsState' });
 
-    /**
-     * Option categories
-     * @type {OptionCategory[]}
-     */
+    /** @type {OptionCategory[]} */
     this.categories = [
       {
         name: 'Gameplay',
@@ -110,185 +104,96 @@ export default class OptionsState extends Phaser.Scene {
       }
     ];
 
-    /**
-     * Currently selected category index
-     * @type {number}
-     */
+    /** @type {number} */
     this.selectedCategoryIndex = 0;
-
-    /**
-     * Currently selected item index
-     * @type {number}
-     */
+    /** @type {number} */
     this.selectedItemIndex = 0;
-
-    /**
-     * Whether in keybind capture mode
-     * @type {boolean}
-     */
+    /** @type {boolean} */
     this.capturingKeybind = false;
-
-    /**
-     * Category tabs
-     * @type {Phaser.GameObjects.Text[]}
-     */
+    /** @type {Phaser.GameObjects.Text[]} */
     this.categoryTabs = [];
-
-    /**
-     * Option item displays
-     * @type {Phaser.GameObjects.Container[]}
-     */
+    /** @type {Phaser.GameObjects.Container[]} */
     this.optionDisplays = [];
-
-    /**
-     * Whether transitioning
-     * @type {boolean}
-     */
-    this.transitioning = false;
-
-    /**
-     * Keybind capture text
-     * @type {Phaser.GameObjects.Text | null}
-     */
+    /** @type {Phaser.GameObjects.Text | null} */
     this.keybindCaptureText = null;
   }
 
-  /**
-   * Preload assets
-   */
-  preload() {
-    this.load.setPath('assets/');
-
-    if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'audio/scrollMenu.mp3');
-    }
+  /** @override */
+  getInputBindings() {
+    return [
+      { key: 'keydown-UP', handler: this.onNavigateUp },
+      { key: 'keydown-DOWN', handler: this.onNavigateDown },
+      { key: 'keydown-LEFT', handler: this.onNavigateLeft },
+      { key: 'keydown-RIGHT', handler: this.onNavigateRight },
+      { key: 'keydown-ENTER', handler: this.onSelect },
+      { key: 'keydown-SPACE', handler: this.onSelect },
+      { key: 'keydown-ESC', handler: this.onBack },
+      { key: 'keydown-BACKSPACE', handler: this.onBack },
+      { key: 'keydown', handler: this.onAnyKeyDown }
+    ];
   }
 
-  /**
-   * Create the options menu
-   */
+  preload() {
+    this.load.setPath('assets/');
+    this.preloadMenuSounds();
+  }
+
   create() {
     this.transitioning = false;
     this.capturingKeybind = false;
     this.selectedCategoryIndex = 0;
     this.selectedItemIndex = 0;
 
-    // Load saved options
     this.loadOptions();
 
     const { width, height } = this.cameras.main;
 
-    // Background
-    this.createBackground();
+    this.createBackground(null);
 
-    // Title
     this.add.text(width / 2, 40, 'OPTIONS', {
-      fontFamily: 'Arial Black',
-      fontSize: '48px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4
+      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5, 0.5);
 
-    // Category tabs
     this.createCategoryTabs();
-
-    // Option items
     this.createOptionItems();
-
-    // Keybind capture overlay (hidden initially)
     this.createKeybindCaptureOverlay();
-
-    // Instructions
     this.createInstructions();
-
-    // Setup input
     this.setupInput();
-
-    // Update display
     this.updateDisplay();
-
-    // Fade in
-    this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.fadeIn();
   }
 
-  /**
-   * Create background
-   */
-  createBackground() {
-    const { width, height } = this.cameras.main;
-    const graphics = this.add.graphics();
-    graphics.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x16213e, 0x16213e, 1);
-    graphics.fillRect(0, 0, width, height);
-  }
-
-  /**
-   * Create category tabs
-   */
   createCategoryTabs() {
-    const startX = 100;
-    const y = 100;
-    const spacing = 150;
-
     this.categoryTabs = [];
-
     this.categories.forEach((category, index) => {
-      const x = startX + index * spacing;
-      const text = this.add.text(x, y, category.name, {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#ffffff'
-      });
-      text.setOrigin(0.5, 0.5);
+      const text = this.add.text(100 + index * 150, 100, category.name, {
+        fontFamily: 'Arial', fontSize: '24px', color: '#ffffff'
+      }).setOrigin(0.5, 0.5);
       this.categoryTabs.push(text);
     });
   }
 
-  /**
-   * Create option items display
-   */
   createOptionItems() {
-    const startY = 160;
-    const spacing = 50;
-
     this.optionDisplays = [];
-
-    // Create containers for max items
     for (let i = 0; i < 10; i++) {
-      const container = this.createOptionDisplay(100, startY + i * spacing);
+      const container = this.createOptionDisplay(100, 160 + i * 50);
       this.optionDisplays.push(container);
     }
   }
 
-  /**
-   * Create a single option display
-   * @param {number} x - X position
-   * @param {number} y - Y position
-   * @returns {Phaser.GameObjects.Container}
-   */
   createOptionDisplay(x, y) {
     const { width } = this.cameras.main;
     const container = this.add.container(x, y);
 
-    // Name text
-    const nameText = this.add.text(0, 0, '', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#ffffff'
-    });
+    const nameText = this.add.text(0, 0, '', { fontFamily: 'Arial', fontSize: '24px', color: '#ffffff' });
     container.add(nameText);
     container.setData('nameText', nameText);
 
-    // Value text/display
-    const valueText = this.add.text(width - 300, 0, '', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#00ff00'
-    });
+    const valueText = this.add.text(width - 300, 0, '', { fontFamily: 'Arial', fontSize: '24px', color: '#00ff00' });
     container.add(valueText);
     container.setData('valueText', valueText);
 
-    // Slider bar (for slider type)
     const sliderBg = this.add.graphics();
     sliderBg.fillStyle(0x333333, 1);
     sliderBg.fillRect(width - 500, 5, 200, 20);
@@ -302,163 +207,90 @@ export default class OptionsState extends Phaser.Scene {
     return container;
   }
 
-  /**
-   * Create keybind capture overlay
-   */
   createKeybindCaptureOverlay() {
     const { width, height } = this.cameras.main;
 
     this.keybindOverlay = this.add.container(0, 0);
     this.keybindOverlay.setVisible(false);
 
-    // Darken background
     const bg = this.add.graphics();
     bg.fillStyle(0x000000, 0.8);
     bg.fillRect(0, 0, width, height);
     this.keybindOverlay.add(bg);
 
-    // Prompt text
     this.keybindCaptureText = this.add.text(width / 2, height / 2, 'Press any key...', {
-      fontFamily: 'Arial Black',
-      fontSize: '48px',
-      color: '#ffffff'
+      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff'
     }).setOrigin(0.5, 0.5);
     this.keybindOverlay.add(this.keybindCaptureText);
 
-    // Cancel hint
     const cancelText = this.add.text(width / 2, height / 2 + 60, 'Press ESC to cancel', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#888888'
+      fontFamily: 'Arial', fontSize: '24px', color: '#888888'
     }).setOrigin(0.5, 0.5);
     this.keybindOverlay.add(cancelText);
   }
 
-  /**
-   * Create instructions
-   */
   createInstructions() {
     const { width, height } = this.cameras.main;
-
     this.add.text(width / 2, height - 40, 'Arrow Keys: Navigate | Enter: Select/Change | ESC: Back', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      color: '#888888'
+      fontFamily: 'Arial', fontSize: '18px', color: '#888888'
     }).setOrigin(0.5, 0.5);
   }
 
-  /**
-   * Setup input
-   */
-  setupInput() {
-    // Navigation
-    this.input.keyboard.on('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.on('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.on('keydown-LEFT', this.onNavigateLeft, this);
-    this.input.keyboard.on('keydown-RIGHT', this.onNavigateRight, this);
-
-    // Selection/Change
-    this.input.keyboard.on('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.on('keydown-SPACE', this.onSelect, this);
-
-    // Back
-    this.input.keyboard.on('keydown-ESC', this.onBack, this);
-    this.input.keyboard.on('keydown-BACKSPACE', this.onBack, this);
-
-    // Keybind capture (any key)
-    this.input.keyboard.on('keydown', this.onAnyKeyDown, this);
-  }
-
-  /**
-   * Navigate up
-   */
   onNavigateUp() {
     if (this.transitioning || this.capturingKeybind) return;
-
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedItemIndex--;
-    if (this.selectedItemIndex < 0) {
-      this.selectedItemIndex = category.items.length - 1;
-    }
-
+    if (this.selectedItemIndex < 0) this.selectedItemIndex = category.items.length - 1;
     this.playScrollSound();
     this.updateDisplay();
   }
 
-  /**
-   * Navigate down
-   */
   onNavigateDown() {
     if (this.transitioning || this.capturingKeybind) return;
-
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedItemIndex++;
-    if (this.selectedItemIndex >= category.items.length) {
-      this.selectedItemIndex = 0;
-    }
-
+    if (this.selectedItemIndex >= category.items.length) this.selectedItemIndex = 0;
     this.playScrollSound();
     this.updateDisplay();
   }
 
-  /**
-   * Navigate left (change category or value)
-   */
   onNavigateLeft() {
     if (this.transitioning || this.capturingKeybind) return;
-
-    const category = this.categories[this.selectedCategoryIndex];
-    const item = category.items[this.selectedItemIndex];
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
 
     if (item.type === 'slider') {
       item.value = Math.max(item.min, item.value - item.step);
       this.saveOptions();
       this.updateDisplay();
     } else {
-      // Change category
       this.selectedCategoryIndex--;
-      if (this.selectedCategoryIndex < 0) {
-        this.selectedCategoryIndex = this.categories.length - 1;
-      }
+      if (this.selectedCategoryIndex < 0) this.selectedCategoryIndex = this.categories.length - 1;
       this.selectedItemIndex = 0;
       this.playScrollSound();
       this.updateDisplay();
     }
   }
 
-  /**
-   * Navigate right (change category or value)
-   */
   onNavigateRight() {
     if (this.transitioning || this.capturingKeybind) return;
-
-    const category = this.categories[this.selectedCategoryIndex];
-    const item = category.items[this.selectedItemIndex];
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
 
     if (item.type === 'slider') {
       item.value = Math.min(item.max, item.value + item.step);
       this.saveOptions();
       this.updateDisplay();
     } else {
-      // Change category
       this.selectedCategoryIndex++;
-      if (this.selectedCategoryIndex >= this.categories.length) {
-        this.selectedCategoryIndex = 0;
-      }
+      if (this.selectedCategoryIndex >= this.categories.length) this.selectedCategoryIndex = 0;
       this.selectedItemIndex = 0;
       this.playScrollSound();
       this.updateDisplay();
     }
   }
 
-  /**
-   * Select/toggle current option
-   */
   onSelect() {
     if (this.transitioning || this.capturingKeybind) return;
-
-    const category = this.categories[this.selectedCategoryIndex];
-    const item = category.items[this.selectedItemIndex];
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
 
     switch (item.type) {
       case 'toggle':
@@ -466,60 +298,36 @@ export default class OptionsState extends Phaser.Scene {
         this.saveOptions();
         this.updateDisplay();
         break;
-
       case 'keybind':
         this.startKeybindCapture(item);
         break;
-
       case 'action':
         this.executeAction(item.action);
         break;
     }
   }
 
-  /**
-   * Go back
-   */
   onBack() {
     if (this.capturingKeybind) {
       this.cancelKeybindCapture();
       return;
     }
-
     if (this.transitioning) return;
-
     this.transitioning = true;
     this.saveOptions();
-
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('MainMenuState');
-    });
+    this.transitionToScene('MainMenuState');
   }
 
-  /**
-   * Handle any key press (for keybind capture)
-   * @param {KeyboardEvent} event - Keyboard event
-   */
   onAnyKeyDown(event) {
     if (!this.capturingKeybind) return;
-
     const key = event.key.toUpperCase();
-
-    // Ignore ESC (handled by onBack)
     if (key === 'ESCAPE') return;
-
-    // Set the keybind
     this.captureKeybindItem.value = key;
     this.saveOptions();
     this.cancelKeybindCapture();
     this.updateDisplay();
   }
 
-  /**
-   * Start keybind capture mode
-   * @param {OptionItem} item - Keybind item
-   */
   startKeybindCapture(item) {
     this.capturingKeybind = true;
     this.captureKeybindItem = item;
@@ -527,131 +335,86 @@ export default class OptionsState extends Phaser.Scene {
     this.keybindCaptureText.setText(`Press key for: ${item.name}`);
   }
 
-  /**
-   * Cancel keybind capture
-   */
   cancelKeybindCapture() {
     this.capturingKeybind = false;
     this.captureKeybindItem = null;
     this.keybindOverlay.setVisible(false);
   }
 
-  /**
-   * Execute an action
-   * @param {string} action - Action name
-   */
   executeAction(action) {
     switch (action) {
       case 'calibrate':
-        // Would transition to calibration scene
         console.log('Starting offset calibration...');
         break;
-
       case 'reset':
         this.resetToDefaults();
         break;
     }
   }
 
-  /**
-   * Reset all options to defaults
-   */
   resetToDefaults() {
     this.categories.forEach(category => {
       category.items.forEach(item => {
-        if (item.defaultValue !== undefined) {
-          item.value = item.defaultValue;
-        }
+        if (item.defaultValue !== undefined) item.value = item.defaultValue;
       });
     });
-
     this.saveOptions();
     this.updateDisplay();
   }
 
-  /**
-   * Update display
-   */
   updateDisplay() {
-    // Update category tabs
     this.categoryTabs.forEach((tab, index) => {
-      if (index === this.selectedCategoryIndex) {
-        tab.setColor('#ffff00');
-        tab.setScale(1.1);
-      } else {
-        tab.setColor('#ffffff');
-        tab.setScale(1.0);
-      }
+      tab.setColor(index === this.selectedCategoryIndex ? '#ffff00' : '#ffffff');
+      tab.setScale(index === this.selectedCategoryIndex ? 1.1 : 1.0);
     });
 
-    // Update option items
     const category = this.categories[this.selectedCategoryIndex];
     const { width } = this.cameras.main;
 
     this.optionDisplays.forEach((display, index) => {
       const item = category.items[index];
+      if (!item) { display.setVisible(false); return; }
 
-      if (item) {
-        display.setVisible(true);
+      display.setVisible(true);
+      const nameText = display.getData('nameText');
+      const valueText = display.getData('valueText');
+      const sliderBg = display.getData('sliderBg');
+      const sliderFill = display.getData('sliderFill');
 
-        const nameText = display.getData('nameText');
-        const valueText = display.getData('valueText');
-        const sliderBg = display.getData('sliderBg');
-        const sliderFill = display.getData('sliderFill');
+      nameText.setText(item.name);
+      nameText.setColor(index === this.selectedItemIndex ? '#ffff00' : '#ffffff');
 
-        nameText.setText(item.name);
-
-        // Highlight selected
-        if (index === this.selectedItemIndex) {
-          nameText.setColor('#ffff00');
-        } else {
-          nameText.setColor('#ffffff');
-        }
-
-        // Update value display based on type
-        switch (item.type) {
-          case 'toggle':
-            valueText.setText(item.value ? 'ON' : 'OFF');
-            valueText.setColor(item.value ? '#00ff00' : '#ff0000');
-            sliderBg.setVisible(false);
-            sliderFill.setVisible(false);
-            break;
-
-          case 'slider':
-            valueText.setText(`${item.value}`);
-            valueText.setColor('#ffffff');
-            sliderBg.setVisible(true);
-            sliderFill.setVisible(true);
-
-            // Update slider fill
-            sliderFill.clear();
-            sliderFill.fillStyle(0x00ff00, 1);
-            const fillWidth = ((item.value - item.min) / (item.max - item.min)) * 200;
-            sliderFill.fillRect(width - 500, 5, fillWidth, 20);
-            break;
-
-          case 'keybind':
-            valueText.setText(item.value);
-            valueText.setColor('#00ffff');
-            sliderBg.setVisible(false);
-            sliderFill.setVisible(false);
-            break;
-
-          case 'action':
-            valueText.setText('');
-            sliderBg.setVisible(false);
-            sliderFill.setVisible(false);
-            break;
-        }
-      } else {
-        display.setVisible(false);
+      switch (item.type) {
+        case 'toggle':
+          valueText.setText(item.value ? 'ON' : 'OFF');
+          valueText.setColor(item.value ? '#00ff00' : '#ff0000');
+          sliderBg.setVisible(false);
+          sliderFill.setVisible(false);
+          break;
+        case 'slider':
+          valueText.setText(`${item.value}`);
+          valueText.setColor('#ffffff');
+          sliderBg.setVisible(true);
+          sliderFill.setVisible(true);
+          sliderFill.clear();
+          sliderFill.fillStyle(0x00ff00, 1);
+          sliderFill.fillRect(width - 500, 5, ((item.value - item.min) / (item.max - item.min)) * 200, 20);
+          break;
+        case 'keybind':
+          valueText.setText(item.value);
+          valueText.setColor('#00ffff');
+          sliderBg.setVisible(false);
+          sliderFill.setVisible(false);
+          break;
+        case 'action':
+          valueText.setText('');
+          sliderBg.setVisible(false);
+          sliderFill.setVisible(false);
+          break;
       }
     });
   }
 
-  /**
-   * Load options from localStorage
-   */
   loadOptions() {
     try {
       const saved = localStorage.getItem('fnf-options');
@@ -659,9 +422,7 @@ export default class OptionsState extends Phaser.Scene {
         const data = JSON.parse(saved);
         this.categories.forEach(category => {
           category.items.forEach(item => {
-            if (data[item.key] !== undefined) {
-              item.value = data[item.key];
-            }
+            if (data[item.key] !== undefined) item.value = data[item.key];
           });
         });
       }
@@ -670,17 +431,12 @@ export default class OptionsState extends Phaser.Scene {
     }
   }
 
-  /**
-   * Save options to localStorage
-   */
   saveOptions() {
     try {
       const data = {};
       this.categories.forEach(category => {
         category.items.forEach(item => {
-          if (item.type !== 'action') {
-            data[item.key] = item.value;
-          }
+          if (item.type !== 'action') data[item.key] = item.value;
         });
       });
       localStorage.setItem('fnf-options', JSON.stringify(data));
@@ -689,29 +445,8 @@ export default class OptionsState extends Phaser.Scene {
     }
   }
 
-  /**
-   * Play scroll sound
-   */
-  playScrollSound() {
-    if (this.cache.audio.exists('scroll-sound')) {
-      this.sound.play('scroll-sound', { volume: 0.5 });
-    }
-  }
-
-  /**
-   * Cleanup
-   */
   shutdown() {
-    this.input.keyboard.off('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.off('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.off('keydown-LEFT', this.onNavigateLeft, this);
-    this.input.keyboard.off('keydown-RIGHT', this.onNavigateRight, this);
-    this.input.keyboard.off('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.off('keydown-SPACE', this.onSelect, this);
-    this.input.keyboard.off('keydown-ESC', this.onBack, this);
-    this.input.keyboard.off('keydown-BACKSPACE', this.onBack, this);
-    this.input.keyboard.off('keydown', this.onAnyKeyDown, this);
-
+    super.shutdown();
     this.categoryTabs = [];
     this.optionDisplays = [];
   }
