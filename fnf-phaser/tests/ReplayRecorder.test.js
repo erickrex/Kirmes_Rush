@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import ReplayRecorder from '../src/replay/ReplayRecorder.js';
+import { ReplayRecorder } from '../src/replay/ReplaySystem.js';
 
 describe('ReplayRecorder', () => {
   let recorder;

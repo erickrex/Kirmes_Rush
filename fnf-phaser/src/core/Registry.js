@@ -1,6 +1,10 @@
 /**
- * @fileoverview Registry - Base class for data registries in Friday Night Funkin'
+ * @fileoverview Registry - Base class and factory for data registries in Friday Night Funkin'
  * A generic registry pattern for loading and caching game data from JSON files.
+ *
+ * Supports two modes:
+ * 1. Config-driven: Pass a config object with clean/create/validate functions
+ * 2. Subclass: Extend Registry and override abstract methods (legacy)
  *
  * Ported from source/funkin/data/BaseRegistry.hx
  */
@@ -18,57 +22,67 @@
  */
 
 /**
+ * @typedef {Object} RegistryConfig
+ * @property {string} registryId - A readable ID for this registry, used when logging
+ * @property {string} dataFilePath - The path (relative to assets/data) to search for JSON files
+ * @property {string} [versionRule='1.0.x'] - The version rule for data validation
+ * @property {function(Object, string=): *} cleanData - Clean/normalize raw JSON data, returns cleaned data or null
+ * @property {function(Object, string=): boolean} [validateData] - Optional extra validation before cleaning, return false to reject
+ * @property {function(string, *): *} createEntry - Create an entry from id + cleaned data, return entry or null
+ */
+
+/**
  * Base class for all data registries.
  * Provides common functionality for loading, caching, and retrieving game data.
  *
- * Subclasses should implement:
- * - `parseEntryData(id)` - Parse JSON and create entry object
- * - `createEntry(id, data)` - Create entry instance from parsed data
+ * Can be used directly with a config object (config-driven) or subclassed (legacy).
  *
  * @template T - The entry type (must have an `id` property)
  * @template J - The JSON data type
  */
 class Registry {
-  /**
-   * The ID of the registry. Used when logging.
-   * @type {string}
-   */
+  /** @type {string} */
   registryId;
 
-  /**
-   * The path (relative to assets/data) to search for JSON files.
-   * @type {string}
-   */
+  /** @type {string} */
   dataFilePath;
 
-  /**
-   * A map of entry IDs to entries.
-   * @type {Map<string, T>}
-   */
+  /** @type {Map<string, T>} */
   entries;
 
-  /**
-   * Whether the registry has been loaded.
-   * @type {boolean}
-   */
+  /** @type {boolean} */
   loaded;
 
-  /**
-   * The version rule to use when loading entries.
-   * @type {string}
-   */
+  /** @type {string} */
   versionRule;
 
   /**
+   * Optional config for config-driven registries.
+   * @type {RegistryConfig | null}
+   * @private
+   */
+  _config = null;
+
+  /**
    * Create a new Registry instance.
-   * @param {string} registryId - A readable ID for this registry, used when logging
-   * @param {string} dataFilePath - The path (relative to assets/data) to search for JSON files
+   * @param {string | RegistryConfig} registryIdOrConfig - A readable ID or a config object
+   * @param {string} [dataFilePath] - The path (relative to assets/data) to search for JSON files
    * @param {string} [versionRule='1.0.x'] - The version rule for data validation
    */
-  constructor(registryId, dataFilePath, versionRule = '1.0.x') {
-    this.registryId = registryId;
-    this.dataFilePath = dataFilePath;
-    this.versionRule = versionRule;
+  constructor(registryIdOrConfig, dataFilePath, versionRule = '1.0.x') {
+    if (typeof registryIdOrConfig === 'object' && registryIdOrConfig !== null) {
+      // Config-driven mode
+      const config = registryIdOrConfig;
+      this.registryId = config.registryId;
+      this.dataFilePath = config.dataFilePath;
+      this.versionRule = config.versionRule || '1.0.x';
+      this._config = config;
+    } else {
+      // Legacy subclass mode
+      this.registryId = registryIdOrConfig;
+      this.dataFilePath = dataFilePath;
+      this.versionRule = versionRule;
+    }
     this.entries = new Map();
     this.loaded = false;
   }
@@ -79,7 +93,6 @@ class Registry {
 
   /**
    * Load all entries from the data path.
-   * This is a synchronous version that expects data to already be available.
    * @param {string[]} entryIds - List of entry IDs to load
    */
   loadEntries(entryIds) {
@@ -148,14 +161,12 @@ class Registry {
     const filePath = `${this.dataFilePath}/${id}.json`;
 
     return new Promise((resolve, reject) => {
-      // Check if already loaded in cache
       if (scene.cache.json.exists(filePath)) {
         const data = scene.cache.json.get(filePath);
         resolve(this.parseEntryDataRaw(data, filePath));
         return;
       }
 
-      // Load the JSON file
       scene.load.json(filePath, filePath);
 
       scene.load.once('filecomplete-json-' + filePath, () => {
@@ -179,42 +190,32 @@ class Registry {
 
   /**
    * Fetch an entry by its ID.
-   * @param {string} id - The ID of the entry to fetch
-   * @returns {T | null} The entry, or null if it does not exist
+   * @param {string} id
+   * @returns {T | null}
    */
   fetchEntry(id) {
     return this.entries.get(id) ?? null;
   }
 
   /**
-   * Return whether the registry has an entry with the given ID.
-   * @param {string} id - The ID of the entry
-   * @returns {boolean} True if the entry exists
+   * @param {string} id
+   * @returns {boolean}
    */
   hasEntry(id) {
     return this.entries.has(id);
   }
 
-  /**
-   * Retrieve a list of all entry IDs in this registry.
-   * @returns {string[]} The list of entry IDs
-   */
+  /** @returns {string[]} */
   listEntryIds() {
     return Array.from(this.entries.keys());
   }
 
-  /**
-   * Count the number of entries in this registry.
-   * @returns {number} The number of entries
-   */
+  /** @returns {number} */
   countEntries() {
     return this.entries.size;
   }
 
-  /**
-   * Get all entries as an array.
-   * @returns {T[]} Array of all entries
-   */
+  /** @returns {T[]} */
   getAllEntries() {
     return Array.from(this.entries.values());
   }
@@ -223,9 +224,6 @@ class Registry {
   // UTILITY METHODS
   // ========================================
 
-  /**
-   * Clear all entries from the registry.
-   */
   clearEntries() {
     for (const entry of this.entries.values()) {
       if (entry && typeof entry.destroy === 'function') {
@@ -237,24 +235,17 @@ class Registry {
   }
 
   /**
-   * Load a JSON file and return its contents.
-   * @param {string} id - The entry ID
-   * @returns {JsonFile} The file path and contents
+   * @param {string} id
+   * @returns {JsonFile}
    */
   loadEntryFile(id) {
     const filePath = `${this.dataFilePath}/${id}.json`;
-    // In browser context, this would need to be loaded via fetch or Phaser's loader
-    // This is a placeholder for synchronous access when data is pre-loaded
-    return {
-      fileName: filePath,
-      contents: ''
-    };
+    return { fileName: filePath, contents: '' };
   }
 
   /**
-   * Fetch the version from entry data.
-   * @param {Object} data - The parsed JSON data
-   * @returns {string | null} The version string, or null if not found
+   * @param {Object} data
+   * @returns {string | null}
    */
   fetchEntryVersion(data) {
     if (data && typeof data.version === 'string') {
@@ -265,16 +256,14 @@ class Registry {
 
   /**
    * Validate a version string against the registry's version rule.
-   * Simple semver-like validation.
-   * @param {string} version - The version to validate
-   * @returns {boolean} True if the version is valid
+   * @param {string} version
+   * @returns {boolean}
    */
   validateVersion(version) {
     if (!version || !this.versionRule) {
       return true;
     }
 
-    // Simple version validation (major.minor.x pattern)
     const versionParts = version.split('.');
     const ruleParts = this.versionRule.split('.');
 
@@ -282,12 +271,10 @@ class Registry {
       return false;
     }
 
-    // Check major version
     if (ruleParts[0] !== 'x' && ruleParts[0] !== versionParts[0]) {
       return false;
     }
 
-    // Check minor version
     if (ruleParts[1] !== 'x' && ruleParts[1] !== versionParts[1]) {
       return false;
     }
@@ -295,50 +282,72 @@ class Registry {
     return true;
   }
 
-  /**
-   * Get a string representation of the registry.
-   * @returns {string}
-   */
+  /** @returns {string} */
   toString() {
     return `Registry(${this.registryId}, ${this.countEntries()} entries)`;
   }
 
   // ========================================
-  // ABSTRACT METHODS (to be implemented by subclasses)
+  // ABSTRACT / CONFIG-DRIVEN METHODS
   // ========================================
 
   /**
-   * Read, parse, and validate the JSON data and produce the corresponding data object.
-   * Must be implemented by subclasses.
-   * @param {string} _id - The ID of the entry
-   * @returns {J | null} The parsed data, or null if parsing failed
-   * @abstract
+   * Parse entry data by ID. Config-driven registries return null (use parseEntryDataRaw).
+   * @param {string} _id
+   * @returns {J | null}
    */
   parseEntryData(_id) {
+    if (this._config) {
+      console.warn(`[${this.registryId}] parseEntryData called without data for: ${_id}`);
+      return null;
+    }
     throw new Error(`[${this.registryId}] parseEntryData() must be implemented by subclass`);
   }
 
   /**
    * Parse and validate raw JSON data.
-   * Must be implemented by subclasses.
-   * @param {Object} _data - The parsed JSON object
-   * @param {string} [_fileName] - Optional file name for error reporting
-   * @returns {J | null} The validated data, or null if validation failed
-   * @abstract
+   * Config-driven registries use the config's validateData + cleanData functions.
+   * @param {Object} _data
+   * @param {string} [_fileName]
+   * @returns {J | null}
    */
   parseEntryDataRaw(_data, _fileName) {
+    if (this._config) {
+      if (!_data || typeof _data !== 'object') {
+        console.error(`[${this.registryId}] Invalid data for: ${_fileName}`);
+        return null;
+      }
+
+      // Version validation
+      const version = _data.version;
+      if (version && !this.validateVersion(version)) {
+        console.error(`[${this.registryId}] Incompatible version ${version} for: ${_fileName}`);
+        return null;
+      }
+
+      // Custom validation
+      if (this._config.validateData && !this._config.validateData.call(this, _data, _fileName)) {
+        return null;
+      }
+
+      // Clean data
+      return this._config.cleanData.call(this, _data, _fileName);
+    }
     throw new Error(`[${this.registryId}] parseEntryDataRaw() must be implemented by subclass`);
   }
 
   /**
-   * Create an entry instance from the parsed data.
-   * Must be implemented by subclasses.
-   * @param {string} _id - The entry ID
-   * @param {J} _data - The parsed data
-   * @returns {T | null} The created entry, or null if creation failed
-   * @abstract
+   * Create an entry from parsed data.
+   * Config-driven registries use the config's createEntry function.
+   * @param {string} _id
+   * @param {J} _data
+   * @returns {T | null}
    */
   createEntry(_id, _data) {
+    if (this._config) {
+      if (!_data) return null;
+      return this._config.createEntry.call(this, _id, _data);
+    }
     throw new Error(`[${this.registryId}] createEntry() must be implemented by subclass`);
   }
 
@@ -347,14 +356,63 @@ class Registry {
   // ========================================
 
   /**
-   * Log a message with the registry ID prefix.
-   * @param {string} message - The message to log
+   * @param {string} message
    * @private
    */
   _log(message) {
     // eslint-disable-next-line no-console
     console.log(`[${this.registryId}] ${message}`);
   }
+}
+
+/**
+ * Create a config-driven registry instance with singleton support.
+ * Returns a class with getInstance() and any extra methods/statics attached.
+ *
+ * @param {RegistryConfig} config - Registry configuration
+ * @param {Object} [options] - Additional options
+ * @param {Object} [options.statics] - Static properties to attach to the class
+ * @param {Object} [options.methods] - Instance methods to attach to the prototype
+ * @returns {typeof Registry} A Registry subclass with getInstance()
+ */
+export function createRegistry(config, options = {}) {
+  let instance = null;
+
+  class ConfigRegistry extends Registry {
+    constructor() {
+      super(config);
+    }
+
+    static getInstance() {
+      if (!instance) {
+        instance = new ConfigRegistry();
+      }
+      return instance;
+    }
+  }
+
+  // Reset singleton for testing
+  Object.defineProperty(ConfigRegistry, 'instance', {
+    get() { return instance; },
+    set(v) { instance = v; },
+    configurable: true
+  });
+
+  // Attach static properties
+  if (options.statics) {
+    for (const [key, value] of Object.entries(options.statics)) {
+      ConfigRegistry[key] = value;
+    }
+  }
+
+  // Attach instance methods
+  if (options.methods) {
+    for (const [key, fn] of Object.entries(options.methods)) {
+      ConfigRegistry.prototype[key] = fn;
+    }
+  }
+
+  return ConfigRegistry;
 }
 
 export default Registry;

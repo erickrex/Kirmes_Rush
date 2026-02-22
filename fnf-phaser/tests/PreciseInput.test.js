@@ -69,8 +69,7 @@ class MockEvent {
 }
 vi.stubGlobal('Event', MockEvent);
 
-import PreciseInput from '../src/input/PreciseInput.js';
-import Controls from '../src/input/Controls.js';
+import { PreciseInput, Controls } from '../src/input/InputSystem.js';
 
 describe('PreciseInput', () => {
   let input;

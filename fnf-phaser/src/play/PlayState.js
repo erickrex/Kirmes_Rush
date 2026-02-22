@@ -15,9 +15,8 @@ import Character from './Character.js';
 import Stage from './Stage.js';
 import FunkinCamera from '../graphics/FunkinCamera.js';
 import SaveManager from '../data/SaveManager.js';
-import ReplayRecorder from '../replay/ReplayRecorder.js';
-import ReplayPlayer from '../replay/ReplayPlayer.js';
-import InputBuffer from '../input/InputBuffer.js';
+import { ReplayRecorder, ReplayPlayer } from '../replay/ReplaySystem.js';
+import { InputBuffer } from '../input/InputSystem.js';
 import LevelSystem from '../levels/LevelSystem.js';
 
 /**

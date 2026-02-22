@@ -102,39 +102,43 @@ vi.mock('phaser', () => {
 });
 
 // Mock ReplayManager
-vi.mock('../src/replay/ReplayManager.js', () => {
-  return {
-    default: class MockReplayManager {
-      constructor() {
-        this.replays = [];
-      }
-
-      getReplayList() {
-        return [...this.replays].sort((a, b) => b.timestamp - a.timestamp);
-      }
-
-      filterBySong(songId) {
-        return this.replays.filter(r => r.songId === songId).sort((a, b) => b.timestamp - a.timestamp);
-      }
-
-      deleteReplay(id) {
-        const index = this.replays.findIndex(r => r.id === id);
-        if (index !== -1) {
-          this.replays.splice(index, 1);
-          return true;
-        }
-        return false;
-      }
-
-      loadReplay(id) {
-        return this.replays.find(r => r.id === id) || null;
-      }
-
-      // Test helper to add replays
-      _addReplay(replay) {
-        this.replays.push(replay);
-      }
+vi.mock('../src/replay/ReplaySystem.js', () => {
+  class MockReplayManager {
+    constructor() {
+      this.replays = [];
     }
+
+    getReplayList() {
+      return [...this.replays].sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    filterBySong(songId) {
+      return this.replays.filter(r => r.songId === songId).sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    deleteReplay(id) {
+      const index = this.replays.findIndex(r => r.id === id);
+      if (index !== -1) {
+        this.replays.splice(index, 1);
+        return true;
+      }
+      return false;
+    }
+
+    loadReplay(id) {
+      return this.replays.find(r => r.id === id) || null;
+    }
+
+    // Test helper to add replays
+    _addReplay(replay) {
+      this.replays.push(replay);
+    }
+  }
+
+  return {
+    ReplayManager: MockReplayManager,
+    ReplayRecorder: class MockReplayRecorder {},
+    ReplayPlayer: class MockReplayPlayer {}
   };
 });
 

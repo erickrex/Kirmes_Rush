@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import ReplayPlayer from '../src/replay/ReplayPlayer.js';
+import { ReplayPlayer } from '../src/replay/ReplaySystem.js';
 
 /**
  * Helper to create valid replay data for testing

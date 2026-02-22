@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Controls, { NoteDirection } from '../src/input/Controls.js';
+import { Controls, NoteDirection } from '../src/input/InputSystem.js';
 
 describe('Controls', () => {
   let controls;

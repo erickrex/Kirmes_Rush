@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import ReplayManager from '../src/replay/ReplayManager.js';
+import { ReplayManager } from '../src/replay/ReplaySystem.js';
 
 /**
  * Helper to create valid replay data for testing

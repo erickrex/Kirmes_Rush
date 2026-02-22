@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import InputBuffer from '../src/input/InputBuffer.js';
+import { InputBuffer } from '../src/input/InputSystem.js';
 
 describe('InputBuffer', () => {
   let buffer;

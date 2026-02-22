@@ -11,7 +11,7 @@
  */
 
 import Phaser from 'phaser';
-import ReplayManager from '../replay/ReplayManager.js';
+import { ReplayManager } from '../replay/ReplaySystem.js';
 
 /**
  * ReplayBrowserState - Browse and manage saved replays
