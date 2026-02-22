@@ -1,0 +1,3 @@
+# Audio management
+# - AudioManager.js (Central audio control)
+# - VoicesGroup.js (Vocal track management)

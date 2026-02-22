@@ -1,0 +1,72 @@
+{
+  "id": "week6",
+  "name": "Hating Simulator",
+  "songs": [
+    {
+      "id": "senpai",
+      "name": "Senpai",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/senpai/senpai-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/senpai/senpai-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/senpai/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/senpai/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/senpai/Voices-senpai.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf-pixel",
+        "opponent": "senpai",
+        "girlfriend": "gf-pixel"
+      },
+      "stage": "school",
+      "pixelArt": true
+    },
+    {
+      "id": "roses",
+      "name": "Roses",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/roses/roses-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/roses/roses-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/roses/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/roses/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/roses/Voices-senpai.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf-pixel",
+        "opponent": "senpai-angry",
+        "girlfriend": "gf-pixel"
+      },
+      "stage": "school",
+      "pixelArt": true
+    },
+    {
+      "id": "thorns",
+      "name": "Thorns",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/thorns/thorns-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/thorns/thorns-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/thorns/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/thorns/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/thorns/Voices-spirit.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf-pixel",
+        "opponent": "spirit",
+        "girlfriend": "gf-pixel"
+      },
+      "stage": "school-evil",
+      "pixelArt": true
+    }
+  ]
+}

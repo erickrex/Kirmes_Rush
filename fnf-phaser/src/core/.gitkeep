@@ -1,0 +1,5 @@
+# Core systems
+# - Conductor.js (Timing/BPM management)
+# - EventBus.js (Event dispatcher)
+# - Registry.js (Base registry class)
+# - Constants.js (Game constants)

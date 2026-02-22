@@ -1,0 +1,9 @@
+# Menu scenes
+# - TitleState.js
+# - MainMenuState.js
+# - StoryMenuState.js
+# - FreeplayState.js
+# - OptionsState.js
+# - PauseSubState.js
+# - ResultState.js
+# - GameOverState.js

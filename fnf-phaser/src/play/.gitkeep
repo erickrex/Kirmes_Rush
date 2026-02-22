@@ -1,0 +1,10 @@
+# Gameplay components
+# - PlayState.js (Main gameplay scene)
+# - Strumline.js (Note lane management)
+# - NoteSprite.js (Individual note rendering)
+# - SustainTrail.js (Hold note trails)
+# - Character.js (Animated characters)
+# - Stage.js (Background/props)
+# - HealthBar.js (Health display)
+# - ComboPopup.js (Judgement popups)
+# - Scoring.js (Score calculation)

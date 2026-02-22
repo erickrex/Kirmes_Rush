@@ -1,0 +1,9 @@
+{
+  "extends": "./jsconfig.json",
+  "compilerOptions": {
+    "maxNodeModuleJsDepth": 0,
+    "noEmit": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

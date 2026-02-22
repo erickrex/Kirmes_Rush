@@ -1,0 +1,69 @@
+{
+  "id": "week7",
+  "name": "Tankman",
+  "songs": [
+    {
+      "id": "ugh",
+      "name": "Ugh",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/ugh/ugh-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/ugh/ugh-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/ugh/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/ugh/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/ugh/Voices-tankman.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "tankman",
+        "girlfriend": "gf-tankmen"
+      },
+      "stage": "tank"
+    },
+    {
+      "id": "guns",
+      "name": "Guns",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/guns/guns-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/guns/guns-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/guns/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/guns/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/guns/Voices-tankman.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "tankman",
+        "girlfriend": "gf-tankmen"
+      },
+      "stage": "tank"
+    },
+    {
+      "id": "stress",
+      "name": "Stress",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/stress/stress-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/stress/stress-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/stress/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/stress/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/stress/Voices-tankman.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "tankman",
+        "girlfriend": "gf-tankmen"
+      },
+      "stage": "tank"
+    }
+  ]
+}
