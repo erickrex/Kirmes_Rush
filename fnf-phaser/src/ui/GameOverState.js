@@ -384,7 +384,7 @@ export default class GameOverState extends Phaser.Scene {
     // Fade out and exit
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('MainMenuState');
+      this.scene.start(this.songData?.returnScene || 'MainMenuState', this.songData?.returnSceneData);
     });
   }
 

@@ -106,7 +106,8 @@ describe('NoteProcessor', () => {
       onNoteHit: null,
       onNoteMiss: null,
       gameOver: vi.fn(),
-      getHealthBonus: (judgement) => Scoring.getHealthBonus(judgement)
+      getHealthBonus: (judgement) => Scoring.getHealthBonus(judgement),
+      isFeatureEnabled: vi.fn(() => true)
     };
 
     context = {
@@ -243,6 +244,15 @@ describe('NoteProcessor', () => {
       np.hitNote(note, 10);
       expect(callback).toHaveBeenCalled();
     });
+
+    it('should not modify health when the health bar feature is disabled', () => {
+      playState.isFeatureEnabled.mockImplementation((feature) => feature !== 'healthBar');
+      const startingHealth = playState.health;
+
+      np.hitNote({ direction: 0 }, 5);
+
+      expect(playState.health).toBe(startingHealth);
+    });
   });
 
   describe('missNote', () => {
@@ -285,6 +295,17 @@ describe('NoteProcessor', () => {
       const note = { direction: 0, hasMissed: false, handledMiss: false };
       np.missNote(note);
       expect(callback).toHaveBeenCalledWith(note);
+    });
+
+    it('should not reduce health or game over when the health bar feature is disabled', () => {
+      playState.isFeatureEnabled.mockImplementation((feature) => feature !== 'healthBar');
+      playState.health = 0.01;
+      const note = { direction: 0, hasMissed: false, handledMiss: false };
+
+      np.missNote(note);
+
+      expect(playState.health).toBe(0.01);
+      expect(playState.gameOver).not.toHaveBeenCalled();
     });
   });
 

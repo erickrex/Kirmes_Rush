@@ -16,7 +16,7 @@ Assets are organized by week/level:
 
 ## Manifest System
 
-Asset manifests are JSON files in `fnf-phaser/public/data/manifests/` that define:
+Asset manifests are JSON files in `fnf-phaser/assets/data/manifests/` that define:
 - Week/level metadata
 - Song list with difficulties
 - Asset paths (charts, audio, graphics)
@@ -100,7 +100,7 @@ The game's registry system (SongRegistry, CharacterRegistry, StageRegistry) load
 
 To test a migrated week:
 
-1. Ensure manifest exists in `public/data/manifests/`
+1. Ensure manifest exists in `assets/data/manifests/`
 2. Load the game and navigate to Story Mode or Freeplay
 3. Select the week/song
 4. Verify:

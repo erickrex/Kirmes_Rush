@@ -129,6 +129,14 @@ vi.mock('../src/core/EventBus.js', () => ({
   }
 }));
 
+// Mock AnimationRegistrar
+const mockRegisterCharacterAnimations = vi.fn();
+const mockRegisterPropAnimations = vi.fn();
+vi.mock('../src/graphics/AnimationRegistrar.js', () => ({
+  registerCharacterAnimations: (...args) => mockRegisterCharacterAnimations(...args),
+  registerPropAnimations: (...args) => mockRegisterPropAnimations(...args)
+}));
+
 // Now import after mocks are set up
 const { default: PlayState } = await import('../src/play/PlayState.js');
 const { default: Conductor } = await import('../src/core/Conductor.js');
@@ -1709,6 +1717,263 @@ describe('PlayState', () => {
         // Verify all inputs were processed
         expect(playState.playerStrumline.pressKey).toHaveBeenCalledTimes(2);
         expect(playState.playerStrumline.releaseKey).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  // ========================================
+  // ASSET WIRING TESTS (Task 7.4)
+  // ========================================
+
+  describe('asset wiring', () => {
+    describe('wireCharacterAssets', () => {
+      let mockCharacterRegistry;
+
+      beforeEach(() => {
+        mockRegisterCharacterAnimations.mockClear();
+
+        playState.player = {
+          characterId: 'bf',
+          characterData: { startingAnimation: 'idle' },
+          setTexture: vi.fn(),
+          playAnimation: vi.fn(),
+          destroy: vi.fn()
+        };
+        playState.opponent = {
+          characterId: 'dad',
+          characterData: { startingAnimation: 'idle' },
+          setTexture: vi.fn(),
+          playAnimation: vi.fn(),
+          destroy: vi.fn()
+        };
+        playState.girlfriend = {
+          characterId: 'gf',
+          characterData: { startingAnimation: 'danceLeft' },
+          setTexture: vi.fn(),
+          playAnimation: vi.fn(),
+          destroy: vi.fn()
+        };
+
+        mockCharacterRegistry = {
+          getCharacterAnimations: vi.fn((id) => [
+            { name: 'idle', prefix: `${id} idle`, frameRate: 24, looped: false }
+          ])
+        };
+      });
+
+      it('should set texture on each character with correct key', () => {
+        playState.wireCharacterAssets(mockCharacterRegistry);
+
+        expect(playState.player.setTexture).toHaveBeenCalledWith('char-bf');
+        expect(playState.opponent.setTexture).toHaveBeenCalledWith('char-dad');
+        expect(playState.girlfriend.setTexture).toHaveBeenCalledWith('char-gf');
+      });
+
+      it('should register animations for each character', () => {
+        playState.wireCharacterAssets(mockCharacterRegistry);
+
+        expect(mockRegisterCharacterAnimations).toHaveBeenCalledTimes(3);
+        expect(mockRegisterCharacterAnimations).toHaveBeenCalledWith(
+          mockScene,
+          'char-bf',
+          expect.any(Array)
+        );
+        expect(mockRegisterCharacterAnimations).toHaveBeenCalledWith(
+          mockScene,
+          'char-dad',
+          expect.any(Array)
+        );
+        expect(mockRegisterCharacterAnimations).toHaveBeenCalledWith(
+          mockScene,
+          'char-gf',
+          expect.any(Array)
+        );
+      });
+
+      it('should play starting animation on each character', () => {
+        playState.wireCharacterAssets(mockCharacterRegistry);
+
+        expect(playState.player.playAnimation).toHaveBeenCalledWith('idle');
+        expect(playState.opponent.playAnimation).toHaveBeenCalledWith('idle');
+        expect(playState.girlfriend.playAnimation).toHaveBeenCalledWith('danceLeft');
+      });
+
+      it('should default to idle when no startingAnimation', () => {
+        playState.player.characterData = {};
+
+        playState.wireCharacterAssets(mockCharacterRegistry);
+
+        expect(playState.player.playAnimation).toHaveBeenCalledWith('idle');
+      });
+
+      it('should skip null characters', () => {
+        playState.girlfriend = null;
+
+        playState.wireCharacterAssets(mockCharacterRegistry);
+
+        expect(mockRegisterCharacterAnimations).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('wireStageAssets', () => {
+      let mockStageRegistry;
+
+      beforeEach(() => {
+        mockRegisterPropAnimations.mockClear();
+
+        const mockPropSprite = {
+          setTexture: vi.fn(),
+          playAnimation: vi.fn(),
+          _propData: { name: 'stageback' }
+        };
+        const mockAnimatedPropSprite = {
+          setTexture: vi.fn(),
+          playAnimation: vi.fn(),
+          _propData: { name: 'stagecurtains' }
+        };
+
+        playState.stage = {
+          getProp: vi.fn((name) => {
+            if (name === 'stageback') return mockPropSprite;
+            if (name === 'stagecurtains') return mockAnimatedPropSprite;
+            return null;
+          }),
+          destroy: vi.fn()
+        };
+
+        mockStageRegistry = {
+          getStageProps: vi.fn(() => [
+            { name: 'stageback', assetPath: 'stageback', animations: [] },
+            {
+              name: 'stagecurtains',
+              assetPath: 'stagecurtains',
+              animations: [{ name: 'idle', prefix: 'curtains', frameRate: 24, looped: true }],
+              startingAnimation: 'idle'
+            }
+          ])
+        };
+      });
+
+      it('should set texture on each prop', () => {
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        const backProp = playState.stage.getProp('stageback');
+        const curtainProp = playState.stage.getProp('stagecurtains');
+
+        expect(backProp.setTexture).toHaveBeenCalledWith('stage-mainStage-stageback');
+        expect(curtainProp.setTexture).toHaveBeenCalledWith('stage-mainStage-stagecurtains');
+      });
+
+      it('should register animations for animated props', () => {
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        expect(mockRegisterPropAnimations).toHaveBeenCalledTimes(1);
+        expect(mockRegisterPropAnimations).toHaveBeenCalledWith(
+          mockScene,
+          'stage-mainStage-stagecurtains',
+          expect.any(Array)
+        );
+      });
+
+      it('should play starting animation on animated props', () => {
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        const curtainProp = playState.stage.getProp('stagecurtains');
+        expect(curtainProp.playAnimation).toHaveBeenCalledWith('idle');
+      });
+
+      it('should not register animations for static props', () => {
+        mockStageRegistry.getStageProps.mockReturnValue([
+          { name: 'stageback', assetPath: 'stageback', animations: [] }
+        ]);
+
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        expect(mockRegisterPropAnimations).not.toHaveBeenCalled();
+      });
+
+      it('should skip props not found in stage', () => {
+        mockStageRegistry.getStageProps.mockReturnValue([
+          { name: 'missing', assetPath: 'missing', animations: [] }
+        ]);
+
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        // Should not throw
+        expect(mockRegisterPropAnimations).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('wireAudio', () => {
+      beforeEach(() => {
+        playState.audioManager = {
+          loadInstrumental: vi.fn(),
+          setVoices: vi.fn()
+        };
+        playState.voices = {
+          loadSplit: vi.fn(),
+          loadCombined: vi.fn()
+        };
+      });
+
+      it('should load instrumental when present', () => {
+        playState.wireAudio({
+          instrumental: { key: 'song-bopeebo-instrumental' },
+          vocals: {}
+        });
+
+        expect(playState.audioManager.loadInstrumental).toHaveBeenCalledWith('song-bopeebo-instrumental');
+      });
+
+      it('should load split vocals when player and opponent present', () => {
+        playState.wireAudio({
+          instrumental: { key: 'song-bopeebo-instrumental' },
+          vocals: {
+            player: { key: 'song-bopeebo-vocals-player' },
+            opponent: { key: 'song-bopeebo-vocals-opponent' }
+          }
+        });
+
+        expect(playState.voices.loadSplit).toHaveBeenCalledWith(
+          'song-bopeebo-vocals-player',
+          'song-bopeebo-vocals-opponent'
+        );
+      });
+
+      it('should load combined vocals when present', () => {
+        playState.wireAudio({
+          instrumental: { key: 'song-tutorial-instrumental' },
+          vocals: {
+            combined: { key: 'song-tutorial-vocals' }
+          }
+        });
+
+        expect(playState.voices.loadCombined).toHaveBeenCalledWith('song-tutorial-vocals');
+      });
+
+      it('should connect voices to audio manager', () => {
+        playState.wireAudio({
+          instrumental: { key: 'inst' },
+          vocals: {}
+        });
+
+        expect(playState.audioManager.setVoices).toHaveBeenCalledWith(playState.voices);
+      });
+
+      it('should skip instrumental when not present', () => {
+        playState.wireAudio({ vocals: {} });
+
+        expect(playState.audioManager.loadInstrumental).not.toHaveBeenCalled();
+      });
+
+      it('should not load split vocals when only player present', () => {
+        playState.wireAudio({
+          vocals: {
+            player: { key: 'player-key' }
+          }
+        });
+
+        expect(playState.voices.loadSplit).not.toHaveBeenCalled();
       });
     });
   });

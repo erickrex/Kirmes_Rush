@@ -44,6 +44,7 @@ vi.mock('phaser', () => {
             setPath: vi.fn().mockReturnThis(),
             image: vi.fn().mockReturnThis(),
             audio: vi.fn().mockReturnThis(),
+            atlas: vi.fn().mockReturnThis(),
             totalToLoad: 0
           };
           this.time = {
@@ -108,6 +109,7 @@ describe('BootScene', () => {
       expect(scene.nextScene).toBe('TitleScene');
       expect(scene.hasError).toBe(false);
       expect(scene.failedFiles).toEqual([]);
+      expect(scene.noteStyleRegistry).toBeNull();
     });
   });
 
@@ -161,20 +163,63 @@ describe('BootScene', () => {
   });
 
   describe('loadCoreAssets', () => {
-    it('should set asset path', () => {
-      scene.createLoadingUI();
-      scene.setupLoadingEvents();
-      scene.loadCoreAssets();
-
-      expect(scene.load.setPath).toHaveBeenCalledWith('assets/');
-    });
-
     it('should trigger delayed complete when no assets to load', () => {
       scene.load.totalToLoad = 0;
       scene.createLoadingUI();
       scene.setupLoadingEvents();
       scene.loadCoreAssets();
 
+      expect(scene.time.delayedCall).toHaveBeenCalled();
+    });
+
+    it('should call this.load.atlas() for each note style entry when noteStyleRegistry is provided', () => {
+      const mockRegistry = {
+        getResolvedAsset: vi.fn((styleId, assetKey) => {
+          const assets = {
+            note: { resolvedPath: 'shared/images/noteSkins/NOTE_assets' },
+            noteStrumline: { resolvedPath: 'shared/images/noteSkins/NOTE_strumline' },
+            noteSplash: { resolvedPath: 'shared/images/noteSkins/noteSplashes' },
+            holdNote: { resolvedPath: 'shared/images/noteSkins/holdNote' }
+          };
+          return assets[assetKey] || null;
+        })
+      };
+
+      scene.init({ noteStyleRegistry: mockRegistry });
+      scene.createLoadingUI();
+      scene.setupLoadingEvents();
+      scene.loadCoreAssets();
+
+      expect(scene.load.atlas).toHaveBeenCalledTimes(4);
+      expect(scene.load.atlas).toHaveBeenCalledWith(
+        'notestyle-funkin-note',
+        'assets/funkin.assets/shared/images/noteSkins/NOTE_assets.png',
+        'assets/funkin.assets/shared/images/noteSkins/NOTE_assets.xml'
+      );
+      expect(scene.load.atlas).toHaveBeenCalledWith(
+        'notestyle-funkin-noteStrumline',
+        'assets/funkin.assets/shared/images/noteSkins/NOTE_strumline.png',
+        'assets/funkin.assets/shared/images/noteSkins/NOTE_strumline.xml'
+      );
+      expect(scene.load.atlas).toHaveBeenCalledWith(
+        'notestyle-funkin-noteSplash',
+        'assets/funkin.assets/shared/images/noteSkins/noteSplashes.png',
+        'assets/funkin.assets/shared/images/noteSkins/noteSplashes.xml'
+      );
+      expect(scene.load.atlas).toHaveBeenCalledWith(
+        'notestyle-funkin-holdNote',
+        'assets/funkin.assets/shared/images/noteSkins/holdNote.png',
+        'assets/funkin.assets/shared/images/noteSkins/holdNote.xml'
+      );
+    });
+
+    it('should handle missing noteStyleRegistry gracefully', () => {
+      scene.load.totalToLoad = 0;
+      scene.createLoadingUI();
+      scene.setupLoadingEvents();
+      scene.loadCoreAssets();
+
+      expect(scene.load.atlas).not.toHaveBeenCalled();
       expect(scene.time.delayedCall).toHaveBeenCalled();
     });
   });

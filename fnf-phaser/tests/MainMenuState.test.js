@@ -119,11 +119,11 @@ describe('MainMenuState', () => {
       expect(scene.menuItems.length).toBeGreaterThan(0);
     });
 
-    it('should have Story Mode, Freeplay, and Options', () => {
+    it('should expose only Levels and Options', () => {
       const names = scene.menuItems.map(item => item.name);
-      expect(names).toContain('Story Mode');
-      expect(names).toContain('Freeplay');
+      expect(names).toContain('Levels');
       expect(names).toContain('Options');
+      expect(names).toHaveLength(2);
     });
 
     it('should initialize with selectedIndex at 0', () => {

@@ -16,6 +16,7 @@ import SaveManager from '../data/SaveManager.js';
 import { ReplayRecorder, ReplayPlayer } from '../replay/ReplaySystem.js';
 import { InputBuffer } from '../input/InputSystem.js';
 import LevelSystem from '../levels/LevelSystem.js';
+import { registerCharacterAnimations, registerPropAnimations } from '../graphics/AnimationRegistrar.js';
 import { createGameplayState } from './GameplayState.js';
 import { createNoteProcessor } from './NoteProcessor.js';
 import { createInputManager } from './InputManager.js';
@@ -215,6 +216,51 @@ class PlayState {
     if (this.player) this.stage.positionCharacter(this.player, 'bf');
     if (this.opponent) this.stage.positionCharacter(this.opponent, 'dad');
     if (this.girlfriend) this.stage.positionCharacter(this.girlfriend, 'gf');
+  }
+
+  wireCharacterAssets(characterRegistry) {
+    const characters = [
+      { ref: this.player, label: 'player' },
+      { ref: this.opponent, label: 'opponent' },
+      { ref: this.girlfriend, label: 'girlfriend' }
+    ];
+    for (const { ref } of characters) {
+      if (!ref) continue;
+      const id = ref.characterId;
+      const textureKey = `char-${id}`;
+      ref.setTexture(textureKey);
+      registerCharacterAnimations(this.scene, textureKey, characterRegistry.getCharacterAnimations(id));
+      ref.playAnimation(ref.characterData?.startingAnimation || 'idle');
+    }
+  }
+
+  wireStageAssets(stageId, stageRegistry) {
+    const props = stageRegistry.getStageProps(stageId);
+    for (const prop of props) {
+      const sprite = this.stage?.getProp(prop.name);
+      if (!sprite) continue;
+      const textureKey = `stage-${stageId}-${prop.name}`;
+      sprite.setTexture(textureKey);
+      if (prop.animations && prop.animations.length > 0) {
+        registerPropAnimations(this.scene, textureKey, prop.animations);
+        if (prop.startingAnimation) {
+          sprite.playAnimation(prop.startingAnimation);
+        }
+      }
+    }
+  }
+
+  wireAudio(sessionAudio) {
+    if (sessionAudio.instrumental) {
+      this.audioManager.loadInstrumental(sessionAudio.instrumental.key);
+    }
+    if (sessionAudio.vocals?.player && sessionAudio.vocals?.opponent) {
+      this.voices.loadSplit(sessionAudio.vocals.player.key, sessionAudio.vocals.opponent.key);
+    }
+    if (sessionAudio.vocals?.combined) {
+      this.voices.loadCombined(sessionAudio.vocals.combined.key);
+    }
+    this.audioManager.setVoices(this.voices);
   }
 
   getCharacter(charType) {

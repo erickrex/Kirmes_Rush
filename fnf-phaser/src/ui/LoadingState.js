@@ -13,6 +13,7 @@ import EventBus, { Events } from '../core/EventBus.js';
  * @property {Object} [nextSceneData] - Data to pass to next scene
  * @property {string[]} [assets] - Assets to load
  * @property {Function} [loadCallback] - Custom loading callback
+ * @property {Function} [prepareCallback] - Async preparation callback returning { assets, nextSceneData }
  * @property {string} [message] - Loading message to display
  * @property {number} [minDuration=500] - Minimum display time in ms
  */
@@ -42,6 +43,12 @@ export default class LoadingState extends Phaser.Scene {
      * @type {Function | null}
      */
     this.loadCallback = null;
+
+    /**
+     * Async preparation callback
+     * @type {Function | null}
+     */
+    this.prepareCallback = null;
 
     /**
      * Loading message
@@ -120,6 +127,24 @@ export default class LoadingState extends Phaser.Scene {
      * @type {string}
      */
     this.errorMessage = '';
+
+    /**
+     * Whether loading work has started
+     * @type {boolean}
+     */
+    this.loadingStarted = false;
+
+    /**
+     * Whether we are still running the async prepare step
+     * @type {boolean}
+     */
+    this.preparing = false;
+
+    /**
+     * Guards against repeated transitions
+     * @type {boolean}
+     */
+    this.transitionStarted = false;
   }
 
   /**
@@ -130,6 +155,7 @@ export default class LoadingState extends Phaser.Scene {
     this.nextScene = config?.nextScene || '';
     this.nextSceneData = config?.nextSceneData || null;
     this.loadCallback = config?.loadCallback || null;
+    this.prepareCallback = config?.prepareCallback || null;
     this.message = config?.message || 'Loading...';
     this.minDuration = config?.minDuration ?? 500;
     this.assets = config?.assets || [];
@@ -139,6 +165,9 @@ export default class LoadingState extends Phaser.Scene {
     this.errorMessage = '';
     this.progress = 0;
     this.startTime = 0;
+    this.loadingStarted = false;
+    this.preparing = false;
+    this.transitionStarted = false;
   }
 
   /**
@@ -153,17 +182,6 @@ export default class LoadingState extends Phaser.Scene {
     // Setup loading events
     this.setupLoadingEvents();
 
-    // Load assets if provided
-    if (this.assets && this.assets.length > 0) {
-      this.loadAssets();
-    } else if (this.loadCallback) {
-      // Use custom load callback
-      this.loadCallback(this);
-    } else {
-      // No assets to load, mark as complete
-      this.progress = 1;
-      this.loadingComplete = true;
-    }
   }
 
   /**
@@ -276,7 +294,7 @@ export default class LoadingState extends Phaser.Scene {
    * Load assets from the assets array
    */
   loadAssets() {
-    this.load.setPath('assets/');
+    let queuedAssets = 0;
 
     this.assets.forEach(asset => {
       if (typeof asset === 'string') {
@@ -289,45 +307,163 @@ export default class LoadingState extends Phaser.Scene {
           case 'jpg':
           case 'jpeg':
           case 'gif':
-            this.load.image(key, asset);
+            if (!this.isAssetLoaded('image', key)) {
+              this.load.image(key, asset);
+              queuedAssets++;
+            }
             break;
           case 'mp3':
           case 'ogg':
           case 'wav':
-            this.load.audio(key, asset);
+            if (!this.isAssetLoaded('audio', key)) {
+              this.load.audio(key, asset);
+              queuedAssets++;
+            }
             break;
           case 'json':
-            this.load.json(key, asset);
+            if (!this.isAssetLoaded('json', key)) {
+              this.load.json(key, asset);
+              queuedAssets++;
+            }
             break;
           case 'xml':
-            this.load.xml(key, asset);
+            if (!this.isAssetLoaded('xml', key)) {
+              this.load.xml(key, asset);
+              queuedAssets++;
+            }
             break;
         }
       } else if (typeof asset === 'object') {
         // Object with type, key, and path
         const { type, key, path, ...options } = asset;
+        if (this.isAssetLoaded(type, key)) {
+          return;
+        }
+
         switch (type) {
           case 'image':
             this.load.image(key, path);
+            queuedAssets++;
             break;
           case 'audio':
             this.load.audio(key, path);
+            queuedAssets++;
             break;
           case 'spritesheet':
             this.load.spritesheet(key, path, options);
+            queuedAssets++;
             break;
           case 'atlas':
             this.load.atlas(key, path, options.atlasURL);
+            queuedAssets++;
             break;
           case 'json':
             this.load.json(key, path);
+            queuedAssets++;
             break;
           case 'xml':
             this.load.xml(key, path);
+            queuedAssets++;
             break;
         }
       }
     });
+
+    return queuedAssets;
+  }
+
+  /**
+   * Check whether an asset is already cached.
+   * @param {string} type
+   * @param {string} key
+   * @returns {boolean}
+   */
+  isAssetLoaded(type, key) {
+    switch (type) {
+      case 'image':
+      case 'spritesheet':
+      case 'atlas':
+        return this.textures?.exists?.(key) ?? false;
+      case 'audio':
+        return this.cache?.audio?.exists?.(key) ?? false;
+      case 'json':
+        return this.cache?.json?.exists?.(key) ?? false;
+      case 'xml':
+        return this.cache?.xml?.exists?.(key) ?? false;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Start the loading workflow.
+   */
+  beginLoading() {
+    if (this.loadingStarted) {
+      return;
+    }
+
+    this.loadingStarted = true;
+
+    if (this.prepareCallback) {
+      this.preparing = true;
+      void this.prepareAssets();
+      return;
+    }
+
+    this.queueAndStartLoading();
+  }
+
+  /**
+   * Run the async preparation step before queueing loader assets.
+   */
+  async prepareAssets() {
+    try {
+      const prepared = await this.prepareCallback(this);
+
+      if (prepared?.nextScene) {
+        this.nextScene = prepared.nextScene;
+      }
+      if (prepared?.nextSceneData !== undefined) {
+        this.nextSceneData = prepared.nextSceneData;
+      }
+      if (prepared?.assets) {
+        this.assets = prepared.assets;
+      }
+      if (prepared?.loadCallback) {
+        this.loadCallback = prepared.loadCallback;
+      }
+
+      this.preparing = false;
+      this.queueAndStartLoading();
+    } catch (error) {
+      console.error('[LoadingState] Preparation failed:', error);
+      this.preparing = false;
+      this.hasError = true;
+      this.errorMessage = error instanceof Error ? error.message : 'Failed to prepare loading state';
+      this.onLoadComplete();
+    }
+  }
+
+  /**
+   * Queue assets and start Phaser's loader.
+   */
+  queueAndStartLoading() {
+    let queuedAssets = 0;
+
+    if (this.assets && this.assets.length > 0) {
+      queuedAssets += this.loadAssets();
+    } else if (this.loadCallback) {
+      this.loadCallback(this);
+      queuedAssets = this.load.totalToLoad ?? 0;
+    }
+
+    if (queuedAssets > 0 || (this.load.totalToLoad ?? 0) > 0) {
+      this.load.start();
+      return;
+    }
+
+    this.onLoadComplete();
   }
 
   /**
@@ -380,10 +516,7 @@ export default class LoadingState extends Phaser.Scene {
    * Create method
    */
   create() {
-    // If loading was already complete in preload (no assets), transition now
-    if (this.loadingComplete) {
-      this.checkTransition();
-    }
+    this.beginLoading();
   }
 
   /**
@@ -407,6 +540,10 @@ export default class LoadingState extends Phaser.Scene {
    * Check if we can transition to next scene
    */
   checkTransition() {
+    if (this.preparing || this.transitionStarted) {
+      return;
+    }
+
     // Check minimum duration
     const elapsed = Date.now() - this.startTime;
     if (elapsed < this.minDuration) {
@@ -468,6 +605,8 @@ export default class LoadingState extends Phaser.Scene {
       return;
     }
 
+    this.transitionStarted = true;
+
     // Fade out
     this.cameras.main.fadeOut(300, 0, 0, 0);
 
@@ -494,6 +633,7 @@ export default class LoadingState extends Phaser.Scene {
     this.assetText = null;
     this.spinner = null;
     this.loadCallback = null;
+    this.prepareCallback = null;
     this.nextSceneData = null;
   }
 }

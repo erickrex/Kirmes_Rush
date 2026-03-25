@@ -58,12 +58,19 @@ vi.mock('phaser', () => {
             on: vi.fn().mockReturnThis(),
             off: vi.fn().mockReturnThis(),
             setPath: vi.fn().mockReturnThis(),
+            start: vi.fn(),
             image: vi.fn().mockReturnThis(),
             audio: vi.fn().mockReturnThis(),
             json: vi.fn().mockReturnThis(),
             xml: vi.fn().mockReturnThis(),
             spritesheet: vi.fn().mockReturnThis(),
-            atlas: vi.fn().mockReturnThis()
+            atlas: vi.fn().mockReturnThis(),
+            totalToLoad: 0
+          };
+          this.cache = {
+            audio: { exists: vi.fn(() => false) },
+            json: { exists: vi.fn(() => false) },
+            xml: { exists: vi.fn(() => false) }
           };
           this.textures = {
             exists: vi.fn().mockReturnValue(true)
@@ -103,7 +110,26 @@ vi.mock('../src/core/EventBus.js', () => ({
   }
 }));
 
+// Mock AssetPathResolver (needed by AssetManifestBuilder)
+vi.mock('../src/utils/AssetPathResolver.js', () => ({
+  resolveAssetPath: vi.fn((p) => {
+    if (!p) return null;
+    // Simple mock: strip 'shared:' prefix if present
+    return p.replace(/^shared:/, 'shared/images/');
+  })
+}));
+
+// Mock LevelSessionBuilder (used by buildPrepareCallback)
+vi.mock('../src/levels/LevelSessionBuilder.js', () => ({
+  default: class MockLevelSessionBuilder {
+    async build() {
+      return {};
+    }
+  }
+}));
+
 import LoadingState from '../src/ui/LoadingState.js';
+import { buildPrepareCallback } from '../src/levels/AssetManifestBuilder.js';
 
 describe('LoadingState', () => {
   let state;
@@ -122,6 +148,7 @@ describe('LoadingState', () => {
       expect(state.nextScene).toBe('');
       expect(state.nextSceneData).toBeNull();
       expect(state.loadCallback).toBeNull();
+      expect(state.prepareCallback).toBeNull();
       expect(state.message).toBe('Loading...');
       expect(state.minDuration).toBe(500);
       expect(state.loadingComplete).toBe(false);
@@ -169,6 +196,12 @@ describe('LoadingState', () => {
       expect(state.loadCallback).toBe(callback);
     });
 
+    it('should accept custom prepare callback', () => {
+      const callback = vi.fn();
+      state.init({ prepareCallback: callback });
+      expect(state.prepareCallback).toBe(callback);
+    });
+
     it('should accept assets array', () => {
       state.init({ assets: ['image.png', 'sound.mp3'] });
       expect(state.assets).toEqual(['image.png', 'sound.mp3']);
@@ -185,6 +218,7 @@ describe('LoadingState', () => {
     });
 
     it('should create spinner if texture exists', () => {
+      state.textures.exists.mockReturnValue(true);
       state.createLoadingUI();
       expect(state.textures.exists).toHaveBeenCalledWith('spinner');
       expect(state.add.sprite).toHaveBeenCalled();
@@ -205,12 +239,7 @@ describe('LoadingState', () => {
   describe('loadAssets', () => {
     beforeEach(() => {
       state.init({ assets: [] });
-    });
-
-    it('should set asset path', () => {
-      state.assets = ['test.png'];
-      state.loadAssets();
-      expect(state.load.setPath).toHaveBeenCalledWith('assets/');
+      state.textures.exists.mockReturnValue(false);
     });
 
     it('should load image files', () => {
@@ -248,6 +277,42 @@ describe('LoadingState', () => {
       expect(state.load.image).toHaveBeenCalled();
       expect(state.load.audio).toHaveBeenCalled();
       expect(state.load.spritesheet).toHaveBeenCalled();
+    });
+
+    it('should preserve root-relative asset paths', () => {
+      state.assets = [
+        { type: 'audio', key: 'song-inst', path: 'assets/funkin.assets/songs/tutorial/Inst.ogg' }
+      ];
+
+      state.loadAssets();
+
+      expect(state.load.audio).toHaveBeenCalledWith(
+        'song-inst',
+        'assets/funkin.assets/songs/tutorial/Inst.ogg'
+      );
+    });
+  });
+
+  describe('prepareAssets', () => {
+    beforeEach(() => {
+      state.init({
+        prepareCallback: vi.fn(async () => ({
+          assets: [{ type: 'audio', key: 'song-inst', path: 'assets/funkin.assets/songs/tutorial/Inst.ogg' }],
+          nextSceneData: { levelId: 'level-1-basics' }
+        }))
+      });
+      state.createLoadingUI();
+    });
+
+    it('should apply prepared assets and next scene data', async () => {
+      await state.prepareAssets();
+
+      expect(state.nextSceneData).toEqual({ levelId: 'level-1-basics' });
+      expect(state.load.audio).toHaveBeenCalledWith(
+        'song-inst',
+        'assets/funkin.assets/songs/tutorial/Inst.ogg'
+      );
+      expect(state.load.start).toHaveBeenCalled();
     });
   });
 
@@ -405,6 +470,82 @@ describe('LoadingState', () => {
       expect(state.percentText).toBeNull();
       expect(state.assetText).toBeNull();
       expect(state.spinner).toBeNull();
+    });
+  });
+
+  describe('loadAssets — atlas type', () => {
+    beforeEach(() => {
+      state.init({ assets: [] });
+      state.textures.exists.mockReturnValue(false);
+    });
+
+    it('should queue atlas entries via this.load.atlas()', () => {
+      state.assets = [
+        { type: 'atlas', key: 'char-bf', path: 'assets/funkin.assets/shared/images/BOYFRIEND.png', atlasURL: 'assets/funkin.assets/shared/images/BOYFRIEND.xml' }
+      ];
+      const queued = state.loadAssets();
+
+      expect(state.load.atlas).toHaveBeenCalledWith(
+        'char-bf',
+        'assets/funkin.assets/shared/images/BOYFRIEND.png',
+        'assets/funkin.assets/shared/images/BOYFRIEND.xml'
+      );
+      expect(queued).toBe(1);
+    });
+
+    it('should skip already-cached atlas assets', () => {
+      state.textures.exists.mockReturnValue(true);
+      state.assets = [
+        { type: 'atlas', key: 'char-bf', path: 'assets/funkin.assets/shared/images/BOYFRIEND.png', atlasURL: 'assets/funkin.assets/shared/images/BOYFRIEND.xml' }
+      ];
+      const queued = state.loadAssets();
+
+      expect(state.load.atlas).not.toHaveBeenCalled();
+      expect(queued).toBe(0);
+    });
+  });
+
+  describe('buildPrepareCallback', () => {
+    it('should produce correct nextSceneData shape', async () => {
+      const mockSession = {
+        chart: { timeChanges: [], notes: { player: [], opponent: [] } },
+        songData: {
+          id: 'bopeebo',
+          name: 'Bopeebo',
+          characters: { player: 'bf', opponent: 'dad' },
+          stage: 'mainStage',
+          noteStyle: null
+        },
+        audio: { instrumental: { key: 'song-bopeebo-instrumental', path: 'songs/bopeebo/Inst.ogg' }, vocals: {} },
+        metadata: { songName: 'Bopeebo', artist: 'Kawai Sprite' },
+        assets: [
+          { type: 'audio', key: 'song-bopeebo-instrumental', path: 'songs/bopeebo/Inst.ogg' }
+        ]
+      };
+
+      const mockBuilder = { build: vi.fn().mockResolvedValue(mockSession) };
+
+      const registries = {
+        characterRegistry: { getAssetPath: vi.fn(() => 'shared:BOYFRIEND') },
+        stageRegistry: { getStageProps: vi.fn(() => []) },
+        noteStyleRegistry: { getResolvedAsset: vi.fn(() => null) },
+        levelSessionBuilder: mockBuilder
+      };
+
+      const callback = buildPrepareCallback('level-1', registries);
+      const result = await callback({});
+
+      expect(mockBuilder.build).toHaveBeenCalledWith('level-1');
+      expect(result.nextScene).toBe('PlayState');
+      expect(result.nextSceneData).toHaveProperty('chart');
+      expect(result.nextSceneData).toHaveProperty('songData');
+      expect(result.nextSceneData).toHaveProperty('audio');
+      expect(result.nextSceneData).toHaveProperty('metadata');
+      expect(result.nextSceneData.chart).toBe(mockSession.chart);
+      expect(result.nextSceneData.songData).toBe(mockSession.songData);
+      expect(result.nextSceneData.audio).toBe(mockSession.audio);
+      expect(result.nextSceneData.metadata).toBe(mockSession.metadata);
+      expect(Array.isArray(result.assets)).toBe(true);
     });
   });
 });

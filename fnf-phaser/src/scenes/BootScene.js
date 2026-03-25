@@ -7,11 +7,13 @@
 
 import Phaser from 'phaser';
 import EventBus, { Events } from '../core/EventBus.js';
+import { buildNoteStyleEntries } from '../levels/AssetManifestBuilder.js';
 
 /**
  * @typedef {Object} BootSceneConfig
  * @property {string} [nextScene='TitleScene'] - Scene to transition to after loading
  * @property {string[]} [additionalAssets=[]] - Additional assets to load
+ * @property {Object} [noteStyleRegistry=null] - NoteStyleRegistry instance for resolving core note skin assets
  */
 
 /**
@@ -73,6 +75,12 @@ class BootScene extends Phaser.Scene {
    */
   failedFiles = [];
 
+  /**
+   * Note style registry for resolving core note skin assets.
+   * @type {Object|null}
+   */
+  noteStyleRegistry = null;
+
   constructor() {
     super({ key: BootScene.KEY });
   }
@@ -85,6 +93,7 @@ class BootScene extends Phaser.Scene {
     if (data?.nextScene) {
       this.nextScene = data.nextScene;
     }
+    this.noteStyleRegistry = data?.noteStyleRegistry || null;
     this.hasError = false;
     this.failedFiles = [];
   }
@@ -198,20 +207,18 @@ class BootScene extends Phaser.Scene {
    * @protected
    */
   loadCoreAssets() {
-    // Set base path for assets
-    this.load.setPath('assets/');
+    // Load default note style atlases from the registry
+    if (this.noteStyleRegistry) {
+      const noteStyleEntries = buildNoteStyleEntries('funkin', this.noteStyleRegistry);
 
-    // Load core UI assets
-    // These would be the essential assets needed before the game can start
-    // For now, we'll just simulate loading with a placeholder
-
-    // Example asset loading (uncomment when assets are available):
-    // this.load.image('logo', 'images/logo.png');
-    // this.load.image('loading-bar', 'images/loading-bar.png');
-    // this.load.audio('menu-music', 'audio/freakyMenu.ogg');
-
-    // Load fonts (if using bitmap fonts)
-    // this.load.bitmapFont('vcr', 'fonts/vcr.png', 'fonts/vcr.xml');
+      for (const entry of noteStyleEntries) {
+        if (entry.type === 'atlas') {
+          this.load.atlas(entry.key, entry.path, entry.atlasURL);
+        } else if (entry.type === 'image') {
+          this.load.image(entry.key, entry.path);
+        }
+      }
+    }
 
     // If no assets to load, trigger complete manually
     if (this.load.totalToLoad === 0) {

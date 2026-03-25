@@ -450,12 +450,16 @@ class Strumline {
       noteSprite.revive();
     } else {
       noteSprite = new NoteSprite(this.scene, noteData.direction);
+      if (this.scene?.add?.existing) {
+        this.scene.add.existing(noteSprite);
+      }
       this.notes.push(noteSprite);
     }
 
     // Configure the note
     noteSprite.setup(noteData, this.noteStyle);
     noteSprite.strumline = this;
+    noteSprite.setDepth?.(30);
 
     // Position
     noteSprite.x = this.x + this.getXPos(noteData.direction);

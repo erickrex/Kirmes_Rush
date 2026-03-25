@@ -111,6 +111,9 @@ export function createNoteProcessor(context) {
       const { playState } = context;
       const judgement = scoring.judgeNote(timing);
       const noteScore = scoring.scoreNote(timing);
+      const healthEnabled = playState.isFeatureEnabled
+        ? playState.isFeatureEnabled('healthBar')
+        : true;
 
       // Update gameplay state via PlayState (preserving existing behavior)
       playState.score += noteScore;
@@ -133,13 +136,15 @@ export function createNoteProcessor(context) {
       playState.tallies.maxCombo = playState.maxCombo;
 
       // Update health
-      const healthBonus = playState.getHealthBonus
-        ? playState.getHealthBonus(judgement)
-        : scoring.getHealthBonus(judgement);
-      playState.health = Math.max(
-        Constants.HEALTH_MIN,
-        Math.min(Constants.HEALTH_MAX, playState.health + healthBonus)
-      );
+      if (healthEnabled) {
+        const healthBonus = playState.getHealthBonus
+          ? playState.getHealthBonus(judgement)
+          : scoring.getHealthBonus(judgement);
+        playState.health = Math.max(
+          Constants.HEALTH_MIN,
+          Math.min(Constants.HEALTH_MAX, playState.health + healthBonus)
+        );
+      }
 
       // Hit the note on strumline
       playState.playerStrumline.hitNote(note);
@@ -175,6 +180,9 @@ export function createNoteProcessor(context) {
      */
     missNote(note) {
       const { playState } = context;
+      const healthEnabled = playState.isFeatureEnabled
+        ? playState.isFeatureEnabled('healthBar')
+        : true;
 
       // Mark as missed
       note.hasMissed = true;
@@ -187,10 +195,12 @@ export function createNoteProcessor(context) {
       playState.tallies.missed++;
 
       // Update health
-      playState.health = Math.max(
-        Constants.HEALTH_MIN,
-        playState.health + Constants.HEALTH_MISS_PENALTY
-      );
+      if (healthEnabled) {
+        playState.health = Math.max(
+          Constants.HEALTH_MIN,
+          playState.health + Constants.HEALTH_MISS_PENALTY
+        );
+      }
 
       // Trigger player miss animation
       if (playState.player) {
@@ -211,7 +221,7 @@ export function createNoteProcessor(context) {
       }
 
       // Check for game over
-      if (playState.health <= Constants.HEALTH_MIN) {
+      if (healthEnabled && playState.health <= Constants.HEALTH_MIN) {
         playState.gameOver();
       }
     },

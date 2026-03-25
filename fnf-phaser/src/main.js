@@ -8,6 +8,7 @@ import TitleState from './ui/TitleState.js';
 import MainMenuState from './ui/MainMenuState.js';
 import StoryMenuState from './ui/StoryMenuState.js';
 import FreeplayState from './ui/FreeplayState.js';
+import LevelSelectState from './ui/LevelSelectState.js';
 import OptionsState from './ui/OptionsState.js';
 import PlayScene from './scenes/PlayScene.js';
 import PauseSubState from './ui/PauseSubState.js';
@@ -47,6 +48,7 @@ const config = {
   scene: [
     TitleState,
     MainMenuState,
+    LevelSelectState,
     StoryMenuState,
     FreeplayState,
     OptionsState,

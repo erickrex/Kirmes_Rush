@@ -1,6 +1,6 @@
 /**
  * @fileoverview Main Menu State - Primary navigation menu
- * Implements FR-6.2: Main menu with Story, Freeplay, Options
+ * Implements FR-6.2: Main menu with Levels and Options
  */
 
 import BaseMenuState from './BaseMenuState.js';
@@ -23,8 +23,7 @@ export default class MainMenuState extends BaseMenuState {
 
     /** @type {MenuItem[]} */
     this.menuItems = [
-      { name: 'Story Mode', scene: 'StoryMenuState' },
-      { name: 'Freeplay', scene: 'FreeplayState' },
+      { name: 'Levels', scene: 'LevelSelectState' },
       { name: 'Options', scene: 'OptionsState' }
     ];
 

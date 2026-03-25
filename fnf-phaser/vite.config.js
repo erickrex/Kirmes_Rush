@@ -1,8 +1,85 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import fs from 'node:fs';
+import path, { resolve } from 'node:path';
+
+const appRoot = resolve(__dirname);
+const repoRoot = resolve(__dirname, '..');
+const assetSourceDir = resolve(repoRoot, 'assets', 'funkin.assets');
+const assetTargetDir = 'assets/funkin.assets';
+
+function getContentType(filePath) {
+  switch (path.extname(filePath).toLowerCase()) {
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.gif': return 'image/gif';
+    case '.svg': return 'image/svg+xml';
+    case '.json': return 'application/json';
+    case '.xml': return 'application/xml';
+    case '.mp3': return 'audio/mpeg';
+    case '.ogg': return 'audio/ogg';
+    case '.wav': return 'audio/wav';
+    case '.txt': return 'text/plain; charset=utf-8';
+    default: return 'application/octet-stream';
+  }
+}
+
+async function copyDirectory(source, target) {
+  await fs.promises.mkdir(target, { recursive: true });
+  const entries = await fs.promises.readdir(source, { withFileTypes: true });
+
+  await Promise.all(entries.map(async (entry) => {
+    const sourcePath = resolve(source, entry.name);
+    const targetPath = resolve(target, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectory(sourcePath, targetPath);
+      return;
+    }
+
+    await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.promises.copyFile(sourcePath, targetPath);
+  }));
+}
+
+function funkinAssetBridge() {
+  return {
+    name: 'funkin-asset-bridge',
+    configureServer(server) {
+      server.middlewares.use('/assets/funkin.assets', async (req, res, next) => {
+        const requestPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        const relativePath = requestPath.replace(/^\/+/, '');
+        const filePath = resolve(assetSourceDir, relativePath);
+
+        if (!filePath.startsWith(assetSourceDir)) {
+          res.statusCode = 403;
+          res.end('Forbidden');
+          return;
+        }
+
+        try {
+          const stat = await fs.promises.stat(filePath);
+          if (!stat.isFile()) {
+            next();
+            return;
+          }
+
+          res.setHeader('Content-Type', getContentType(filePath));
+          fs.createReadStream(filePath).pipe(res);
+        } catch {
+          next();
+        }
+      });
+    },
+    async writeBundle() {
+      await copyDirectory(assetSourceDir, resolve(appRoot, 'dist', assetTargetDir));
+    }
+  };
+}
 
 export default defineConfig({
   base: './',
+  plugins: [funkinAssetBridge()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),

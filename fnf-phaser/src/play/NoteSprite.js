@@ -40,6 +40,12 @@ class NoteSprite extends FunkinSprite {
   noteData = null;
 
   /**
+   * Alive flag used by the strumline pool.
+   * @type {boolean}
+   */
+  alive = true;
+
+  /**
    * The direction of this note (0-3)
    * @type {number}
    */
@@ -289,6 +295,9 @@ class NoteSprite extends FunkinSprite {
   setup(noteData, noteStyle = null) {
     this.noteData = noteData;
     this._direction = noteData.direction;
+    this.alive = true;
+    this.visible = true;
+    this.active = true;
 
     if (noteStyle) {
       this.setupNoteGraphic(noteStyle);
@@ -467,6 +476,7 @@ class NoteSprite extends FunkinSprite {
     this.visible = true;
     this.alpha = 1.0;
     this.active = false; // Will be set by note style if animated
+    this.alive = true;
 
     // Reset state
     this.tooEarly = false;
@@ -496,6 +506,7 @@ class NoteSprite extends FunkinSprite {
 
     this.visible = false;
     this.active = false;
+    this.alive = false;
 
     return this;
   }

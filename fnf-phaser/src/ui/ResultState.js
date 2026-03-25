@@ -543,7 +543,7 @@ export default class ResultState extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       // Return to freeplay or story mode based on context
       const returnScene = this.songData?.returnScene || 'FreeplayState';
-      this.scene.start(returnScene);
+      this.scene.start(returnScene, this.songData?.returnSceneData);
     });
   }
 
