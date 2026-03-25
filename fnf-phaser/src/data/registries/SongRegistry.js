@@ -60,6 +60,7 @@ const SongRegistry = createRegistry(
     registryId: 'SONG',
     dataFilePath: 'data/songs',
     versionRule: SONG_METADATA_VERSION_RULE,
+    entityName: 'Song',
 
     validateData(data, fileName) {
       if (!data.songName) {
@@ -213,8 +214,6 @@ const SongRegistry = createRegistry(
       // ========================================
       // SONG LISTING
       // ========================================
-
-      listSongIds() { return this.listEntryIds(); },
 
       getSongsByDifficulty(difficulty) {
         return this.getAllEntries().filter((song) => song.difficulties.includes(difficulty));

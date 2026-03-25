@@ -135,6 +135,7 @@ const CharacterRegistry = createRegistry(
     registryId: 'CHARACTER',
     dataFilePath: 'data/characters',
     versionRule: DEFAULTS.VERSION_RULE,
+    entityName: 'Character',
 
     validateData(data, fileName) {
       if (!data.version) {
@@ -195,16 +196,6 @@ const CharacterRegistry = createRegistry(
       // CHARACTER ACCESS METHODS
       // ========================================
 
-      getCharacterData(charId) {
-        const entry = this.fetchEntry(charId);
-        return entry ? entry.data : null;
-      },
-
-      getCharacterName(charId) {
-        const entry = this.fetchEntry(charId);
-        return entry ? entry.name : charId;
-      },
-
       getCharacterRenderType(charId) {
         const entry = this.fetchEntry(charId);
         return entry ? entry.renderType : DEFAULTS.RENDER_TYPE;
@@ -245,10 +236,6 @@ const CharacterRegistry = createRegistry(
       // LISTING METHODS
       // ========================================
 
-      listCharacterIds() {
-        return this.listEntryIds();
-      },
-
       getCharactersByRenderType(renderType) {
         return this.getAllEntries().filter((entry) => entry.renderType === renderType);
       },
@@ -278,10 +265,6 @@ const CharacterRegistry = createRegistry(
       // ========================================
       // UTILITY METHODS
       // ========================================
-
-      getCharacterPath(charId) {
-        return `${this.dataFilePath}/${charId}.json`;
-      },
 
       getSpriteAssetPath(charId) {
         const entry = this.fetchEntry(charId);

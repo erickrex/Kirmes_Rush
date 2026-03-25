@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Registry from '../src/core/Registry.js';
+import Registry, { createRegistry } from '../src/core/Registry.js';
 
 /**
  * Test implementation of Registry for testing purposes
@@ -303,6 +303,186 @@ describe('Registry', () => {
       expect(() => baseRegistry.createEntry('test', {})).toThrow(
         '[base] createEntry() must be implemented by subclass'
       );
+    });
+  });
+});
+
+describe('createRegistry - entityName method generation', () => {
+  function makeRegistry(config, options = {}) {
+    const Reg = createRegistry({
+      registryId: 'TEST',
+      dataFilePath: 'data/test',
+      cleanData: (data) => data,
+      createEntry: (id, data) => ({ id, name: data.name || 'Unknown', data, destroy: () => {} }),
+      ...config
+    }, options);
+    return Reg.getInstance();
+  }
+
+  describe('generated method existence', () => {
+    it('should generate all six methods when entityName is provided', () => {
+      const reg = makeRegistry({ entityName: 'Widget' });
+      expect(typeof reg.getWidgetData).toBe('function');
+      expect(typeof reg.getWidgetName).toBe('function');
+      expect(typeof reg.listWidgetIds).toBe('function');
+      expect(typeof reg.getWidgetPath).toBe('function');
+      expect(typeof reg.getWidgetDisplayInfo).toBe('function');
+      expect(typeof reg.toString).toBe('function');
+    });
+
+    it('should not generate methods when entityName is missing from config', () => {
+      const reg = makeRegistry({});
+      expect(reg.getWidgetData).toBeUndefined();
+    });
+  });
+
+  describe('generated accessor correctness', () => {
+    let reg;
+    beforeEach(() => {
+      reg = makeRegistry({ entityName: 'Item' });
+      // Manually load an entry
+      reg.entries.set('alpha', { id: 'alpha', name: 'Alpha Thing', data: { name: 'Alpha Thing', color: 'red' }, destroy: () => {} });
+    });
+
+    it('getItemData should return entry data for existing id', () => {
+      expect(reg.getItemData('alpha')).toEqual({ name: 'Alpha Thing', color: 'red' });
+    });
+
+    it('getItemData should return null for missing id', () => {
+      expect(reg.getItemData('missing')).toBeNull();
+    });
+
+    it('getItemName should return entry name for existing id', () => {
+      expect(reg.getItemName('alpha')).toBe('Alpha Thing');
+    });
+
+    it('getItemName should return the id itself for missing id', () => {
+      expect(reg.getItemName('missing')).toBe('missing');
+    });
+  });
+
+  describe('listIds and getPath', () => {
+    let reg;
+    beforeEach(() => {
+      reg = makeRegistry({ entityName: 'Thing' });
+      reg.entries.set('a', { id: 'a', name: 'A', data: {}, destroy: () => {} });
+      reg.entries.set('b', { id: 'b', name: 'B', data: {}, destroy: () => {} });
+    });
+
+    it('listThingIds should return all entry ids', () => {
+      const ids = reg.listThingIds();
+      expect(ids).toContain('a');
+      expect(ids).toContain('b');
+      expect(ids).toHaveLength(2);
+    });
+
+    it('getThingPath should return correct path', () => {
+      expect(reg.getThingPath('a')).toBe('data/test/a.json');
+    });
+  });
+
+  describe('toString', () => {
+    it('should return formatted string with entityName', () => {
+      const reg = makeRegistry({ entityName: 'Style' });
+      expect(reg.toString()).toBe('TESTRegistry(0 Styles)');
+    });
+
+    it('should reflect entry count', () => {
+      const reg = makeRegistry({ entityName: 'Style' });
+      reg.entries.set('x', { id: 'x', name: 'X', data: {}, destroy: () => {} });
+      expect(reg.toString()).toBe('TESTRegistry(1 Styles)');
+    });
+  });
+
+  describe('custom method override', () => {
+    it('should use custom method instead of generated one', () => {
+      const reg = makeRegistry(
+        { entityName: 'Item' },
+        { methods: { getItemData: function () { return 'custom'; } } }
+      );
+      expect(reg.getItemData('anything')).toBe('custom');
+    });
+
+    it('should use custom toString instead of generated one', () => {
+      const reg = makeRegistry(
+        { entityName: 'Item' },
+        { methods: { toString: function () { return 'MyCustomString'; } } }
+      );
+      expect(reg.toString()).toBe('MyCustomString');
+    });
+
+    it('should keep generated methods that are not overridden', () => {
+      const reg = makeRegistry(
+        { entityName: 'Item' },
+        { methods: { getItemData: function () { return 'custom'; } } }
+      );
+      // getItemName should still be the generated version
+      reg.entries.set('z', { id: 'z', name: 'Zed', data: {}, destroy: () => {} });
+      expect(reg.getItemName('z')).toBe('Zed');
+    });
+  });
+
+  describe('displayInfoFields', () => {
+    let reg;
+    beforeEach(() => {
+      reg = makeRegistry({
+        entityName: 'Style',
+        displayInfoFields: ['name', 'author', 'missing_field']
+      });
+      reg.entries.set('s1', {
+        id: 's1',
+        name: 'Cool Style',
+        data: { name: 'Cool Style', author: 'Dev' },
+        destroy: () => {}
+      });
+    });
+
+    it('should return id plus specified fields that exist', () => {
+      const info = reg.getStyleDisplayInfo('s1');
+      expect(info).toEqual({ id: 's1', name: 'Cool Style', author: 'Dev' });
+    });
+
+    it('should omit fields that do not exist on the entry', () => {
+      const info = reg.getStyleDisplayInfo('s1');
+      expect(info).not.toHaveProperty('missing_field');
+    });
+
+    it('should return null for non-existent entry', () => {
+      expect(reg.getStyleDisplayInfo('nope')).toBeNull();
+    });
+
+    it('should return only id when displayInfoFields is empty', () => {
+      const reg2 = makeRegistry({ entityName: 'Foo', displayInfoFields: [] });
+      reg2.entries.set('f1', { id: 'f1', name: 'F', data: {}, destroy: () => {} });
+      expect(reg2.getFooDisplayInfo('f1')).toEqual({ id: 'f1' });
+    });
+
+    it('should default to empty displayInfoFields when not provided', () => {
+      const reg2 = makeRegistry({ entityName: 'Bar' });
+      reg2.entries.set('b1', { id: 'b1', name: 'B', data: { color: 'red' }, destroy: () => {} });
+      expect(reg2.getBarDisplayInfo('b1')).toEqual({ id: 'b1' });
+    });
+  });
+
+  describe('invalid entityName', () => {
+    it('should log warning and skip generation for empty string', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const reg = makeRegistry({ entityName: '' });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('entityName must be a non-empty string')
+      );
+      // No generated methods
+      expect(reg.getDataData).toBeUndefined();
+      warnSpy.mockRestore();
+    });
+
+    it('should log warning and skip generation for non-string entityName', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const reg = makeRegistry({ entityName: 123 });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('entityName must be a non-empty string')
+      );
+      warnSpy.mockRestore();
     });
   });
 });

@@ -4,7 +4,6 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
-import * as Constants from '../core/Constants.js';
 
 /**
  * @typedef {Object} WeekData
@@ -37,8 +36,6 @@ export default class StoryMenuState extends BaseMenuState {
     ];
 
     /** @type {number} */
-    this.selectedWeekIndex = 0;
-    /** @type {number} */
     this.selectedDifficultyIndex = 1;
     /** @type {Phaser.GameObjects.Text[]} */
     this.weekTexts = [];
@@ -50,23 +47,62 @@ export default class StoryMenuState extends BaseMenuState {
     this.scoreText = null;
   }
 
+  /**
+   * Alias for selectedIndex — preserves the public API that tests and
+   * other code use (`scene.selectedWeekIndex`).
+   */
+  get selectedWeekIndex() {
+    return this.selectedIndex;
+  }
+
+  set selectedWeekIndex(value) {
+    this.selectedIndex = value;
+  }
+
+  // ========================================
+  // BASEMENUSTATE OVERRIDES
+  // ========================================
+
+  /** @override */
+  getItemCount() {
+    return this.weeks.length;
+  }
+
+  /** @override */
+  updateSelection() {
+    this.updateDisplay();
+  }
+
+  /** @override */
+  executeSelection() {
+    const week = this.weeks[this.selectedIndex];
+    if (week.locked) {
+      // Undo the transition guard — locked weeks can't be selected
+      this.transitioning = false;
+      return;
+    }
+    this.startWeek(week);
+  }
+
+  /** @override */
+  executeBack() {
+    this.transitionToScene('MainMenuState');
+  }
+
   /** @override */
   getInputBindings() {
     return [
-      { key: 'keydown-UP', handler: this.onNavigateUp },
-      { key: 'keydown-DOWN', handler: this.onNavigateDown },
-      { key: 'keydown-W', handler: this.onNavigateUp },
-      { key: 'keydown-S', handler: this.onNavigateDown },
+      ...super.getInputBindings(),
       { key: 'keydown-LEFT', handler: this.onDifficultyLeft },
       { key: 'keydown-RIGHT', handler: this.onDifficultyRight },
       { key: 'keydown-A', handler: this.onDifficultyLeft },
-      { key: 'keydown-D', handler: this.onDifficultyRight },
-      { key: 'keydown-ENTER', handler: this.onSelect },
-      { key: 'keydown-SPACE', handler: this.onSelect },
-      { key: 'keydown-ESC', handler: this.onBack },
-      { key: 'keydown-BACKSPACE', handler: this.onBack }
+      { key: 'keydown-D', handler: this.onDifficultyRight }
     ];
   }
+
+  // ========================================
+  // LIFECYCLE
+  // ========================================
 
   preload() {
     this.load.setPath('assets/');
@@ -76,7 +112,7 @@ export default class StoryMenuState extends BaseMenuState {
 
   create() {
     this.transitioning = false;
-    this.selectedWeekIndex = 0;
+    this.selectedIndex = 0;
     this.selectedDifficultyIndex = 1;
 
     const { width, height } = this.cameras.main;
@@ -154,25 +190,13 @@ export default class StoryMenuState extends BaseMenuState {
     }).setOrigin(1, 0);
   }
 
-  onNavigateUp() {
-    if (this.transitioning) return;
-    this.selectedWeekIndex--;
-    if (this.selectedWeekIndex < 0) this.selectedWeekIndex = this.weeks.length - 1;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
-
-  onNavigateDown() {
-    if (this.transitioning) return;
-    this.selectedWeekIndex++;
-    if (this.selectedWeekIndex >= this.weeks.length) this.selectedWeekIndex = 0;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
+  // ========================================
+  // DIFFICULTY NAVIGATION
+  // ========================================
 
   onDifficultyLeft() {
     if (this.transitioning) return;
-    const week = this.weeks[this.selectedWeekIndex];
+    const week = this.weeks[this.selectedIndex];
     this.selectedDifficultyIndex--;
     if (this.selectedDifficultyIndex < 0) this.selectedDifficultyIndex = week.difficulties.length - 1;
     this.playScrollSound();
@@ -181,35 +205,22 @@ export default class StoryMenuState extends BaseMenuState {
 
   onDifficultyRight() {
     if (this.transitioning) return;
-    const week = this.weeks[this.selectedWeekIndex];
+    const week = this.weeks[this.selectedIndex];
     this.selectedDifficultyIndex++;
     if (this.selectedDifficultyIndex >= week.difficulties.length) this.selectedDifficultyIndex = 0;
     this.playScrollSound();
     this.updateDisplay();
   }
 
-  onSelect() {
-    if (this.transitioning) return;
-    const week = this.weeks[this.selectedWeekIndex];
-    if (week.locked) return;
-
-    this.transitioning = true;
-    this.playConfirmSound();
-    this.startWeek(week);
-  }
-
-  onBack() {
-    if (this.transitioning) return;
-    this.transitioning = true;
-    this.playCancelSound();
-    this.transitionToScene('MainMenuState');
-  }
+  // ========================================
+  // DISPLAY
+  // ========================================
 
   updateDisplay() {
-    const week = this.weeks[this.selectedWeekIndex];
+    const week = this.weeks[this.selectedIndex];
 
     this.weekTexts.forEach((text, index) => {
-      if (index === this.selectedWeekIndex) {
+      if (index === this.selectedIndex) {
         text.setColor('#ffff00');
         text.setScale(1.2);
       } else {

@@ -102,7 +102,6 @@ const mockConductor = {
 
 vi.mock('../src/core/Conductor.js', () => ({
   default: {
-    getInstance: vi.fn(() => mockConductor),
     instance: mockConductor
   }
 }));
@@ -227,7 +226,7 @@ describe('PlayState', () => {
 
       playState.init(config);
 
-      expect(Conductor.getInstance().mapTimeChanges).toHaveBeenCalledWith(config.chart.timeChanges);
+      expect(Conductor.instance.mapTimeChanges).toHaveBeenCalledWith(config.chart.timeChanges);
     });
 
     it('should count total notes', () => {
@@ -344,7 +343,7 @@ describe('PlayState', () => {
 
       playState.update(0, 16);
 
-      expect(Conductor.getInstance().update).toHaveBeenCalledWith(1000);
+      expect(Conductor.instance.update).toHaveBeenCalledWith(1000);
     });
 
     it('should update strumlines', () => {

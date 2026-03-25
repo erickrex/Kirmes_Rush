@@ -405,7 +405,52 @@ export function createRegistry(config, options = {}) {
     }
   }
 
-  // Attach instance methods
+  // Generate common methods from entityName config (BEFORE custom methods so custom wins)
+  if ('entityName' in config) {
+    const entityName = config.entityName;
+    if (typeof entityName === 'string' && entityName.length > 0) {
+      const dataFilePath = config.dataFilePath;
+      const displayInfoFields = config.displayInfoFields || [];
+
+      ConfigRegistry.prototype[`get${entityName}Data`] = function (id) {
+        return this.fetchEntry(id)?.data ?? null;
+      };
+
+      ConfigRegistry.prototype[`get${entityName}Name`] = function (id) {
+        return this.fetchEntry(id)?.name ?? id;
+      };
+
+      ConfigRegistry.prototype[`list${entityName}Ids`] = function () {
+        return this.listEntryIds();
+      };
+
+      ConfigRegistry.prototype[`get${entityName}Path`] = function (id) {
+        return `${dataFilePath}/${id}.json`;
+      };
+
+      ConfigRegistry.prototype[`get${entityName}DisplayInfo`] = function (id) {
+        const entry = this.fetchEntry(id);
+        if (!entry) return null;
+        const info = { id: entry.id };
+        for (const field of displayInfoFields) {
+          if (field in entry) {
+            info[field] = entry[field];
+          } else if (entry.data && field in entry.data) {
+            info[field] = entry.data[field];
+          }
+        }
+        return info;
+      };
+
+      ConfigRegistry.prototype.toString = function () {
+        return `${config.registryId}Registry(${this.countEntries()} ${entityName}s)`;
+      };
+    } else {
+      console.warn(`[${config.registryId}] entityName must be a non-empty string, skipping method generation`);
+    }
+  }
+
+  // Attach instance methods (custom methods override generated ones)
   if (options.methods) {
     for (const [key, fn] of Object.entries(options.methods)) {
       ConfigRegistry.prototype[key] = fn;

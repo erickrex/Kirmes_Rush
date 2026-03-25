@@ -137,6 +137,7 @@ const StageRegistry = createRegistry(
     registryId: 'STAGE',
     dataFilePath: 'data/stages',
     versionRule: DEFAULTS.VERSION_RULE,
+    entityName: 'Stage',
 
     validateData(data, fileName) {
       if (!data.version) {
@@ -177,16 +178,6 @@ const StageRegistry = createRegistry(
       // STAGE ACCESS METHODS
       // ========================================
 
-      getStageData(stageId) {
-        const entry = this.fetchEntry(stageId);
-        return entry ? entry.data : null;
-      },
-
-      getStageName(stageId) {
-        const entry = this.fetchEntry(stageId);
-        return entry ? entry.name : stageId;
-      },
-
       getStageProps(stageId) {
         const entry = this.fetchEntry(stageId);
         return entry ? entry.data.props : [];
@@ -226,10 +217,6 @@ const StageRegistry = createRegistry(
       // LISTING METHODS
       // ========================================
 
-      listStageIds() {
-        return this.listEntryIds();
-      },
-
       getStagesByDirectory(directory) {
         return this.getAllEntries().filter((entry) => entry.data.directory === directory);
       },
@@ -251,10 +238,6 @@ const StageRegistry = createRegistry(
       // ========================================
       // UTILITY METHODS
       // ========================================
-
-      getStagePath(stageId) {
-        return `${this.dataFilePath}/${stageId}.json`;
-      },
 
       getPropAssetPath(stageId, propName) {
         const prop = this.getProp(stageId, propName);

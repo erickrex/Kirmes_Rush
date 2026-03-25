@@ -8,11 +8,16 @@ import Phaser from 'phaser';
 
 /**
  * Base class for menu scenes. Handles common input binding,
- * sound effects, background rendering, and scene transitions.
+ * sound effects, background rendering, scene transitions,
+ * and list-based navigation (index wrapping, transition guards,
+ * scroll/confirm/cancel sounds).
  *
  * Subclasses should override:
- * - `getInputBindings()` to declare their key→handler mappings
- * - `onNavigateUp/Down()`, `onSelect()`, `onBack()` for menu logic
+ * - `getItemCount()` to return the number of navigable items
+ * - `updateSelection()` to re-render the selection highlight
+ * - `executeSelection()` to perform the selected action
+ * - `executeBack()` to perform the back/cancel action
+ * - Optionally extend `getInputBindings()` via `super.getInputBindings()`
  *
  * @extends Phaser.Scene
  */
@@ -22,6 +27,80 @@ export default class BaseMenuState extends Phaser.Scene {
 
     /** @type {boolean} */
     this.transitioning = false;
+
+    /** @type {number} */
+    this.selectedIndex = 0;
+  }
+
+  // ========================================
+  // NAVIGATION — SUBCLASS OVERRIDES
+  // ========================================
+
+  /**
+   * Return the number of navigable items. Subclasses must override.
+   * @returns {number}
+   */
+  getItemCount() {
+    return 0;
+  }
+
+  /**
+   * Re-render the selection highlight. Override in subclasses.
+   */
+  updateSelection() {
+    // no-op — subclasses provide visual update
+  }
+
+  /**
+   * Perform the action for the currently selected item. Override in subclasses.
+   */
+  executeSelection() {
+    // no-op — subclasses provide selection logic
+  }
+
+  /**
+   * Perform the back/cancel action. Override in subclasses.
+   */
+  executeBack() {
+    // no-op — subclasses provide back logic
+  }
+
+  // ========================================
+  // NAVIGATION — PROVIDED BY BASE
+  // ========================================
+
+  /** Navigate up through the menu list with wrapping. */
+  onNavigateUp() {
+    const itemCount = this.getItemCount();
+    if (this.transitioning || itemCount === 0) return;
+    this.selectedIndex = (this.selectedIndex - 1 + itemCount) % itemCount;
+    this.playScrollSound();
+    this.updateSelection();
+  }
+
+  /** Navigate down through the menu list with wrapping. */
+  onNavigateDown() {
+    const itemCount = this.getItemCount();
+    if (this.transitioning || itemCount === 0) return;
+    this.selectedIndex = (this.selectedIndex + 1) % itemCount;
+    this.playScrollSound();
+    this.updateSelection();
+  }
+
+  /** Confirm the current selection with transition guard. */
+  onSelect() {
+    if (this.transitioning || this.getItemCount() === 0) return;
+    this.transitioning = true;
+    this.playConfirmSound();
+    this.executeSelection();
+  }
+
+  /** Go back / cancel with transition guard. */
+  onBack() {
+    if (this.transitioning) return;
+    this.transitioning = true;
+    this.playCancelSound();
+    this.executeBack();
   }
 
   // ========================================
@@ -101,21 +180,23 @@ export default class BaseMenuState extends Phaser.Scene {
 
   /**
    * Return an array of `{ key, handler }` objects describing all
-   * keyboard bindings for this menu. Override in subclasses.
+   * keyboard bindings for this menu. Provides default UP/W, DOWN/S,
+   * ENTER/SPACE, ESC/BACKSPACE bindings. Subclasses can extend via
+   * `[...super.getInputBindings(), ...extraBindings]`.
    *
-   * Example:
-   * ```js
-   * getInputBindings() {
-   *   return [
-   *     { key: 'keydown-UP', handler: this.onNavigateUp },
-   *     { key: 'keydown-ENTER', handler: this.onSelect },
-   *   ];
-   * }
-   * ```
    * @returns {{ key: string, handler: Function }[]}
    */
   getInputBindings() {
-    return [];
+    return [
+      { key: 'keydown-UP', handler: this.onNavigateUp },
+      { key: 'keydown-W', handler: this.onNavigateUp },
+      { key: 'keydown-DOWN', handler: this.onNavigateDown },
+      { key: 'keydown-S', handler: this.onNavigateDown },
+      { key: 'keydown-ENTER', handler: this.onSelect },
+      { key: 'keydown-SPACE', handler: this.onSelect },
+      { key: 'keydown-ESC', handler: this.onBack },
+      { key: 'keydown-BACKSPACE', handler: this.onBack }
+    ];
   }
 
   /**

@@ -38,19 +38,49 @@ export default class MainMenuState extends BaseMenuState {
     this.menuMusic = null;
   }
 
+  // ========================================
+  // BASEMENUSTATE OVERRIDES
+  // ========================================
+
   /** @override */
-  getInputBindings() {
-    return [
-      { key: 'keydown-UP', handler: this.onNavigateUp },
-      { key: 'keydown-DOWN', handler: this.onNavigateDown },
-      { key: 'keydown-W', handler: this.onNavigateUp },
-      { key: 'keydown-S', handler: this.onNavigateDown },
-      { key: 'keydown-ENTER', handler: this.onSelect },
-      { key: 'keydown-SPACE', handler: this.onSelect },
-      { key: 'keydown-ESC', handler: this.onBack },
-      { key: 'keydown-BACKSPACE', handler: this.onBack }
-    ];
+  getItemCount() {
+    return this.menuItems.length;
   }
+
+  /** @override */
+  updateSelection() {
+    this.menuTexts.forEach((text, index) => {
+      if (index === this.selectedIndex) {
+        text.setColor('#ffff00');
+        text.setScale(1.1);
+      } else {
+        text.setColor('#ffffff');
+        text.setScale(1.0);
+      }
+    });
+  }
+
+  /** @override */
+  executeSelection() {
+    const selectedItem = this.menuItems[this.selectedIndex];
+    this.tweens.add({
+      targets: selectedItem.text,
+      alpha: 0,
+      duration: 100,
+      yoyo: true,
+      repeat: 3,
+      onComplete: () => this.transitionToScene(selectedItem.scene)
+    });
+  }
+
+  /** @override */
+  executeBack() {
+    this.transitionToScene('TitleState');
+  }
+
+  // ========================================
+  // LIFECYCLE
+  // ========================================
 
   preload() {
     this.load.setPath('assets/');
@@ -93,57 +123,6 @@ export default class MainMenuState extends BaseMenuState {
 
       item.text = text;
       this.menuTexts.push(text);
-    });
-  }
-
-  onNavigateUp() {
-    if (this.transitioning) return;
-    this.selectedIndex--;
-    if (this.selectedIndex < 0) this.selectedIndex = this.menuItems.length - 1;
-    this.playScrollSound();
-    this.updateSelection();
-  }
-
-  onNavigateDown() {
-    if (this.transitioning) return;
-    this.selectedIndex++;
-    if (this.selectedIndex >= this.menuItems.length) this.selectedIndex = 0;
-    this.playScrollSound();
-    this.updateSelection();
-  }
-
-  onSelect() {
-    if (this.transitioning) return;
-    this.transitioning = true;
-    this.playConfirmSound();
-
-    const selectedItem = this.menuItems[this.selectedIndex];
-    this.tweens.add({
-      targets: selectedItem.text,
-      alpha: 0,
-      duration: 100,
-      yoyo: true,
-      repeat: 3,
-      onComplete: () => this.transitionToScene(selectedItem.scene)
-    });
-  }
-
-  onBack() {
-    if (this.transitioning) return;
-    this.transitioning = true;
-    this.playCancelSound();
-    this.transitionToScene('TitleState');
-  }
-
-  updateSelection() {
-    this.menuTexts.forEach((text, index) => {
-      if (index === this.selectedIndex) {
-        text.setColor('#ffff00');
-        text.setScale(1.1);
-      } else {
-        text.setColor('#ffffff');
-        text.setScale(1.0);
-      }
     });
   }
 

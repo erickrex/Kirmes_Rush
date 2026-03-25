@@ -4,7 +4,6 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
-import * as Constants from '../core/Constants.js';
 
 /**
  * @typedef {Object} SongCapsule
@@ -64,24 +63,47 @@ export default class FreeplayState extends BaseMenuState {
     this.filteredSongs = [];
   }
 
+  // ========================================
+  // BASEMENUSTATE OVERRIDES
+  // ========================================
+
+  /** @override */
+  getItemCount() {
+    return this.filteredSongs.length;
+  }
+
+  /** @override */
+  updateSelection() {
+    this.updateDisplay();
+  }
+
+  /** @override */
+  executeSelection() {
+    const song = this.filteredSongs[this.selectedIndex];
+    const difficulty = song.difficulties[this.selectedDifficultyIndex];
+    this.startSong(song, difficulty);
+  }
+
+  /** @override */
+  executeBack() {
+    this.transitionToScene('MainMenuState');
+  }
+
   /** @override */
   getInputBindings() {
     return [
-      { key: 'keydown-UP', handler: this.onNavigateUp },
-      { key: 'keydown-DOWN', handler: this.onNavigateDown },
-      { key: 'keydown-W', handler: this.onNavigateUp },
-      { key: 'keydown-S', handler: this.onNavigateDown },
+      ...super.getInputBindings(),
       { key: 'keydown-LEFT', handler: this.onDifficultyLeft },
       { key: 'keydown-RIGHT', handler: this.onDifficultyRight },
       { key: 'keydown-A', handler: this.onDifficultyLeft },
       { key: 'keydown-D', handler: this.onDifficultyRight },
-      { key: 'keydown-ENTER', handler: this.onSelect },
-      { key: 'keydown-SPACE', handler: this.onSelect },
-      { key: 'keydown-ESC', handler: this.onBack },
-      { key: 'keydown-BACKSPACE', handler: this.onBack },
       { key: 'keydown-TAB', handler: this.onCycleFilter }
     ];
   }
+
+  // ========================================
+  // LIFECYCLE
+  // ========================================
 
   preload() {
     this.load.setPath('assets/');
@@ -184,21 +206,9 @@ export default class FreeplayState extends BaseMenuState {
     });
   }
 
-  onNavigateUp() {
-    if (this.transitioning || this.filteredSongs.length === 0) return;
-    this.selectedIndex--;
-    if (this.selectedIndex < 0) this.selectedIndex = this.filteredSongs.length - 1;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
-
-  onNavigateDown() {
-    if (this.transitioning || this.filteredSongs.length === 0) return;
-    this.selectedIndex++;
-    if (this.selectedIndex >= this.filteredSongs.length) this.selectedIndex = 0;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
+  // ========================================
+  // DIFFICULTY & FILTER NAVIGATION
+  // ========================================
 
   onDifficultyLeft() {
     if (this.transitioning || this.filteredSongs.length === 0) return;
@@ -237,21 +247,9 @@ export default class FreeplayState extends BaseMenuState {
     if (this.letterFilterText) this.letterFilterText.setText(`Filter: ${this.letterFilter || 'ALL'}`);
   }
 
-  onSelect() {
-    if (this.transitioning || this.filteredSongs.length === 0) return;
-    this.transitioning = true;
-    this.playConfirmSound();
-    const song = this.filteredSongs[this.selectedIndex];
-    const difficulty = song.difficulties[this.selectedDifficultyIndex];
-    this.startSong(song, difficulty);
-  }
-
-  onBack() {
-    if (this.transitioning) return;
-    this.transitioning = true;
-    this.playCancelSound();
-    this.transitionToScene('MainMenuState');
-  }
+  // ========================================
+  // DISPLAY
+  // ========================================
 
   updateDisplay() {
     const startIndex = Math.max(0, this.selectedIndex - Math.floor(this.visibleCapsules / 2));

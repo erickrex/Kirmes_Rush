@@ -4,7 +4,6 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
-import * as Constants from '../core/Constants.js';
 
 /**
  * @typedef {'toggle' | 'slider' | 'keybind' | 'action'} OptionType
@@ -106,8 +105,6 @@ export default class OptionsState extends BaseMenuState {
 
     /** @type {number} */
     this.selectedCategoryIndex = 0;
-    /** @type {number} */
-    this.selectedItemIndex = 0;
     /** @type {boolean} */
     this.capturingKeybind = false;
     /** @type {Phaser.GameObjects.Text[]} */
@@ -118,20 +115,155 @@ export default class OptionsState extends BaseMenuState {
     this.keybindCaptureText = null;
   }
 
+  /**
+   * Alias for selectedIndex — preserves the public API that tests and
+   * other code use (`scene.selectedItemIndex`).
+   */
+  get selectedItemIndex() {
+    return this.selectedIndex;
+  }
+
+  set selectedItemIndex(value) {
+    this.selectedIndex = value;
+  }
+
+  // ========================================
+  // BASEMENUSTATE OVERRIDES
+  // ========================================
+
   /** @override */
+  getItemCount() {
+    return this.categories[this.selectedCategoryIndex].items.length;
+  }
+
+  /** @override */
+  updateSelection() {
+    this.updateDisplay();
+  }
+
+  /** @override */
+  executeSelection() {
+    // Not used — OptionsState has custom onSelect logic
+  }
+
+  /** @override */
+  executeBack() {
+    this.saveOptions();
+    this.transitionToScene('MainMenuState');
+  }
+
+  /** @override - OptionsState needs extra bindings for LEFT/RIGHT and keydown */
   getInputBindings() {
     return [
-      { key: 'keydown-UP', handler: this.onNavigateUp },
-      { key: 'keydown-DOWN', handler: this.onNavigateDown },
+      ...super.getInputBindings(),
       { key: 'keydown-LEFT', handler: this.onNavigateLeft },
       { key: 'keydown-RIGHT', handler: this.onNavigateRight },
-      { key: 'keydown-ENTER', handler: this.onSelect },
-      { key: 'keydown-SPACE', handler: this.onSelect },
-      { key: 'keydown-ESC', handler: this.onBack },
-      { key: 'keydown-BACKSPACE', handler: this.onBack },
       { key: 'keydown', handler: this.onAnyKeyDown }
     ];
   }
+
+  // ========================================
+  // CUSTOM NAVIGATION (capturingKeybind guard)
+  // ========================================
+
+  /**
+   * OptionsState overrides base navigation because it has an additional
+   * `capturingKeybind` guard that the base class doesn't know about.
+   * @override
+   */
+  onNavigateUp() {
+    if (this.transitioning || this.capturingKeybind) return;
+    const category = this.categories[this.selectedCategoryIndex];
+    this.selectedIndex = (this.selectedIndex - 1 + category.items.length) % category.items.length;
+    this.playScrollSound();
+    this.updateDisplay();
+  }
+
+  /** @override */
+  onNavigateDown() {
+    if (this.transitioning || this.capturingKeybind) return;
+    const category = this.categories[this.selectedCategoryIndex];
+    this.selectedIndex = (this.selectedIndex + 1) % category.items.length;
+    this.playScrollSound();
+    this.updateDisplay();
+  }
+
+  onNavigateLeft() {
+    if (this.transitioning || this.capturingKeybind) return;
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
+
+    if (item.type === 'slider') {
+      item.value = Math.max(item.min, item.value - item.step);
+      this.saveOptions();
+      this.updateDisplay();
+    } else {
+      this.selectedCategoryIndex--;
+      if (this.selectedCategoryIndex < 0) this.selectedCategoryIndex = this.categories.length - 1;
+      this.selectedIndex = 0;
+      this.playScrollSound();
+      this.updateDisplay();
+    }
+  }
+
+  onNavigateRight() {
+    if (this.transitioning || this.capturingKeybind) return;
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
+
+    if (item.type === 'slider') {
+      item.value = Math.min(item.max, item.value + item.step);
+      this.saveOptions();
+      this.updateDisplay();
+    } else {
+      this.selectedCategoryIndex++;
+      if (this.selectedCategoryIndex >= this.categories.length) this.selectedCategoryIndex = 0;
+      this.selectedIndex = 0;
+      this.playScrollSound();
+      this.updateDisplay();
+    }
+  }
+
+  /**
+   * OptionsState has custom select logic — toggles, keybind capture,
+   * and actions don't use the base transition guard pattern.
+   * @override
+   */
+  onSelect() {
+    if (this.transitioning || this.capturingKeybind) return;
+    const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
+
+    switch (item.type) {
+      case 'toggle':
+        item.value = !item.value;
+        this.saveOptions();
+        this.updateDisplay();
+        break;
+      case 'keybind':
+        this.startKeybindCapture(item);
+        break;
+      case 'action':
+        this.executeAction(item.action);
+        break;
+    }
+  }
+
+  /**
+   * OptionsState has custom back logic — keybind cancel takes priority.
+   * @override
+   */
+  onBack() {
+    if (this.capturingKeybind) {
+      this.cancelKeybindCapture();
+      return;
+    }
+    if (this.transitioning) return;
+    this.transitioning = true;
+    this.playCancelSound();
+    this.executeBack();
+  }
+
+  // ========================================
+  // LIFECYCLE
+  // ========================================
 
   preload() {
     this.load.setPath('assets/');
@@ -142,7 +274,7 @@ export default class OptionsState extends BaseMenuState {
     this.transitioning = false;
     this.capturingKeybind = false;
     this.selectedCategoryIndex = 0;
-    this.selectedItemIndex = 0;
+    this.selectedIndex = 0;
 
     this.loadOptions();
 
@@ -236,87 +368,9 @@ export default class OptionsState extends BaseMenuState {
     }).setOrigin(0.5, 0.5);
   }
 
-  onNavigateUp() {
-    if (this.transitioning || this.capturingKeybind) return;
-    const category = this.categories[this.selectedCategoryIndex];
-    this.selectedItemIndex--;
-    if (this.selectedItemIndex < 0) this.selectedItemIndex = category.items.length - 1;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
-
-  onNavigateDown() {
-    if (this.transitioning || this.capturingKeybind) return;
-    const category = this.categories[this.selectedCategoryIndex];
-    this.selectedItemIndex++;
-    if (this.selectedItemIndex >= category.items.length) this.selectedItemIndex = 0;
-    this.playScrollSound();
-    this.updateDisplay();
-  }
-
-  onNavigateLeft() {
-    if (this.transitioning || this.capturingKeybind) return;
-    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
-
-    if (item.type === 'slider') {
-      item.value = Math.max(item.min, item.value - item.step);
-      this.saveOptions();
-      this.updateDisplay();
-    } else {
-      this.selectedCategoryIndex--;
-      if (this.selectedCategoryIndex < 0) this.selectedCategoryIndex = this.categories.length - 1;
-      this.selectedItemIndex = 0;
-      this.playScrollSound();
-      this.updateDisplay();
-    }
-  }
-
-  onNavigateRight() {
-    if (this.transitioning || this.capturingKeybind) return;
-    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
-
-    if (item.type === 'slider') {
-      item.value = Math.min(item.max, item.value + item.step);
-      this.saveOptions();
-      this.updateDisplay();
-    } else {
-      this.selectedCategoryIndex++;
-      if (this.selectedCategoryIndex >= this.categories.length) this.selectedCategoryIndex = 0;
-      this.selectedItemIndex = 0;
-      this.playScrollSound();
-      this.updateDisplay();
-    }
-  }
-
-  onSelect() {
-    if (this.transitioning || this.capturingKeybind) return;
-    const item = this.categories[this.selectedCategoryIndex].items[this.selectedItemIndex];
-
-    switch (item.type) {
-      case 'toggle':
-        item.value = !item.value;
-        this.saveOptions();
-        this.updateDisplay();
-        break;
-      case 'keybind':
-        this.startKeybindCapture(item);
-        break;
-      case 'action':
-        this.executeAction(item.action);
-        break;
-    }
-  }
-
-  onBack() {
-    if (this.capturingKeybind) {
-      this.cancelKeybindCapture();
-      return;
-    }
-    if (this.transitioning) return;
-    this.transitioning = true;
-    this.saveOptions();
-    this.transitionToScene('MainMenuState');
-  }
+  // ========================================
+  // KEYBIND CAPTURE
+  // ========================================
 
   onAnyKeyDown(event) {
     if (!this.capturingKeybind) return;
@@ -341,6 +395,10 @@ export default class OptionsState extends BaseMenuState {
     this.keybindOverlay.setVisible(false);
   }
 
+  // ========================================
+  // ACTIONS
+  // ========================================
+
   executeAction(action) {
     switch (action) {
       case 'calibrate':
@@ -362,6 +420,10 @@ export default class OptionsState extends BaseMenuState {
     this.updateDisplay();
   }
 
+  // ========================================
+  // DISPLAY
+  // ========================================
+
   updateDisplay() {
     this.categoryTabs.forEach((tab, index) => {
       tab.setColor(index === this.selectedCategoryIndex ? '#ffff00' : '#ffffff');
@@ -382,7 +444,7 @@ export default class OptionsState extends BaseMenuState {
       const sliderFill = display.getData('sliderFill');
 
       nameText.setText(item.name);
-      nameText.setColor(index === this.selectedItemIndex ? '#ffff00' : '#ffffff');
+      nameText.setColor(index === this.selectedIndex ? '#ffff00' : '#ffffff');
 
       switch (item.type) {
         case 'toggle':
@@ -414,6 +476,10 @@ export default class OptionsState extends BaseMenuState {
       }
     });
   }
+
+  // ========================================
+  // PERSISTENCE
+  // ========================================
 
   loadOptions() {
     try {

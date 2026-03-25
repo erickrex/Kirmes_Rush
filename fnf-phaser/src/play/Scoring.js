@@ -53,6 +53,166 @@ export const Judgement = {
   MISS: 'miss'
 };
 
+// ========================================
+// SCORING STRATEGIES
+// ========================================
+
+/**
+ * @typedef {Object} ScoringStrategy
+ * @property {function(number): number} scoreNote - Score based on ms timing offset
+ * @property {function(number): string} judgeNote - Judgement based on ms timing offset
+ * @property {function(): number} getMissScore - Score penalty for a miss
+ */
+
+/** Legacy scoring strategy (Week 6 and older). */
+const LegacyStrategy = {
+  scoreNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SICK_THRESHOLD) {
+      return Constants.LEGACY_SICK_SCORE;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_GOOD_THRESHOLD) {
+      return Constants.LEGACY_GOOD_SCORE;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_BAD_THRESHOLD) {
+      return Constants.LEGACY_BAD_SCORE;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SHIT_THRESHOLD) {
+      return Constants.LEGACY_SHIT_SCORE;
+    }
+
+    return Constants.LEGACY_MISS_SCORE;
+  },
+
+  judgeNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SICK_THRESHOLD) {
+      return Judgement.SICK;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_GOOD_THRESHOLD) {
+      return Judgement.GOOD;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_BAD_THRESHOLD) {
+      return Judgement.BAD;
+    }
+    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SHIT_THRESHOLD) {
+      return Judgement.SHIT;
+    }
+
+    return Judgement.MISS;
+  },
+
+  getMissScore() {
+    return Constants.LEGACY_MISS_SCORE;
+  }
+};
+
+/** Week 7 scoring strategy with tighter windows. */
+const Week7Strategy = {
+  scoreNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_SICK_THRESHOLD) {
+      return Constants.WEEK7_SICK_SCORE;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_GOOD_THRESHOLD) {
+      return Constants.WEEK7_GOOD_SCORE;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_BAD_THRESHOLD) {
+      return Constants.WEEK7_BAD_SCORE;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW) {
+      return Constants.WEEK7_SHIT_SCORE;
+    }
+
+    return Constants.WEEK7_MISS_SCORE;
+  },
+
+  judgeNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_SICK_THRESHOLD) {
+      return Judgement.SICK;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_GOOD_THRESHOLD) {
+      return Judgement.GOOD;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_BAD_THRESHOLD) {
+      return Judgement.BAD;
+    }
+    if (absTiming < Constants.WEEK7_HIT_WINDOW) {
+      return Judgement.SHIT;
+    }
+
+    return Judgement.MISS;
+  },
+
+  getMissScore() {
+    return Constants.WEEK7_MISS_SCORE;
+  }
+};
+
+/** PBOT1 scoring strategy (Points Based On Timing v1). */
+const PBOT1Strategy = {
+  scoreNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    // Miss threshold
+    if (absTiming > Constants.PBOT1_MISS_THRESHOLD) {
+      return Constants.PBOT1_MISS_SCORE;
+    }
+
+    // Perfect threshold - always max score
+    if (absTiming < Constants.PBOT1_PERFECT_THRESHOLD) {
+      return Constants.PBOT1_MAX_SCORE;
+    }
+
+    // Sigmoid scoring curve
+    const factor =
+      1.0 -
+      1.0 /
+        (1.0 +
+          Math.exp(-Constants.PBOT1_SCORING_SLOPE * (absTiming - Constants.PBOT1_SCORING_OFFSET)));
+
+    return Math.floor(Constants.PBOT1_MAX_SCORE * factor + Constants.PBOT1_MIN_SCORE);
+  },
+
+  judgeNote(msTiming) {
+    const absTiming = Math.abs(msTiming);
+
+    if (absTiming < Constants.PBOT1_KILLER_THRESHOLD) {
+      return Judgement.KILLER;
+    }
+    if (absTiming < Constants.PBOT1_SICK_THRESHOLD) {
+      return Judgement.SICK;
+    }
+    if (absTiming < Constants.PBOT1_GOOD_THRESHOLD) {
+      return Judgement.GOOD;
+    }
+    if (absTiming < Constants.PBOT1_BAD_THRESHOLD) {
+      return Judgement.BAD;
+    }
+    if (absTiming < Constants.PBOT1_SHIT_THRESHOLD) {
+      return Judgement.SHIT;
+    }
+
+    return Judgement.MISS;
+  },
+
+  getMissScore() {
+    return Constants.PBOT1_MISS_SCORE;
+  }
+};
+
+/** Registry mapping ScoringSystem enum values to strategy objects. */
+const strategies = {
+  [ScoringSystem.LEGACY]: LegacyStrategy,
+  [ScoringSystem.WEEK7]: Week7Strategy,
+  [ScoringSystem.PBOT1]: PBOT1Strategy,
+};
+
 /**
  * A static class which holds any functions related to scoring.
  */
@@ -64,15 +224,8 @@ class Scoring {
    * @returns {number} The score the note receives
    */
   static scoreNote(msTiming, scoringSystem = ScoringSystem.PBOT1) {
-    switch (scoringSystem) {
-      case ScoringSystem.LEGACY:
-        return this._scoreNoteLegacy(msTiming);
-      case ScoringSystem.WEEK7:
-        return this._scoreNoteWeek7(msTiming);
-      case ScoringSystem.PBOT1:
-      default:
-        return this._scoreNotePBOT1(msTiming);
-    }
+    const strategy = strategies[scoringSystem] || strategies[ScoringSystem.PBOT1];
+    return strategy.scoreNote(msTiming);
   }
 
   /**
@@ -82,15 +235,8 @@ class Scoring {
    * @returns {string} The judgement the note receives
    */
   static judgeNote(msTiming, scoringSystem = ScoringSystem.PBOT1) {
-    switch (scoringSystem) {
-      case ScoringSystem.LEGACY:
-        return this._judgeNoteLegacy(msTiming);
-      case ScoringSystem.WEEK7:
-        return this._judgeNoteWeek7(msTiming);
-      case ScoringSystem.PBOT1:
-      default:
-        return this._judgeNotePBOT1(msTiming);
-    }
+    const strategy = strategies[scoringSystem] || strategies[ScoringSystem.PBOT1];
+    return strategy.judgeNote(msTiming);
   }
 
   /**
@@ -99,15 +245,8 @@ class Scoring {
    * @returns {number} The miss score
    */
   static getMissScore(scoringSystem = ScoringSystem.PBOT1) {
-    switch (scoringSystem) {
-      case ScoringSystem.LEGACY:
-        return Constants.LEGACY_MISS_SCORE;
-      case ScoringSystem.WEEK7:
-        return Constants.WEEK7_MISS_SCORE;
-      case ScoringSystem.PBOT1:
-      default:
-        return Constants.PBOT1_MISS_SCORE;
-    }
+    const strategy = strategies[scoringSystem] || strategies[ScoringSystem.PBOT1];
+    return strategy.getMissScore();
   }
 
   /**
@@ -237,178 +376,6 @@ class Scoring {
       default:
         return 0;
     }
-  }
-
-  // ========================================
-  // PBOT1 SCORING (Default)
-  // ========================================
-
-  /**
-   * Score a note using PBOT1 scoring system.
-   * Uses a sigmoid curve for smooth scoring based on timing.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {number} The score
-   * @private
-   */
-  static _scoreNotePBOT1(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    // Miss threshold
-    if (absTiming > Constants.PBOT1_MISS_THRESHOLD) {
-      return Constants.PBOT1_MISS_SCORE;
-    }
-
-    // Perfect threshold - always max score
-    if (absTiming < Constants.PBOT1_PERFECT_THRESHOLD) {
-      return Constants.PBOT1_MAX_SCORE;
-    }
-
-    // Sigmoid scoring curve
-    const factor =
-      1.0 -
-      1.0 /
-        (1.0 +
-          Math.exp(-Constants.PBOT1_SCORING_SLOPE * (absTiming - Constants.PBOT1_SCORING_OFFSET)));
-
-    return Math.floor(Constants.PBOT1_MAX_SCORE * factor + Constants.PBOT1_MIN_SCORE);
-  }
-
-  /**
-   * Judge a note using PBOT1 scoring system.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {string} The judgement
-   * @private
-   */
-  static _judgeNotePBOT1(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    if (absTiming < Constants.PBOT1_KILLER_THRESHOLD) {
-      return Judgement.KILLER;
-    }
-    if (absTiming < Constants.PBOT1_SICK_THRESHOLD) {
-      return Judgement.SICK;
-    }
-    if (absTiming < Constants.PBOT1_GOOD_THRESHOLD) {
-      return Judgement.GOOD;
-    }
-    if (absTiming < Constants.PBOT1_BAD_THRESHOLD) {
-      return Judgement.BAD;
-    }
-    if (absTiming < Constants.PBOT1_SHIT_THRESHOLD) {
-      return Judgement.SHIT;
-    }
-
-    return Judgement.MISS;
-  }
-
-  // ========================================
-  // LEGACY SCORING
-  // ========================================
-
-  /**
-   * Score a note using Legacy scoring system.
-   * Uses step function based on judgement thresholds.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {number} The score
-   * @private
-   */
-  static _scoreNoteLegacy(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SICK_THRESHOLD) {
-      return Constants.LEGACY_SICK_SCORE;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_GOOD_THRESHOLD) {
-      return Constants.LEGACY_GOOD_SCORE;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_BAD_THRESHOLD) {
-      return Constants.LEGACY_BAD_SCORE;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SHIT_THRESHOLD) {
-      return Constants.LEGACY_SHIT_SCORE;
-    }
-
-    return Constants.LEGACY_MISS_SCORE;
-  }
-
-  /**
-   * Judge a note using Legacy scoring system.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {string} The judgement
-   * @private
-   */
-  static _judgeNoteLegacy(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SICK_THRESHOLD) {
-      return Judgement.SICK;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_GOOD_THRESHOLD) {
-      return Judgement.GOOD;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_BAD_THRESHOLD) {
-      return Judgement.BAD;
-    }
-    if (absTiming < Constants.LEGACY_HIT_WINDOW * Constants.LEGACY_SHIT_THRESHOLD) {
-      return Judgement.SHIT;
-    }
-
-    return Judgement.MISS;
-  }
-
-  // ========================================
-  // WEEK7 SCORING
-  // ========================================
-
-  /**
-   * Score a note using Week7 scoring system.
-   * Similar to Legacy but with tighter windows.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {number} The score
-   * @private
-   */
-  static _scoreNoteWeek7(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_SICK_THRESHOLD) {
-      return Constants.WEEK7_SICK_SCORE;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_GOOD_THRESHOLD) {
-      return Constants.WEEK7_GOOD_SCORE;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_BAD_THRESHOLD) {
-      return Constants.WEEK7_BAD_SCORE;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW) {
-      return Constants.WEEK7_SHIT_SCORE;
-    }
-
-    return Constants.WEEK7_MISS_SCORE;
-  }
-
-  /**
-   * Judge a note using Week7 scoring system.
-   * @param {number} msTiming - The timing offset in milliseconds
-   * @returns {string} The judgement
-   * @private
-   */
-  static _judgeNoteWeek7(msTiming) {
-    const absTiming = Math.abs(msTiming);
-
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_SICK_THRESHOLD) {
-      return Judgement.SICK;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_GOOD_THRESHOLD) {
-      return Judgement.GOOD;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW * Constants.WEEK7_BAD_THRESHOLD) {
-      return Judgement.BAD;
-    }
-    if (absTiming < Constants.WEEK7_HIT_WINDOW) {
-      return Judgement.SHIT;
-    }
-
-    return Judgement.MISS;
   }
 
   // ========================================
