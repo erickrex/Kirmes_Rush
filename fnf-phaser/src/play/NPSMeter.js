@@ -77,7 +77,7 @@ class NPSMeter {
   update(currentTime) {
     // Remove hits outside the sliding window
     const windowStart = currentTime - this.windowMs;
-    this.recentHits = this.recentHits.filter(time => time > windowStart);
+    this.recentHits = this.recentHits.filter((time) => time > windowStart);
 
     // Calculate current NPS (hits in the last second)
     this.currentNPS = this.recentHits.length;
@@ -96,9 +96,7 @@ class NPSMeter {
    * @returns {number} Average NPS for the song
    */
   getAverageNPS(currentTime) {
-    const duration = currentTime !== undefined
-      ? (currentTime - this.startTime) / 1000
-      : 0;
+    const duration = currentTime !== undefined ? (currentTime - this.startTime) / 1000 : 0;
 
     if (duration <= 0) {
       return 0;

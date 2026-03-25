@@ -13,10 +13,16 @@ import Character from './Character.js';
 import Stage from './Stage.js';
 import FunkinCamera from '../graphics/FunkinCamera.js';
 import SaveManager from '../data/SaveManager.js';
+import InputStatistics from '../input/InputStatistics.js';
+import ExpandedStatsDisplay from './ExpandedStatsDisplay.js';
+import ScoreDisplay from './ScoreDisplay.js';
 import { ReplayRecorder, ReplayPlayer } from '../replay/ReplaySystem.js';
 import { InputBuffer } from '../input/InputSystem.js';
 import LevelSystem from '../levels/LevelSystem.js';
-import { registerCharacterAnimations, registerPropAnimations } from '../graphics/AnimationRegistrar.js';
+import {
+  registerCharacterAnimations,
+  registerPropAnimations
+} from '../graphics/AnimationRegistrar.js';
 import { createGameplayState } from './GameplayState.js';
 import { createNoteProcessor } from './NoteProcessor.js';
 import { createInputManager } from './InputManager.js';
@@ -41,8 +47,17 @@ class PlayState {
   score = 0;
   combo = 0;
   maxCombo = 0;
-  tallies = { sick: 0, good: 0, bad: 0, shit: 0, missed: 0,
-    combo: 0, maxCombo: 0, totalNotesHit: 0, totalNotes: 0 };
+  tallies = {
+    sick: 0,
+    good: 0,
+    bad: 0,
+    shit: 0,
+    missed: 0,
+    combo: 0,
+    maxCombo: 0,
+    totalNotesHit: 0,
+    totalNotes: 0
+  };
 
   // Timing
   songPosition = 0;
@@ -59,6 +74,11 @@ class PlayState {
   inputPressQueue = [];
   inputReleaseQueue = [];
   preciseInput = null;
+
+  // Competitive stats
+  inputStatistics = null;
+  competitiveStatsEnabled = false;
+  scoreDisplay = null;
 
   // Replay
   replayRecorder = null;
@@ -110,7 +130,7 @@ class PlayState {
       eventBus: EventBus,
       scoring: Scoring,
       gameplayState: null,
-      noteProcessor: null,
+      noteProcessor: null
     };
 
     this._gameplayState = createGameplayState(context);
@@ -120,6 +140,23 @@ class PlayState {
     this._inputManager = createInputManager(context);
     this._cameraController = createCameraController(context);
     this._songFlowController = createSongFlowController(context);
+
+    // Bind competitive stats event handlers
+    this._onNoteHitForStats = (data) => {
+      if (this.inputStatistics) {
+        this.inputStatistics.recordHit(data.timing, data.judgement);
+      }
+      if (this.scoreDisplay instanceof ExpandedStatsDisplay) {
+        this.scoreDisplay.recordHit(data.judgement, data.timing);
+      }
+    };
+    this._onComboBreakForStats = () => {
+      if (this.scoreDisplay instanceof ExpandedStatsDisplay) {
+        this.scoreDisplay.recordComboBreak();
+      }
+    };
+    EventBus.on(Events.NOTE_HIT, this._onNoteHitForStats);
+    EventBus.on(Events.COMBO_BREAK, this._onComboBreakForStats);
   }
 
   init(config) {
@@ -128,6 +165,12 @@ class PlayState {
     this.startTimestamp = config.startTimestamp ?? 0;
     this.chart = config.chart ?? null;
     this.resetState();
+
+    // Initialize competitive stats
+    this.competitiveStatsEnabled = this.isCompetitiveStatsEnabled();
+    if (this.competitiveStatsEnabled) {
+      this.inputStatistics = new InputStatistics();
+    }
 
     if (this.chart?.timeChanges) {
       this.conductor.mapTimeChanges(this.chart.timeChanges);
@@ -153,15 +196,30 @@ class PlayState {
     this.songStarted = false;
     this.countdownActive = false;
     this.countdownStep = 0;
-    this.tallies = { sick: 0, good: 0, bad: 0, shit: 0, missed: 0,
-      combo: 0, maxCombo: 0, totalNotesHit: 0, totalNotes: 0 };
+    this.tallies = {
+      sick: 0,
+      good: 0,
+      bad: 0,
+      shit: 0,
+      missed: 0,
+      combo: 0,
+      maxCombo: 0,
+      totalNotesHit: 0,
+      totalNotes: 0
+    };
     this.inputPressQueue = [];
     this.inputReleaseQueue = [];
+    if (this.inputStatistics) {
+      this.inputStatistics.reset();
+    }
   }
 
   createStrumlines(noteStyle = null, scrollSpeed = 1.0) {
     this.playerStrumline = new Strumline(this.scene, true, noteStyle, scrollSpeed);
-    this.playerStrumline.setPosition(Constants.STRUMLINE_X_OFFSET + 560, Constants.STRUMLINE_Y_OFFSET);
+    this.playerStrumline.setPosition(
+      Constants.STRUMLINE_X_OFFSET + 560,
+      Constants.STRUMLINE_Y_OFFSET
+    );
     this.opponentStrumline = new Strumline(this.scene, false, noteStyle, scrollSpeed);
     this.opponentStrumline.setPosition(Constants.STRUMLINE_X_OFFSET, Constants.STRUMLINE_Y_OFFSET);
   }
@@ -174,7 +232,9 @@ class PlayState {
   }
 
   createStage(stageId, registry) {
-    if (!this.isFeatureEnabled('stage')) return false;
+    if (!this.isFeatureEnabled('stage')) {
+      return false;
+    }
     const id = stageId || this.chart?.stage || this.songData?.stage || Constants.DEFAULT_STAGE;
     this.stage = new Stage(this.scene, id);
     if (!this.stage.loadFromRegistry(registry)) {
@@ -190,9 +250,12 @@ class PlayState {
   }
 
   createCharacters(config = {}, registry) {
-    if (!this.isFeatureEnabled('characters')) return;
+    if (!this.isFeatureEnabled('characters')) {
+      return;
+    }
     const playerChar = config.player || this.chart?.player || this.songData?.player || 'bf';
-    const opponentChar = config.opponent || this.chart?.opponent || this.songData?.opponent || 'dad';
+    const opponentChar =
+      config.opponent || this.chart?.opponent || this.songData?.opponent || 'dad';
     const gfChar = config.girlfriend || this.chart?.girlfriend || this.songData?.girlfriend || 'gf';
     this.girlfriend = this.createCharacter(gfChar, 'gf', false, registry);
     this.opponent = this.createCharacter(opponentChar, 'dad', false, registry);
@@ -201,7 +264,9 @@ class PlayState {
   }
 
   createCharacter(characterId, charType, isPlayer, registry) {
-    if (!this.scene) return null;
+    if (!this.scene) {
+      return null;
+    }
     const character = new Character(this.scene, 0, 0, characterId, isPlayer);
     if (!character.loadFromRegistry(registry)) {
       console.warn(`[PlayState] Failed to load character: ${characterId}`);
@@ -212,10 +277,18 @@ class PlayState {
   }
 
   positionCharacters() {
-    if (!this.stage) return;
-    if (this.player) this.stage.positionCharacter(this.player, 'bf');
-    if (this.opponent) this.stage.positionCharacter(this.opponent, 'dad');
-    if (this.girlfriend) this.stage.positionCharacter(this.girlfriend, 'gf');
+    if (!this.stage) {
+      return;
+    }
+    if (this.player) {
+      this.stage.positionCharacter(this.player, 'bf');
+    }
+    if (this.opponent) {
+      this.stage.positionCharacter(this.opponent, 'dad');
+    }
+    if (this.girlfriend) {
+      this.stage.positionCharacter(this.girlfriend, 'gf');
+    }
   }
 
   wireCharacterAssets(characterRegistry) {
@@ -225,12 +298,24 @@ class PlayState {
       { ref: this.girlfriend, label: 'girlfriend' }
     ];
     for (const { ref } of characters) {
-      if (!ref) continue;
+      if (!ref) {
+        continue;
+      }
       const id = ref.characterId;
       const textureKey = `char-${id}`;
+      if (!this.scene.textures.exists(textureKey)) {
+        continue;
+      }
       ref.setTexture(textureKey);
-      registerCharacterAnimations(this.scene, textureKey, characterRegistry.getCharacterAnimations(id));
-      ref.playAnimation(ref.characterData?.startingAnimation || 'idle');
+      registerCharacterAnimations(
+        this.scene,
+        textureKey,
+        characterRegistry.getCharacterAnimations(id)
+      );
+      const startAnim = ref.characterData?.startingAnimation || 'idle';
+      if (this.scene.anims.exists(startAnim)) {
+        ref.playAnimation(startAnim);
+      }
     }
   }
 
@@ -238,7 +323,9 @@ class PlayState {
     const props = stageRegistry.getStageProps(stageId);
     for (const prop of props) {
       const sprite = this.stage?.getProp(prop.name);
-      if (!sprite) continue;
+      if (!sprite) {
+        continue;
+      }
       const textureKey = `stage-${stageId}-${prop.name}`;
       sprite.setTexture(textureKey);
       if (prop.animations && prop.animations.length > 0) {
@@ -265,27 +352,73 @@ class PlayState {
 
   getCharacter(charType) {
     switch (charType) {
-      case 'bf': case 'player': return this.player;
-      case 'dad': case 'opponent': return this.opponent;
-      case 'gf': case 'girlfriend': return this.girlfriend;
-      default: return null;
+      case 'bf':
+      case 'player':
+        return this.player;
+      case 'dad':
+      case 'opponent':
+        return this.opponent;
+      case 'gf':
+      case 'girlfriend':
+        return this.girlfriend;
+      default:
+        return null;
     }
   }
 
   // Setters
-  setAudioManager(audioManager) { this.audioManager = audioManager; }
-  setVoices(voices) { this.voices = voices; }
-  setPreciseInput(preciseInput) { this.preciseInput = preciseInput; }
-  setLevelSystem(levelSystem) { this.levelSystem = levelSystem; }
+  setAudioManager(audioManager) {
+    this.audioManager = audioManager;
+  }
+  setVoices(voices) {
+    this.voices = voices;
+  }
+  setPreciseInput(preciseInput) {
+    this.preciseInput = preciseInput;
+  }
+  setLevelSystem(levelSystem) {
+    this.levelSystem = levelSystem;
+  }
 
   setReplayRecordingEnabled(enabled) {
     this.replayRecordingEnabled = enabled;
-    if (enabled && !this.replayRecorder) this.replayRecorder = new ReplayRecorder();
+    if (enabled && !this.replayRecorder) {
+      this.replayRecorder = new ReplayRecorder();
+    }
   }
 
   isFeatureEnabled(featureName) {
-    if (!this.levelSystem) return true;
+    if (!this.levelSystem) {
+      return true;
+    }
     return this.levelSystem.isFeatureEnabled(featureName);
+  }
+
+  isCompetitiveStatsEnabled() {
+    if (!this.levelSystem) {
+      return true;
+    }
+    return this.levelSystem.isFeatureEnabled('expandedStats');
+  }
+
+  createHUDDisplay(config = {}) {
+    if (this.competitiveStatsEnabled) {
+      const saveManager = SaveManager.getInstance();
+      this.scoreDisplay = new ExpandedStatsDisplay(this.scene, {
+        x: config.x,
+        y: config.y,
+        align: config.align,
+        showCombo: config.showCombo,
+        showAccuracy: config.showAccuracy,
+        showMisses: config.showMisses,
+        showNPS: saveManager.getOption('showNPS'),
+        showGrade: saveManager.getOption('showGrade'),
+        showComboBreaks: saveManager.getOption('showComboBreaks'),
+        showJudgements: saveManager.getOption('showJudgements')
+      });
+    } else {
+      this.scoreDisplay = new ScoreDisplay(this.scene, config);
+    }
   }
 
   setInputBufferEnabled(enabled, windowMs = 50) {
@@ -299,16 +432,26 @@ class PlayState {
 
   // Replay playback
   loadReplay(replayData) {
-    if (!replayData) { console.error('[PlayState] No replay data provided'); return false; }
-    if (!this.replayPlayer) this.replayPlayer = new ReplayPlayer();
-    if (!this.replayPlayer.load(replayData)) { console.error('[PlayState] Failed to load replay'); return false; }
+    if (!replayData) {
+      console.error('[PlayState] No replay data provided');
+      return false;
+    }
+    if (!this.replayPlayer) {
+      this.replayPlayer = new ReplayPlayer();
+    }
+    if (!this.replayPlayer.load(replayData)) {
+      console.error('[PlayState] Failed to load replay');
+      return false;
+    }
     this.replayMode = true;
     this.replayRecordingEnabled = false;
     return true;
   }
 
   startReplayPlayback() {
-    if (!this.replayMode || !this.replayPlayer) return;
+    if (!this.replayMode || !this.replayPlayer) {
+      return;
+    }
     this.replayPlayer.start();
     this.createReplayIndicator();
     EventBus.emit(Events.REPLAY_START, {
@@ -318,44 +461,76 @@ class PlayState {
   }
 
   createReplayIndicator() {
-    if (!this.scene?.add) return;
+    if (!this.scene?.add) {
+      return;
+    }
     this.replayIndicator = this.scene.add.text(10, 10, '▶ REPLAY', {
-      fontFamily: 'Arial', fontSize: '24px', color: '#ff6b6b',
-      stroke: '#000000', strokeThickness: 4
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#ff6b6b',
+      stroke: '#000000',
+      strokeThickness: 4
     });
-    if (this.camHUD) this.replayIndicator.setScrollFactor(0);
+    if (this.camHUD) {
+      this.replayIndicator.setScrollFactor(0);
+    }
     if (this.scene.tweens) {
       this.scene.tweens.add({
         targets: this.replayIndicator,
-        alpha: { from: 1, to: 0.5 }, duration: 500, yoyo: true, repeat: -1
+        alpha: { from: 1, to: 0.5 },
+        duration: 500,
+        yoyo: true,
+        repeat: -1
       });
     }
   }
 
   processReplayInputs() {
-    if (!this.replayMode || !this.replayPlayer || !this.replayPlayer.isPlaying()) return;
+    if (!this.replayMode || !this.replayPlayer || !this.replayPlayer.isPlaying()) {
+      return;
+    }
     const inputs = this.replayPlayer.getInputsForPosition(this.songPosition);
     for (const input of inputs) {
-      if (input.type === 'press') this.handleNoteInput(input.direction, input.time);
-      else if (input.type === 'release') this.handleNoteRelease(input.direction, input.time);
+      if (input.type === 'press') {
+        this.handleNoteInput(input.direction, input.time);
+      } else if (input.type === 'release') {
+        this.handleNoteRelease(input.direction, input.time);
+      }
     }
   }
 
   stopReplayPlayback() {
-    if (this.replayPlayer) this.replayPlayer.stop();
-    if (this.replayIndicator) { this.replayIndicator.destroy(); this.replayIndicator = null; }
-    if (this.replayMode) EventBus.emit(Events.REPLAY_STOP);
+    if (this.replayPlayer) {
+      this.replayPlayer.stop();
+    }
+    if (this.replayIndicator) {
+      this.replayIndicator.destroy();
+      this.replayIndicator = null;
+    }
+    if (this.replayMode) {
+      EventBus.emit(Events.REPLAY_STOP);
+    }
     this.replayMode = false;
   }
 
-  isReplayMode() { return this.replayMode; }
-  getReplayPlayer() { return this.replayPlayer; }
+  isReplayMode() {
+    return this.replayMode;
+  }
+  getReplayPlayer() {
+    return this.replayPlayer;
+  }
 
   // Note generation
   generateNotes() {
-    if (!this.chart?.notes) return;
-    if (this.chart.notes.player && this.playerStrumline) this.playerStrumline.applyNoteData(this.chart.notes.player);
-    if (this.chart.notes.opponent && this.opponentStrumline) this.opponentStrumline.applyNoteData(this.chart.notes.opponent);
+    if (!this.chart?.notes) {
+      return;
+    }
+    if (this.chart.notes.player && this.playerStrumline) {
+      this.playerStrumline.applyNoteData(this.chart.notes.player);
+    }
+    if (this.chart.notes.opponent && this.opponentStrumline) {
+      this.opponentStrumline.applyNoteData(this.chart.notes.opponent);
+    }
   }
 
   // Main update loop — delegates to modules
@@ -363,69 +538,142 @@ class PlayState {
     const prevStep = this.conductor.currentStep;
     const prevBeat = this.conductor.currentBeat;
 
-    if (this.audioManager?.isPlaying) this.songPosition = this.audioManager.currentTime;
+    if (this.audioManager?.isPlaying) {
+      this.songPosition = this.audioManager.currentTime;
+    } else if (this.countdownActive) {
+      // During countdown, advance position by delta time toward song start
+      this.songPosition += delta;
+    }
     this.conductor.update(this.songPosition);
 
-    if (this.conductor.currentStep !== prevStep) this.onStepHit(this.conductor.currentStep);
-    if (this.conductor.currentBeat !== prevBeat) this.onBeatHit(this.conductor.currentBeat);
+    if (this.conductor.currentStep !== prevStep) {
+      this.onStepHit(this.conductor.currentStep);
+    }
+    if (this.conductor.currentBeat !== prevBeat) {
+      this.onBeatHit(this.conductor.currentBeat);
+    }
 
-    if (this.replayMode) this.processReplayInputs();
-    else this._inputManager.processInputQueue();
+    if (this.replayMode) {
+      this.processReplayInputs();
+    } else {
+      this._inputManager.processInputQueue();
+    }
 
-    if (this.playerStrumline) this.playerStrumline.update(this.songPosition);
-    if (this.opponentStrumline) this.opponentStrumline.update(this.songPosition);
+    if (this.playerStrumline) {
+      this.playerStrumline.update(this.songPosition);
+    }
+    if (this.opponentStrumline) {
+      this.opponentStrumline.update(this.songPosition);
+    }
 
     this._noteProcessor.processOpponentNotes();
     this.updateCharacters(delta);
-    if (this.stage) this.stage.update(delta);
-    if (this._cameraController.funkinCamera) this._cameraController.funkinCamera.update(delta);
+    if (this.stage) {
+      this.stage.update(delta);
+    }
+    if (this._cameraController.funkinCamera) {
+      this._cameraController.funkinCamera.update(delta);
+    }
+    if (this.scoreDisplay) {
+      this.scoreDisplay.update(delta, this.songPosition);
+    }
     this._noteProcessor.checkMissedNotes();
 
-    if (this.songStarted && this.songPosition >= this.songLength) this.endSong();
+    if (this.songStarted && this.songPosition >= this.songLength) {
+      this.endSong();
+    }
   }
 
   updateCharacters(delta) {
     const stepsPassed = delta / this.conductor.stepLengthMs;
-    if (this.player) this.player.update(delta, stepsPassed);
-    if (this.opponent) this.opponent.update(delta, stepsPassed);
-    if (this.girlfriend) this.girlfriend.update(delta, stepsPassed);
+    if (this.player) {
+      this.player.update(delta, stepsPassed);
+    }
+    if (this.opponent) {
+      this.opponent.update(delta, stepsPassed);
+    }
+    if (this.girlfriend) {
+      this.girlfriend.update(delta, stepsPassed);
+    }
   }
 
   // Beat/step sync
   onStepHit(step) {
-    if (this.stage) this.stage.onStepHit(step);
-    if (this.player) this.player.onStepHit(step);
-    if (this.opponent) this.opponent.onStepHit(step);
-    if (this.girlfriend) this.girlfriend.onStepHit(step);
+    if (this.stage) {
+      this.stage.onStepHit(step);
+    }
+    if (this.player) {
+      this.player.onStepHit(step);
+    }
+    if (this.opponent) {
+      this.opponent.onStepHit(step);
+    }
+    if (this.girlfriend) {
+      this.girlfriend.onStepHit(step);
+    }
   }
 
   onBeatHit(beat) {
-    if (this.funkinCamera) this.funkinCamera.onBeatHit(beat);
-    if (this.stage) this.stage.onBeatHit(beat);
-    if (this.player) this.player.onBeatHit(beat);
-    if (this.opponent) this.opponent.onBeatHit(beat);
-    if (this.girlfriend) this.girlfriend.onBeatHit(beat);
+    if (this.funkinCamera && this.isFeatureEnabled('cameraEffects')) {
+      this.funkinCamera.onBeatHit(beat);
+    }
+    if (this.stage) {
+      this.stage.onBeatHit(beat);
+    }
+    if (this.player) {
+      this.player.onBeatHit(beat);
+    }
+    if (this.opponent) {
+      this.opponent.onBeatHit(beat);
+    }
+    if (this.girlfriend) {
+      this.girlfriend.onBeatHit(beat);
+    }
   }
 
   // Input/note delegation to modules
-  processInputQueue() { this._inputManager.processInputQueue(); }
-  handleNoteInput(direction, timestamp) { this._inputManager.handleNoteInput(direction, timestamp); }
-  handleNoteRelease(direction, timestamp) { this._inputManager.handleNoteRelease(direction, timestamp); }
-  hitNote(note, timing) { this._noteProcessor.hitNote(note, timing); }
-  ghostMiss(direction) { this._noteProcessor.ghostMiss(direction); }
-  processOpponentNotes() { this._noteProcessor.processOpponentNotes(); }
-  opponentHitNote(note) { this._noteProcessor.opponentHitNote(note); }
-  checkMissedNotes() { this._noteProcessor.checkMissedNotes(); }
-  missNote(note) { this._noteProcessor.missNote(note); }
+  processInputQueue() {
+    this._inputManager.processInputQueue();
+  }
+  handleNoteInput(direction, timestamp) {
+    this._inputManager.handleNoteInput(direction, timestamp);
+  }
+  handleNoteRelease(direction, timestamp) {
+    this._inputManager.handleNoteRelease(direction, timestamp);
+  }
+  hitNote(note, timing) {
+    this._noteProcessor.hitNote(note, timing);
+  }
+  ghostMiss(direction) {
+    this._noteProcessor.ghostMiss(direction);
+  }
+  processOpponentNotes() {
+    this._noteProcessor.processOpponentNotes();
+  }
+  opponentHitNote(note) {
+    this._noteProcessor.opponentHitNote(note);
+  }
+  checkMissedNotes() {
+    this._noteProcessor.checkMissedNotes();
+  }
+  missNote(note) {
+    this._noteProcessor.missNote(note);
+  }
 
   getHealthBonus(judgement) {
     switch (judgement) {
-      case 'killer': return Constants.HEALTH_KILLER_BONUS;
-      case 'sick': return Constants.HEALTH_SICK_BONUS;
-      case 'good': return Constants.HEALTH_GOOD_BONUS;
-      case 'bad': return Constants.HEALTH_BAD_BONUS;
-      case 'shit': return Constants.HEALTH_SHIT_BONUS;
-      default: return 0;
+      case 'killer':
+        return Constants.HEALTH_KILLER_BONUS;
+      case 'sick':
+        return Constants.HEALTH_SICK_BONUS;
+      case 'good':
+        return Constants.HEALTH_GOOD_BONUS;
+      case 'bad':
+        return Constants.HEALTH_BAD_BONUS;
+      case 'shit':
+        return Constants.HEALTH_SHIT_BONUS;
+      default:
+        return 0;
     }
   }
 
@@ -433,7 +681,9 @@ class PlayState {
   focusCamera(target, instant = false) {
     this.cameraFocusTarget = target;
     const character = this.getCameraFocusCharacter(target);
-    if (!character || !this.funkinCamera) return;
+    if (!character || !this.funkinCamera) {
+      return;
+    }
     const focusPoint = character.getCameraFocusPoint();
     if (this.stage) {
       const charType = target === 0 ? 'dad' : target === 1 ? 'bf' : 'gf';
@@ -446,66 +696,136 @@ class PlayState {
 
   getCameraFocusCharacter(target) {
     switch (target) {
-      case 0: return this.opponent;
-      case 1: return this.player;
-      case 2: return this.girlfriend;
-      default: return this.opponent;
+      case 0:
+        return this.opponent;
+      case 1:
+        return this.player;
+      case 2:
+        return this.girlfriend;
+      default:
+        return this.opponent;
     }
   }
 
   handleFocusCameraEvent(eventData) {
+    if (!this.isFeatureEnabled('cameraEffects')) {
+      return;
+    }
     const charIndex = eventData?.char ?? eventData?.value?.char ?? 0;
     this.focusCamera(charIndex);
   }
 
   handleZoomCameraEvent(eventData) {
-    if (!this.funkinCamera) return;
+    if (!this.isFeatureEnabled('cameraEffects')) {
+      return;
+    }
+    if (!this.funkinCamera) {
+      return;
+    }
     const zoom = eventData?.zoom ?? eventData?.value?.zoom ?? 1.0;
     const instant = eventData?.instant ?? eventData?.value?.instant ?? false;
     this.funkinCamera.setZoom(zoom, instant);
   }
 
   // Song flow delegation
-  startCountdown() { this._songFlowController.startCountdown(); }
-  scheduleCountdownStep(step) { this._songFlowController.scheduleCountdownStep(step); }
-  executeCountdownStep(step) { this._songFlowController.executeCountdownStep(step); }
-  startSong() { this._songFlowController.startSong(); }
-  endSong() { this._songFlowController.endSong(); }
-  gameOver() { this._songFlowController.gameOver(); }
+  startCountdown() {
+    this._songFlowController.startCountdown();
+  }
+  scheduleCountdownStep(step) {
+    this._songFlowController.scheduleCountdownStep(step);
+  }
+  executeCountdownStep(step) {
+    this._songFlowController.executeCountdownStep(step);
+  }
+  startSong() {
+    this._songFlowController.startSong();
+  }
+  endSong() {
+    this._songFlowController.endSong();
+  }
+  gameOver() {
+    this._songFlowController.gameOver();
+  }
 
   // Pause/resume
   pause() {
-    if (this.audioManager) this.audioManager.pause();
+    if (this.audioManager) {
+      this.audioManager.pause();
+    }
     EventBus.emit(Events.PAUSE);
   }
 
   resume() {
-    if (this.audioManager) this.audioManager.resume();
+    if (this.audioManager) {
+      this.audioManager.resume();
+    }
     EventBus.emit(Events.RESUME);
   }
 
   exitSong() {
     this.songStarted = false;
-    if (this.replayMode) this.stopReplayPlayback();
-    if (this.replayRecorder && this.replayRecorder.isRecording()) this.replayRecorder.discard();
-    if (this.audioManager) this.audioManager.stop();
+    if (this.replayMode) {
+      this.stopReplayPlayback();
+    }
+    if (this.replayRecorder && this.replayRecorder.isRecording()) {
+      this.replayRecorder.discard();
+    }
+    if (this.audioManager) {
+      this.audioManager.stop();
+    }
   }
 
   // Cleanup — calls destroy() on each module
   destroy() {
-    if (this._gameplayState) { this._gameplayState.destroy(); this._gameplayState = null; }
-    if (this._noteProcessor) { this._noteProcessor.destroy(); this._noteProcessor = null; }
-    if (this._inputManager) { this._inputManager.destroy(); this._inputManager = null; }
-    if (this._cameraController) { this._cameraController.destroy(); this._cameraController = null; }
-    if (this._songFlowController) { this._songFlowController.destroy(); this._songFlowController = null; }
+    if (this._gameplayState) {
+      this._gameplayState.destroy();
+      this._gameplayState = null;
+    }
+    if (this._noteProcessor) {
+      this._noteProcessor.destroy();
+      this._noteProcessor = null;
+    }
+    if (this._inputManager) {
+      this._inputManager.destroy();
+      this._inputManager = null;
+    }
+    if (this._cameraController) {
+      this._cameraController.destroy();
+      this._cameraController = null;
+    }
+    if (this._songFlowController) {
+      this._songFlowController.destroy();
+      this._songFlowController = null;
+    }
 
-    if (this.playerStrumline) { this.playerStrumline.destroy(); this.playerStrumline = null; }
-    if (this.opponentStrumline) { this.opponentStrumline.destroy(); this.opponentStrumline = null; }
-    if (this.player) { this.player.destroy(); this.player = null; }
-    if (this.opponent) { this.opponent.destroy(); this.opponent = null; }
-    if (this.girlfriend) { this.girlfriend.destroy(); this.girlfriend = null; }
-    if (this.stage) { this.stage.destroy(); this.stage = null; }
-    if (this.funkinCamera) { this.funkinCamera.destroy(); this.funkinCamera = null; }
+    if (this.playerStrumline) {
+      this.playerStrumline.destroy();
+      this.playerStrumline = null;
+    }
+    if (this.opponentStrumline) {
+      this.opponentStrumline.destroy();
+      this.opponentStrumline = null;
+    }
+    if (this.player) {
+      this.player.destroy();
+      this.player = null;
+    }
+    if (this.opponent) {
+      this.opponent.destroy();
+      this.opponent = null;
+    }
+    if (this.girlfriend) {
+      this.girlfriend.destroy();
+      this.girlfriend = null;
+    }
+    if (this.stage) {
+      this.stage.destroy();
+      this.stage = null;
+    }
+    if (this.funkinCamera) {
+      this.funkinCamera.destroy();
+      this.funkinCamera = null;
+    }
 
     this.scene = null;
     this.conductor = null;
@@ -518,17 +838,36 @@ class PlayState {
     this.camHUD = null;
 
     if (this.replayRecorder) {
-      if (this.replayRecorder.isRecording()) this.replayRecorder.discard();
+      if (this.replayRecorder.isRecording()) {
+        this.replayRecorder.discard();
+      }
       this.replayRecorder = null;
     }
     if (this.replayPlayer) {
-      if (this.replayPlayer.isPlaying()) this.replayPlayer.stop();
+      if (this.replayPlayer.isPlaying()) {
+        this.replayPlayer.stop();
+      }
       this.replayPlayer = null;
     }
-    if (this.replayIndicator) { this.replayIndicator.destroy(); this.replayIndicator = null; }
-    if (this.inputBuffer) { this.inputBuffer.clear(); this.inputBuffer = null; }
+    if (this.replayIndicator) {
+      this.replayIndicator.destroy();
+      this.replayIndicator = null;
+    }
+    if (this.inputBuffer) {
+      this.inputBuffer.clear();
+      this.inputBuffer = null;
+    }
     this.levelSystem = null;
     this.replayMode = false;
+
+    // Clean up competitive stats
+    EventBus.off(Events.NOTE_HIT, this._onNoteHitForStats);
+    EventBus.off(Events.COMBO_BREAK, this._onComboBreakForStats);
+    this.inputStatistics = null;
+    if (this.scoreDisplay) {
+      this.scoreDisplay.destroy();
+      this.scoreDisplay = null;
+    }
   }
 }
 

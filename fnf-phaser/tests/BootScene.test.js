@@ -190,7 +190,8 @@ describe('BootScene', () => {
       scene.setupLoadingEvents();
       scene.loadCoreAssets();
 
-      expect(scene.load.atlas).toHaveBeenCalledTimes(4);
+      expect(scene.load.atlas).toHaveBeenCalledTimes(3);
+      expect(scene.load.image).toHaveBeenCalledTimes(1);
       expect(scene.load.atlas).toHaveBeenCalledWith(
         'notestyle-funkin-note',
         'assets/funkin.assets/shared/images/noteSkins/NOTE_assets.png',
@@ -206,10 +207,9 @@ describe('BootScene', () => {
         'assets/funkin.assets/shared/images/noteSkins/noteSplashes.png',
         'assets/funkin.assets/shared/images/noteSkins/noteSplashes.xml'
       );
-      expect(scene.load.atlas).toHaveBeenCalledWith(
+      expect(scene.load.image).toHaveBeenCalledWith(
         'notestyle-funkin-holdNote',
-        'assets/funkin.assets/shared/images/noteSkins/holdNote.png',
-        'assets/funkin.assets/shared/images/noteSkins/holdNote.xml'
+        'assets/funkin.assets/shared/images/noteSkins/holdNote.png'
       );
     });
 

@@ -53,12 +53,12 @@ class GradeDisplay {
   static GRADE_THRESHOLDS = {
     'S++': { accuracy: 100, maxMisses: 0 },
     'S+': { accuracy: 95, maxMisses: 0 },
-    'S': { accuracy: 90, maxMisses: Infinity },
-    'A': { accuracy: 85, maxMisses: Infinity },
-    'B': { accuracy: 80, maxMisses: Infinity },
-    'C': { accuracy: 70, maxMisses: Infinity },
-    'D': { accuracy: 60, maxMisses: Infinity },
-    'F': { accuracy: 0, maxMisses: Infinity }
+    S: { accuracy: 90, maxMisses: Infinity },
+    A: { accuracy: 85, maxMisses: Infinity },
+    B: { accuracy: 80, maxMisses: Infinity },
+    C: { accuracy: 70, maxMisses: Infinity },
+    D: { accuracy: 60, maxMisses: Infinity },
+    F: { accuracy: 0, maxMisses: Infinity }
   };
 
   /**

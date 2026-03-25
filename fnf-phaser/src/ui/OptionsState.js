@@ -4,6 +4,8 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
+import SaveManager from '../data/SaveManager.js';
+import { codeToStoredKey } from '../input/KeybindStorage.js';
 
 /**
  * @typedef {'toggle' | 'slider' | 'keybind' | 'action'} OptionType
@@ -41,34 +43,127 @@ export default class OptionsState extends BaseMenuState {
       {
         name: 'Gameplay',
         items: [
-          { name: 'Downscroll', key: 'downscroll', type: 'toggle', value: false, defaultValue: false },
-          { name: 'Ghost Tapping', key: 'ghostTapping', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Scroll Speed', key: 'scrollSpeed', type: 'slider', value: 1.0, defaultValue: 1.0, min: 0.5, max: 3.0, step: 0.1 },
-          { name: 'Note Offset', key: 'noteOffset', type: 'slider', value: 0, defaultValue: 0, min: -100, max: 100, step: 5 }
+          {
+            name: 'Downscroll',
+            key: 'downscroll',
+            type: 'toggle',
+            value: false,
+            defaultValue: false
+          },
+          {
+            name: 'Ghost Tapping',
+            key: 'ghostTapping',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          },
+          {
+            name: 'Scroll Speed',
+            key: 'scrollSpeed',
+            type: 'slider',
+            value: 1.0,
+            defaultValue: 1.0,
+            min: 0.5,
+            max: 3.0,
+            step: 0.1
+          },
+          {
+            name: 'Note Offset',
+            key: 'noteOffset',
+            type: 'slider',
+            value: 0,
+            defaultValue: 0,
+            min: -100,
+            max: 100,
+            step: 5
+          }
         ]
       },
       {
         name: 'Competitive',
         items: [
-          { name: 'Input Buffer', key: 'inputBufferWindow', type: 'slider', value: 50, defaultValue: 50, min: 0, max: 100, step: 5 },
-          { name: 'Input Delay', key: 'inputDelayCompensation', type: 'slider', value: 0, defaultValue: 0, min: -50, max: 50, step: 1 }
+          {
+            name: 'Input Buffer',
+            key: 'inputBufferWindow',
+            type: 'slider',
+            value: 50,
+            defaultValue: 50,
+            min: 0,
+            max: 100,
+            step: 5
+          },
+          {
+            name: 'Input Delay',
+            key: 'inputDelayCompensation',
+            type: 'slider',
+            value: 0,
+            defaultValue: 0,
+            min: -50,
+            max: 50,
+            step: 1
+          }
         ]
       },
       {
         name: 'HUD Stats',
         items: [
           { name: 'NPS Meter', key: 'showNPS', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Grade Display', key: 'showGrade', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Combo Breaks', key: 'showComboBreaks', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Judgements', key: 'showJudgements', type: 'toggle', value: false, defaultValue: false }
+          {
+            name: 'Grade Display',
+            key: 'showGrade',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          },
+          {
+            name: 'Combo Breaks',
+            key: 'showComboBreaks',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          },
+          {
+            name: 'Judgements',
+            key: 'showJudgements',
+            type: 'toggle',
+            value: false,
+            defaultValue: false
+          }
         ]
       },
       {
         name: 'Audio',
         items: [
-          { name: 'Master Volume', key: 'masterVolume', type: 'slider', value: 100, defaultValue: 100, min: 0, max: 100, step: 5 },
-          { name: 'Music Volume', key: 'musicVolume', type: 'slider', value: 100, defaultValue: 100, min: 0, max: 100, step: 5 },
-          { name: 'SFX Volume', key: 'sfxVolume', type: 'slider', value: 100, defaultValue: 100, min: 0, max: 100, step: 5 },
+          {
+            name: 'Master Volume',
+            key: 'masterVolume',
+            type: 'slider',
+            value: 100,
+            defaultValue: 100,
+            min: 0,
+            max: 100,
+            step: 5
+          },
+          {
+            name: 'Music Volume',
+            key: 'musicVolume',
+            type: 'slider',
+            value: 100,
+            defaultValue: 100,
+            min: 0,
+            max: 100,
+            step: 5
+          },
+          {
+            name: 'SFX Volume',
+            key: 'sfxVolume',
+            type: 'slider',
+            value: 100,
+            defaultValue: 100,
+            min: 0,
+            max: 100,
+            step: 5
+          },
           { name: 'Hitsounds', key: 'hitsounds', type: 'toggle', value: false, defaultValue: false }
         ]
       },
@@ -76,9 +171,27 @@ export default class OptionsState extends BaseMenuState {
         name: 'Visuals',
         items: [
           { name: 'Show FPS', key: 'showFps', type: 'toggle', value: false, defaultValue: false },
-          { name: 'Flashing Lights', key: 'flashingLights', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Camera Zoom', key: 'cameraZoom', type: 'toggle', value: true, defaultValue: true },
-          { name: 'Combo Display', key: 'comboDisplay', type: 'toggle', value: true, defaultValue: true }
+          {
+            name: 'Flashing Lights',
+            key: 'flashingLights',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          },
+          {
+            name: 'Camera Zoom',
+            key: 'cameraZoom',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          },
+          {
+            name: 'Combo Display',
+            key: 'comboDisplay',
+            type: 'toggle',
+            value: true,
+            defaultValue: true
+          }
         ]
       },
       {
@@ -88,10 +201,28 @@ export default class OptionsState extends BaseMenuState {
           { name: 'Down', key: 'keyDown', type: 'keybind', value: 'S', defaultValue: 'S' },
           { name: 'Up', key: 'keyUp', type: 'keybind', value: 'W', defaultValue: 'W' },
           { name: 'Right', key: 'keyRight', type: 'keybind', value: 'D', defaultValue: 'D' },
-          { name: 'Alt Left', key: 'keyLeftAlt', type: 'keybind', value: 'LEFT', defaultValue: 'LEFT' },
-          { name: 'Alt Down', key: 'keyDownAlt', type: 'keybind', value: 'DOWN', defaultValue: 'DOWN' },
+          {
+            name: 'Alt Left',
+            key: 'keyLeftAlt',
+            type: 'keybind',
+            value: 'LEFT',
+            defaultValue: 'LEFT'
+          },
+          {
+            name: 'Alt Down',
+            key: 'keyDownAlt',
+            type: 'keybind',
+            value: 'DOWN',
+            defaultValue: 'DOWN'
+          },
           { name: 'Alt Up', key: 'keyUpAlt', type: 'keybind', value: 'UP', defaultValue: 'UP' },
-          { name: 'Alt Right', key: 'keyRightAlt', type: 'keybind', value: 'RIGHT', defaultValue: 'RIGHT' }
+          {
+            name: 'Alt Right',
+            key: 'keyRightAlt',
+            type: 'keybind',
+            value: 'RIGHT',
+            defaultValue: 'RIGHT'
+          }
         ]
       },
       {
@@ -113,6 +244,7 @@ export default class OptionsState extends BaseMenuState {
     this.optionDisplays = [];
     /** @type {Phaser.GameObjects.Text | null} */
     this.keybindCaptureText = null;
+    this.saveManager = SaveManager.getInstance();
   }
 
   /**
@@ -172,7 +304,9 @@ export default class OptionsState extends BaseMenuState {
    * @override
    */
   onNavigateUp() {
-    if (this.transitioning || this.capturingKeybind) return;
+    if (this.transitioning || this.capturingKeybind) {
+      return;
+    }
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedIndex = (this.selectedIndex - 1 + category.items.length) % category.items.length;
     this.playScrollSound();
@@ -181,7 +315,9 @@ export default class OptionsState extends BaseMenuState {
 
   /** @override */
   onNavigateDown() {
-    if (this.transitioning || this.capturingKeybind) return;
+    if (this.transitioning || this.capturingKeybind) {
+      return;
+    }
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedIndex = (this.selectedIndex + 1) % category.items.length;
     this.playScrollSound();
@@ -189,7 +325,9 @@ export default class OptionsState extends BaseMenuState {
   }
 
   onNavigateLeft() {
-    if (this.transitioning || this.capturingKeybind) return;
+    if (this.transitioning || this.capturingKeybind) {
+      return;
+    }
     const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
 
     if (item.type === 'slider') {
@@ -198,7 +336,9 @@ export default class OptionsState extends BaseMenuState {
       this.updateDisplay();
     } else {
       this.selectedCategoryIndex--;
-      if (this.selectedCategoryIndex < 0) this.selectedCategoryIndex = this.categories.length - 1;
+      if (this.selectedCategoryIndex < 0) {
+        this.selectedCategoryIndex = this.categories.length - 1;
+      }
       this.selectedIndex = 0;
       this.playScrollSound();
       this.updateDisplay();
@@ -206,7 +346,9 @@ export default class OptionsState extends BaseMenuState {
   }
 
   onNavigateRight() {
-    if (this.transitioning || this.capturingKeybind) return;
+    if (this.transitioning || this.capturingKeybind) {
+      return;
+    }
     const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
 
     if (item.type === 'slider') {
@@ -215,7 +357,9 @@ export default class OptionsState extends BaseMenuState {
       this.updateDisplay();
     } else {
       this.selectedCategoryIndex++;
-      if (this.selectedCategoryIndex >= this.categories.length) this.selectedCategoryIndex = 0;
+      if (this.selectedCategoryIndex >= this.categories.length) {
+        this.selectedCategoryIndex = 0;
+      }
       this.selectedIndex = 0;
       this.playScrollSound();
       this.updateDisplay();
@@ -228,7 +372,9 @@ export default class OptionsState extends BaseMenuState {
    * @override
    */
   onSelect() {
-    if (this.transitioning || this.capturingKeybind) return;
+    if (this.transitioning || this.capturingKeybind) {
+      return;
+    }
     const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
 
     switch (item.type) {
@@ -255,7 +401,9 @@ export default class OptionsState extends BaseMenuState {
       this.cancelKeybindCapture();
       return;
     }
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
     this.transitioning = true;
     this.playCancelSound();
     this.executeBack();
@@ -275,6 +423,7 @@ export default class OptionsState extends BaseMenuState {
     this.capturingKeybind = false;
     this.selectedCategoryIndex = 0;
     this.selectedIndex = 0;
+    this.saveManager.init();
 
     this.loadOptions();
 
@@ -282,10 +431,15 @@ export default class OptionsState extends BaseMenuState {
 
     this.createBackground(null);
 
-    this.add.text(width / 2, 40, 'OPTIONS', {
-      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff',
-      stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 40, 'OPTIONS', {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
 
     this.createCategoryTabs();
     this.createOptionItems();
@@ -299,9 +453,13 @@ export default class OptionsState extends BaseMenuState {
   createCategoryTabs() {
     this.categoryTabs = [];
     this.categories.forEach((category, index) => {
-      const text = this.add.text(100 + index * 150, 100, category.name, {
-        fontFamily: 'Arial', fontSize: '24px', color: '#ffffff'
-      }).setOrigin(0.5, 0.5);
+      const text = this.add
+        .text(100 + index * 150, 100, category.name, {
+          fontFamily: 'Arial',
+          fontSize: '24px',
+          color: '#ffffff'
+        })
+        .setOrigin(0.5, 0.5);
       this.categoryTabs.push(text);
     });
   }
@@ -318,11 +476,19 @@ export default class OptionsState extends BaseMenuState {
     const { width } = this.cameras.main;
     const container = this.add.container(x, y);
 
-    const nameText = this.add.text(0, 0, '', { fontFamily: 'Arial', fontSize: '24px', color: '#ffffff' });
+    const nameText = this.add.text(0, 0, '', {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#ffffff'
+    });
     container.add(nameText);
     container.setData('nameText', nameText);
 
-    const valueText = this.add.text(width - 300, 0, '', { fontFamily: 'Arial', fontSize: '24px', color: '#00ff00' });
+    const valueText = this.add.text(width - 300, 0, '', {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#00ff00'
+    });
     container.add(valueText);
     container.setData('valueText', valueText);
 
@@ -350,22 +516,34 @@ export default class OptionsState extends BaseMenuState {
     bg.fillRect(0, 0, width, height);
     this.keybindOverlay.add(bg);
 
-    this.keybindCaptureText = this.add.text(width / 2, height / 2, 'Press any key...', {
-      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.keybindCaptureText = this.add
+      .text(width / 2, height / 2, 'Press any key...', {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
     this.keybindOverlay.add(this.keybindCaptureText);
 
-    const cancelText = this.add.text(width / 2, height / 2 + 60, 'Press ESC to cancel', {
-      fontFamily: 'Arial', fontSize: '24px', color: '#888888'
-    }).setOrigin(0.5, 0.5);
+    const cancelText = this.add
+      .text(width / 2, height / 2 + 60, 'Press ESC to cancel', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#888888'
+      })
+      .setOrigin(0.5, 0.5);
     this.keybindOverlay.add(cancelText);
   }
 
   createInstructions() {
     const { width, height } = this.cameras.main;
-    this.add.text(width / 2, height - 40, 'Arrow Keys: Navigate | Enter: Select/Change | ESC: Back', {
-      fontFamily: 'Arial', fontSize: '18px', color: '#888888'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, height - 40, 'Arrow Keys: Navigate | Enter: Select/Change | ESC: Back', {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#888888'
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   // ========================================
@@ -373,9 +551,13 @@ export default class OptionsState extends BaseMenuState {
   // ========================================
 
   onAnyKeyDown(event) {
-    if (!this.capturingKeybind) return;
-    const key = event.key.toUpperCase();
-    if (key === 'ESCAPE') return;
+    if (!this.capturingKeybind) {
+      return;
+    }
+    const key = codeToStoredKey(event.code || event.key);
+    if (key === 'ESCAPE') {
+      return;
+    }
     this.captureKeybindItem.value = key;
     this.saveOptions();
     this.cancelKeybindCapture();
@@ -411,9 +593,12 @@ export default class OptionsState extends BaseMenuState {
   }
 
   resetToDefaults() {
-    this.categories.forEach(category => {
-      category.items.forEach(item => {
-        if (item.defaultValue !== undefined) item.value = item.defaultValue;
+    this.saveManager.resetOptions();
+    this.categories.forEach((category) => {
+      category.items.forEach((item) => {
+        if (item.defaultValue !== undefined) {
+          item.value = item.defaultValue;
+        }
       });
     });
     this.saveOptions();
@@ -435,7 +620,10 @@ export default class OptionsState extends BaseMenuState {
 
     this.optionDisplays.forEach((display, index) => {
       const item = category.items[index];
-      if (!item) { display.setVisible(false); return; }
+      if (!item) {
+        display.setVisible(false);
+        return;
+      }
 
       display.setVisible(true);
       const nameText = display.getData('nameText');
@@ -460,7 +648,12 @@ export default class OptionsState extends BaseMenuState {
           sliderFill.setVisible(true);
           sliderFill.clear();
           sliderFill.fillStyle(0x00ff00, 1);
-          sliderFill.fillRect(width - 500, 5, ((item.value - item.min) / (item.max - item.min)) * 200, 20);
+          sliderFill.fillRect(
+            width - 500,
+            5,
+            ((item.value - item.min) / (item.max - item.min)) * 200,
+            20
+          );
           break;
         case 'keybind':
           valueText.setText(item.value);
@@ -482,33 +675,25 @@ export default class OptionsState extends BaseMenuState {
   // ========================================
 
   loadOptions() {
-    try {
-      const saved = localStorage.getItem('fnf-options');
-      if (saved) {
-        const data = JSON.parse(saved);
-        this.categories.forEach(category => {
-          category.items.forEach(item => {
-            if (data[item.key] !== undefined) item.value = data[item.key];
-          });
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to load options:', e);
-    }
+    this.categories.forEach((category) => {
+      category.items.forEach((item) => {
+        if (item.type !== 'action') {
+          item.value = this.saveManager.getOption(item.key);
+        }
+      });
+    });
   }
 
   saveOptions() {
-    try {
-      const data = {};
-      this.categories.forEach(category => {
-        category.items.forEach(item => {
-          if (item.type !== 'action') data[item.key] = item.value;
-        });
+    const data = {};
+    this.categories.forEach((category) => {
+      category.items.forEach((item) => {
+        if (item.type !== 'action') {
+          data[item.key] = item.value;
+        }
       });
-      localStorage.setItem('fnf-options', JSON.stringify(data));
-    } catch (e) {
-      console.warn('Failed to save options:', e);
-    }
+    });
+    this.saveManager.setOptions(data);
   }
 
   shutdown() {

@@ -277,7 +277,9 @@ class Strumline {
    * @param {boolean} [sort=true] - Whether to re-sort after adding
    */
   addNoteData(note, sort = true) {
-    if (!note) return;
+    if (!note) {
+      return;
+    }
 
     this.noteData.push(note);
     if (sort) {
@@ -305,7 +307,9 @@ class Strumline {
    * @param {number} songPosition - Current song position
    */
   updateNoteSpawning(songPosition) {
-    if (this.noteData.length === 0) return;
+    if (this.noteData.length === 0) {
+      return;
+    }
 
     const renderDistance = this.getRenderDistanceMs();
     const hitWindowStart = songPosition - Constants.HIT_WINDOW_MS;
@@ -313,7 +317,9 @@ class Strumline {
 
     for (let i = this.nextNoteIndex; i < this.noteData.length; i++) {
       const noteData = this.noteData[i];
-      if (!noteData) continue;
+      if (!noteData) {
+        continue;
+      }
 
       // Skip notes in the past
       if (noteData.time < hitWindowStart) {
@@ -322,7 +328,9 @@ class Strumline {
       }
 
       // Stop if note is too far ahead
-      if (noteData.time > renderWindowEnd) break;
+      if (noteData.time > renderWindowEnd) {
+        break;
+      }
 
       // Spawn the note
       const noteSprite = this.buildNoteSprite(noteData);
@@ -348,13 +356,17 @@ class Strumline {
    */
   updateNotes(songPosition) {
     for (const note of this.notes) {
-      if (!note || !note.alive) continue;
+      if (!note || !note.alive) {
+        continue;
+      }
 
       // Calculate Y position
       note.y = this.y - INITIAL_OFFSET + this.getNoteY(note.strumTime, songPosition) + note.yOffset;
 
       // Check if offscreen after miss
-      const isOffscreen = this.isDownscroll ? note.y > this.getScreenHeight() : note.y < -note.height;
+      const isOffscreen = this.isDownscroll
+        ? note.y > this.getScreenHeight()
+        : note.y < -note.height;
 
       if (note.handledMiss && isOffscreen) {
         this.killNote(note);
@@ -368,7 +380,9 @@ class Strumline {
    */
   updateHoldNotes(songPosition) {
     for (const holdNote of this.holdNotes) {
-      if (!holdNote || !holdNote.alive) continue;
+      if (!holdNote || !holdNote.alive) {
+        continue;
+      }
 
       // Check if player released while holding
       if (songPosition > holdNote.strumTime && holdNote.hitNote && !holdNote.missedNote) {
@@ -380,7 +394,11 @@ class Strumline {
       }
 
       // Check if hold note should be killed
-      const renderWindowEnd = holdNote.strumTime + holdNote.fullSustainLength + Constants.HIT_WINDOW_MS + this.getRenderDistanceMs() / 8;
+      const renderWindowEnd =
+        holdNote.strumTime +
+        holdNote.fullSustainLength +
+        Constants.HIT_WINDOW_MS +
+        this.getRenderDistanceMs() / 8;
 
       if (holdNote.missedNote && songPosition >= renderWindowEnd) {
         holdNote.visible = false;
@@ -490,7 +508,8 @@ class Strumline {
     holdNote.flipY = this.isDownscroll;
 
     // Position
-    holdNote.x = this.x + this.getXPos(noteData.direction) + STRUMLINE_SIZE / 2 - holdNote.width / 2;
+    holdNote.x =
+      this.x + this.getXPos(noteData.direction) + STRUMLINE_SIZE / 2 - holdNote.width / 2;
     holdNote.y = -9999;
 
     return holdNote;
@@ -535,9 +554,15 @@ class Strumline {
     let closestDist = Infinity;
 
     for (const note of this.notes) {
-      if (!note || !note.alive) continue;
-      if (note.direction !== direction) continue;
-      if (note.hasBeenHit || note.hasMissed) continue;
+      if (!note || !note.alive) {
+        continue;
+      }
+      if (note.direction !== direction) {
+        continue;
+      }
+      if (note.hasBeenHit || note.hasMissed) {
+        continue;
+      }
 
       const dist = Math.abs(note.strumTime - songPosition);
       if (dist < closestDist) {
@@ -555,11 +580,17 @@ class Strumline {
    * @returns {NoteSprite | null}
    */
   getNoteSprite(target) {
-    if (!target) return null;
+    if (!target) {
+      return null;
+    }
 
     for (const note of this.notes) {
-      if (!note) continue;
-      if (note.noteData === target) return note;
+      if (!note) {
+        continue;
+      }
+      if (note.noteData === target) {
+        return note;
+      }
     }
 
     return null;
@@ -571,11 +602,17 @@ class Strumline {
    * @returns {SustainTrail | null}
    */
   getHoldNoteSprite(target) {
-    if (!target || (target.length ?? 0) <= 0) return null;
+    if (!target || (target.length ?? 0) <= 0) {
+      return null;
+    }
 
     for (const holdNote of this.holdNotes) {
-      if (!holdNote) continue;
-      if (holdNote.noteData === target) return holdNote;
+      if (!holdNote) {
+        continue;
+      }
+      if (holdNote.noteData === target) {
+        return holdNote;
+      }
     }
 
     return null;
@@ -613,7 +650,9 @@ class Strumline {
    * @param {NoteSprite} note - The note to kill
    */
   killNote(note) {
-    if (!note) return;
+    if (!note) {
+      return;
+    }
 
     note.visible = false;
     note.kill();
@@ -784,11 +823,15 @@ class Strumline {
    */
   clean() {
     for (const note of this.notes) {
-      if (note) this.killNote(note);
+      if (note) {
+        this.killNote(note);
+      }
     }
 
     for (const holdNote of this.holdNotes) {
-      if (holdNote) holdNote.kill();
+      if (holdNote) {
+        holdNote.kill();
+      }
     }
 
     this.heldKeys = [false, false, false, false];
@@ -826,11 +869,15 @@ class Strumline {
    */
   destroy() {
     for (const note of this.notes) {
-      if (note) note.destroy();
+      if (note) {
+        note.destroy();
+      }
     }
 
     for (const holdNote of this.holdNotes) {
-      if (holdNote) holdNote.destroy();
+      if (holdNote) {
+        holdNote.destroy();
+      }
     }
 
     this.notes = [];

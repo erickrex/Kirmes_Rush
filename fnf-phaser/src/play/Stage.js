@@ -161,7 +161,9 @@ class Stage {
    * @returns {FunkinSprite | null}
    */
   createProp(propData) {
-    if (!this.scene) return null;
+    if (!this.scene) {
+      return null;
+    }
 
     const x = propData.position?.[0] || 0;
     const y = propData.position?.[1] || 0;
@@ -419,14 +421,18 @@ class Stage {
    * @returns {string[]}
    */
   getAssetPaths() {
-    if (!this.stageData) return [];
+    if (!this.stageData) {
+      return [];
+    }
 
     const paths = [];
     const directory = this.stageData.directory;
 
     for (const prop of this.stageData.props) {
       if (prop.assetPath) {
-        const path = directory ? `images/${directory}/${prop.assetPath}` : `images/${prop.assetPath}`;
+        const path = directory
+          ? `images/${directory}/${prop.assetPath}`
+          : `images/${prop.assetPath}`;
         paths.push(path);
       }
     }

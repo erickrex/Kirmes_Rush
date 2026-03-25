@@ -26,7 +26,7 @@ function createFileBackedFetch() {
     const relativePath = String(requestPath).replace(/^\.\//, '');
     const cwd = process.cwd();
     const filePath = relativePath.startsWith('data/')
-      ? path.resolve(cwd, 'public', relativePath)
+      ? path.resolve(cwd, 'assets', relativePath)
       : path.resolve(cwd, '..', relativePath);
 
     try {
@@ -102,5 +102,16 @@ describe('LevelSessionBuilder', () => {
 
     expect(session.chart.notes.player.some((note) => note.length > 0)).toBe(false);
     expect(session.chart.notes.opponent.some((note) => note.length > 0)).toBe(false);
+  });
+
+  it('treats the prepared session as authoritative for hidden presentation features', async () => {
+    const builder = new LevelSessionBuilder({ fetchImpl });
+    const session = await builder.build('level-1-basics');
+
+    expect(session.level.id).toBe('level-1-basics');
+    expect(session.songData.stage).toBeNull();
+    expect(session.songData.characters).toEqual({});
+    expect(session.metadata.playData.stage).toBe('mainStage');
+    expect(session.metadata.playData.characters.player).toBe('bf');
   });
 });

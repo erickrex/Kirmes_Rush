@@ -143,7 +143,6 @@ export default defineConfig({
     '**/*.wav',
     // Data formats
     '**/*.xml',  // Sparrow atlas format
-    '**/*.json',
     // Font formats
     '**/*.ttf',
     '**/*.otf',
@@ -154,12 +153,7 @@ export default defineConfig({
     port: 3000,
     open: true,
     // Configure CORS for local development
-    cors: true,
-    // Configure headers for proper MIME types
-    headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp'
-    }
+    cors: true
   },
   preview: {
     port: 4173

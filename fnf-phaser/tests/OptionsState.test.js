@@ -3,12 +3,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import SaveManager from '../src/data/SaveManager.js';
 
 // Mock localStorage
 const localStorageMock = {
   store: {},
   getItem: vi.fn((key) => localStorageMock.store[key] || null),
   setItem: vi.fn((key, value) => { localStorageMock.store[key] = value; }),
+  removeItem: vi.fn((key) => { delete localStorageMock.store[key]; }),
   clear: vi.fn(() => { localStorageMock.store = {}; })
 };
 global.localStorage = localStorageMock;
@@ -88,6 +90,7 @@ describe('OptionsState', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
+    SaveManager.resetInstance();
     scene = new OptionsState();
   });
 

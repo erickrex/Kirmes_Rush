@@ -4,6 +4,7 @@
  */
 
 import EventBus, { Events } from '../core/EventBus.js';
+import { APP_LEVELS_PATH } from '../utils/GameDataPaths.js';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -54,8 +55,16 @@ import EventBus, { Events } from '../core/EventBus.js';
 
 /** All supported feature names */
 const FEATURE_NAMES = [
-  'holdNotes', 'healthBar', 'characters', 'stage', 'cameraEffects',
-  'noteSplashes', 'comboPopups', 'expandedStats', 'replayRecording', 'inputBuffer'
+  'holdNotes',
+  'healthBar',
+  'characters',
+  'stage',
+  'cameraEffects',
+  'noteSplashes',
+  'comboPopups',
+  'expandedStats',
+  'replayRecording',
+  'inputBuffer'
 ];
 
 /** Required fields for a valid manifest */
@@ -85,14 +94,18 @@ class FeatureToggles {
   /** @returns {Object<string, boolean>} */
   static getDefaultFeatures() {
     const defaults = {};
-    for (const name of FEATURE_NAMES) defaults[name] = false;
+    for (const name of FEATURE_NAMES) {
+      defaults[name] = false;
+    }
     return defaults;
   }
 
   /** @returns {Object<string, boolean>} */
   static getAllEnabled() {
     const all = {};
-    for (const name of FEATURE_NAMES) all[name] = true;
+    for (const name of FEATURE_NAMES) {
+      all[name] = true;
+    }
     return all;
   }
 
@@ -115,59 +128,87 @@ class FeatureToggles {
 
   /** @param {string} name @returns {boolean} */
   isEnabled(name) {
-    if (!FeatureToggles.isValidFeature(name)) return false;
+    if (!FeatureToggles.isValidFeature(name)) {
+      return false;
+    }
     return this.features[name] === true;
   }
 
   /** @param {string} name @returns {boolean} */
   enable(name) {
-    if (!FeatureToggles.isValidFeature(name)) return false;
+    if (!FeatureToggles.isValidFeature(name)) {
+      return false;
+    }
     this.features[name] = true;
     return true;
   }
 
   /** @param {string} name @returns {boolean} */
   disable(name) {
-    if (!FeatureToggles.isValidFeature(name)) return false;
+    if (!FeatureToggles.isValidFeature(name)) {
+      return false;
+    }
     this.features[name] = false;
     return true;
   }
 
   /** @param {string} name @returns {boolean} */
   toggle(name) {
-    if (!FeatureToggles.isValidFeature(name)) return false;
+    if (!FeatureToggles.isValidFeature(name)) {
+      return false;
+    }
     this.features[name] = !this.features[name];
     return this.features[name];
   }
 
   /** @returns {Object<string, boolean>} */
-  getAll() { return { ...this.features }; }
+  getAll() {
+    return { ...this.features };
+  }
 
   /** @returns {string[]} */
-  getEnabled() { return FEATURE_NAMES.filter(n => this.features[n] === true); }
+  getEnabled() {
+    return FEATURE_NAMES.filter((n) => this.features[n] === true);
+  }
 
   /** @returns {string[]} */
-  getDisabled() { return FEATURE_NAMES.filter(n => this.features[n] === false); }
+  getDisabled() {
+    return FEATURE_NAMES.filter((n) => this.features[n] === false);
+  }
 
   /** @returns {number} */
-  getEnabledCount() { return this.getEnabled().length; }
+  getEnabledCount() {
+    return this.getEnabled().length;
+  }
 
-  reset() { this.features = FeatureToggles.getDefaultFeatures(); }
+  reset() {
+    this.features = FeatureToggles.getDefaultFeatures();
+  }
 
-  enableAll() { this.features = FeatureToggles.getAllEnabled(); }
+  enableAll() {
+    this.features = FeatureToggles.getAllEnabled();
+  }
 
-  disableAll() { this.features = FeatureToggles.getDefaultFeatures(); }
+  disableAll() {
+    this.features = FeatureToggles.getDefaultFeatures();
+  }
 
   /** @param {FeatureToggles} other */
   copyFrom(other) {
-    if (other && other.features) this.setFeatures(other.features);
+    if (other && other.features) {
+      this.setFeatures(other.features);
+    }
   }
 
   /** @param {Object<string, boolean>} other @returns {boolean} */
   equals(other) {
-    if (!other || typeof other !== 'object') return false;
+    if (!other || typeof other !== 'object') {
+      return false;
+    }
     for (const name of FEATURE_NAMES) {
-      if (this.features[name] !== other[name]) return false;
+      if (this.features[name] !== other[name]) {
+        return false;
+      }
     }
     return true;
   }
@@ -186,7 +227,9 @@ class LevelManifest {
 
   /** @param {Object} data @returns {LevelConfig | null} */
   static parse(data) {
-    if (!data || typeof data !== 'object') return null;
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
     try {
       return {
         id: String(data.id || ''),
@@ -206,7 +249,9 @@ class LevelManifest {
   /** @param {Object} [data] @returns {Object<string, boolean>} */
   static parseFeatures(data) {
     const defaults = FeatureToggles.getDefaultFeatures();
-    if (!data || typeof data !== 'object') return defaults;
+    if (!data || typeof data !== 'object') {
+      return defaults;
+    }
     for (const name of FEATURE_NAMES) {
       defaults[name] = typeof data[name] === 'boolean' ? data[name] : defaults[name];
     }
@@ -216,11 +261,14 @@ class LevelManifest {
   /** @param {Object} [data] @returns {LevelUIConfig} */
   static parseUI(data) {
     const defaults = LevelManifest.getDefaultUI();
-    if (!data || typeof data !== 'object') return defaults;
+    if (!data || typeof data !== 'object') {
+      return defaults;
+    }
     return {
       showScore: typeof data.showScore === 'boolean' ? data.showScore : defaults.showScore,
       showCombo: typeof data.showCombo === 'boolean' ? data.showCombo : defaults.showCombo,
-      showAccuracy: typeof data.showAccuracy === 'boolean' ? data.showAccuracy : defaults.showAccuracy,
+      showAccuracy:
+        typeof data.showAccuracy === 'boolean' ? data.showAccuracy : defaults.showAccuracy,
       showMisses: typeof data.showMisses === 'boolean' ? data.showMisses : defaults.showMisses
     };
   }
@@ -228,19 +276,29 @@ class LevelManifest {
   /** @param {LevelConfig} config @returns {ValidationResult} */
   static validate(config) {
     const errors = [];
-    if (!config || typeof config !== 'object') return { valid: false, errors: ['Config must be an object'] };
+    if (!config || typeof config !== 'object') {
+      return { valid: false, errors: ['Config must be an object'] };
+    }
 
     for (const field of REQUIRED_FIELDS) {
       if (field === 'features') {
-        if (!config.features || typeof config.features !== 'object') errors.push(`Missing or invalid required field: ${field}`);
-      } else if (!config[field] || typeof config[field] !== 'string' || config[field].trim() === '') {
+        if (!config.features || typeof config.features !== 'object') {
+          errors.push(`Missing or invalid required field: ${field}`);
+        }
+      } else if (
+        !config[field] ||
+        typeof config[field] !== 'string' ||
+        config[field].trim() === ''
+      ) {
         errors.push(`Missing or invalid required field: ${field}`);
       }
     }
 
     if (config.features && typeof config.features === 'object') {
       for (const flag of FEATURE_NAMES) {
-        if (typeof config.features[flag] !== 'boolean') errors.push(`Missing or invalid feature flag: ${flag}`);
+        if (typeof config.features[flag] !== 'boolean') {
+          errors.push(`Missing or invalid feature flag: ${flag}`);
+        }
       }
     }
 
@@ -251,15 +309,20 @@ class LevelManifest {
   static serialize(config) {
     return {
       version: MANIFEST_VERSION,
-      id: config.id, name: config.name, description: config.description,
-      songId: config.songId, difficulty: config.difficulty,
+      id: config.id,
+      name: config.name,
+      description: config.description,
+      songId: config.songId,
+      difficulty: config.difficulty,
       features: { ...config.features },
       ui: config.ui ? { ...config.ui } : undefined
     };
   }
 
   /** @returns {Object<string, boolean>} */
-  static getDefaultFeatures() { return FeatureToggles.getDefaultFeatures(); }
+  static getDefaultFeatures() {
+    return FeatureToggles.getDefaultFeatures();
+  }
 
   /** @returns {LevelUIConfig} */
   static getDefaultUI() {
@@ -268,7 +331,14 @@ class LevelManifest {
 
   /** @param {string} id @param {string} name @param {string} songId @returns {LevelConfig} */
   static createDefault(id, name, songId) {
-    return { id, name, songId, difficulty: 'normal', features: LevelManifest.getDefaultFeatures(), ui: LevelManifest.getDefaultUI() };
+    return {
+      id,
+      name,
+      songId,
+      difficulty: 'normal',
+      features: LevelManifest.getDefaultFeatures(),
+      ui: LevelManifest.getDefaultUI()
+    };
   }
 }
 
@@ -280,11 +350,14 @@ class LevelManifest {
  * Manages progressive level loading and feature toggles.
  */
 class LevelSystem {
-  static MANIFEST_PATH = 'data/levels/';
+  static MANIFEST_PATH = `${APP_LEVELS_PATH}/`;
 
   static LEVEL_IDS = [
-    'level-1-basics', 'level-2-rhythm', 'level-3-performance',
-    'level-4-challenge', 'level-5-mastery'
+    'level-1-basics',
+    'level-2-rhythm',
+    'level-3-performance',
+    'level-4-challenge',
+    'level-5-mastery'
   ];
 
   /** @type {LevelConfig[]} */
@@ -307,7 +380,9 @@ class LevelSystem {
     try {
       for (const levelId of LevelSystem.LEVEL_IDS) {
         const manifest = await this.loadManifest(levelId);
-        if (manifest) this.levels.push(manifest);
+        if (manifest) {
+          this.levels.push(manifest);
+        }
       }
       this.loaded = true;
       return this.levels.length > 0;
@@ -320,13 +395,20 @@ class LevelSystem {
   /** @param {string} levelId @returns {Promise<LevelConfig | null>} @private */
   async loadManifest(levelId) {
     try {
-      const response = await fetch(`${LevelSystem.MANIFEST_PATH}${levelId}.json`);
-      if (!response.ok) return null;
+      const url = `${LevelSystem.MANIFEST_PATH}${levelId}.json`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        return null;
+      }
       const data = await response.json();
       const config = LevelManifest.parse(data);
-      if (!config) return null;
+      if (!config) {
+        return null;
+      }
       const validation = LevelManifest.validate(config);
-      if (!validation.valid) return null;
+      if (!validation.valid) {
+        return null;
+      }
       return config;
     } catch (error) {
       console.error(`LevelSystem: Error loading manifest for ${levelId}`, error);
@@ -335,24 +417,37 @@ class LevelSystem {
   }
 
   /** @param {string} levelId @returns {LevelConfig | null} */
-  getLevel(levelId) { return this.levels.find(l => l.id === levelId) || null; }
+  getLevel(levelId) {
+    return this.levels.find((l) => l.id === levelId) || null;
+  }
 
   /** @returns {LevelConfig[]} */
-  getAllLevels() { return [...this.levels]; }
+  getAllLevels() {
+    return [...this.levels];
+  }
 
   /** @param {number} index @returns {LevelConfig | null} */
-  getLevelByIndex(index) { return this.levels[index] || null; }
+  getLevelByIndex(index) {
+    return this.levels[index] || null;
+  }
 
   /** @returns {number} */
-  getLevelCount() { return this.levels.length; }
+  getLevelCount() {
+    return this.levels.length;
+  }
 
   /** @param {string} levelId @returns {boolean} */
   setCurrentLevel(levelId) {
     const level = this.getLevel(levelId);
-    if (!level) return false;
+    if (!level) {
+      return false;
+    }
     this.currentLevel = level;
     this.featureToggles.setFeatures(level.features);
-    EventBus.emit(Events.LEVEL_LOADED, { levelId: level.id, features: this.featureToggles.getAll() });
+    EventBus.emit(Events.LEVEL_LOADED, {
+      levelId: level.id,
+      features: this.featureToggles.getAll()
+    });
     return true;
   }
 
@@ -362,16 +457,24 @@ class LevelSystem {
   }
 
   /** @returns {LevelConfig | null} */
-  getCurrentLevel() { return this.currentLevel; }
+  getCurrentLevel() {
+    return this.currentLevel;
+  }
 
   /** @param {string} featureName @returns {boolean} */
-  isFeatureEnabled(featureName) { return this.featureToggles.isEnabled(featureName); }
+  isFeatureEnabled(featureName) {
+    return this.featureToggles.isEnabled(featureName);
+  }
 
   /** @returns {Object<string, boolean>} */
-  getFeatureFlags() { return this.featureToggles.getAll(); }
+  getFeatureFlags() {
+    return this.featureToggles.getAll();
+  }
 
   /** @returns {boolean} */
-  isLoaded() { return this.loaded; }
+  isLoaded() {
+    return this.loaded;
+  }
 
   reset() {
     this.levels = [];

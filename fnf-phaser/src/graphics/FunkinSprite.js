@@ -5,6 +5,8 @@
  * Ported from source/funkin/graphics/FunkinSprite.hx and source/funkin/play/stage/Bopper.hx
  */
 
+/* global Phaser */
+
 /**
  * @typedef {Object} AnimationOffsets
  * @property {number} x - X offset
@@ -122,7 +124,6 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
     // Setup animation complete callback
     this.on('animationcomplete', this._onAnimationComplete, this);
   }
-
 
   // ========================================
   // STATIC FACTORY METHODS
@@ -280,7 +281,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
       } else if (this.ignoreExclusionPref.length > 0) {
         // Check if this animation is in the exclusion list
         const canPlay = this.ignoreExclusionPref.some((prefix) => animName.startsWith(prefix));
-        if (!canPlay) return this;
+        if (!canPlay) {
+          return this;
+        }
       } else {
         return this;
       }
@@ -288,7 +291,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
 
     // Correct animation name if needed
     const correctedName = this._correctAnimationName(animName);
-    if (!correctedName) return this;
+    if (!correctedName) {
+      return this;
+    }
 
     // Check if animation exists
     if (!this.anims || !this.anims.animationManager.exists(correctedName)) {
@@ -319,7 +324,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @private
    */
   _correctAnimationName(name, fallback = 'idle') {
-    if (this.hasAnimation(name)) return name;
+    if (this.hasAnimation(name)) {
+      return name;
+    }
 
     // Try stripping suffix
     const lastDash = name.lastIndexOf('-');
@@ -345,10 +352,14 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @returns {boolean}
    */
   hasAnimation(animName) {
-    if (!this.anims) return false;
+    if (!this.anims) {
+      return false;
+    }
 
     // Check sprite-specific animations first
-    if (this.anims.exists(animName)) return true;
+    if (this.anims.exists(animName)) {
+      return true;
+    }
 
     // Check global animation manager
     return this.anims.animationManager?.exists(animName) ?? false;
@@ -359,7 +370,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @returns {string}
    */
   getCurrentAnimation() {
-    if (!this.anims || !this.anims.currentAnim) return '';
+    if (!this.anims || !this.anims.currentAnim) {
+      return '';
+    }
     return this.anims.currentAnim.key;
   }
 
@@ -368,7 +381,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @returns {boolean}
    */
   isAnimationFinished() {
-    if (!this.anims) return true;
+    if (!this.anims) {
+      return true;
+    }
     return !this.anims.isPlaying;
   }
 
@@ -378,10 +393,14 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @returns {boolean}
    */
   isAnimationDynamic(animName) {
-    if (!this.anims) return false;
+    if (!this.anims) {
+      return false;
+    }
 
     const anim = this.anims.animationManager?.get(animName);
-    if (!anim) return false;
+    if (!anim) {
+      return false;
+    }
 
     return anim.frames.length > 1;
   }
@@ -396,7 +415,6 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
       this.canPlayOtherAnims = true;
     }
   }
-
 
   // ========================================
   // DANCE/IDLE ANIMATION SYSTEM

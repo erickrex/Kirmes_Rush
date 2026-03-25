@@ -97,23 +97,15 @@ export default class GameOverState extends Phaser.Scene {
    * Preload assets
    */
   preload() {
-    this.load.setPath('assets/');
-
-    // BF death sprites
-    this.load.spritesheet('bf-dead', 'images/characters/bf/bfDead.png', {
-      frameWidth: 400,
-      frameHeight: 400
-    });
-
     // Game over music
-    this.load.audio('game-over-music', 'audio/gameOver.mp3');
-    this.load.audio('game-over-end', 'audio/gameOverEnd.mp3');
+    this.load.audio('game-over-music', 'assets/funkin.assets/shared/music/gameplay/gameover/gameOver.mp3');
+    this.load.audio('game-over-end', 'assets/funkin.assets/shared/music/gameplay/gameover/gameOverEnd.mp3');
 
     // Death sound
-    this.load.audio('death-sound', 'audio/fnf_loss_sfx.mp3');
+    this.load.audio('death-sound', 'assets/funkin.assets/shared/sounds/gameplay/gameover/fnf_loss_sfx.mp3');
 
     // Retry confirm sound
-    this.load.audio('retry-confirm', 'audio/confirmMenu.mp3');
+    this.load.audio('retry-confirm', 'assets/funkin.assets/preload/sounds/confirmMenu.mp3');
   }
 
   /**
@@ -159,9 +151,11 @@ export default class GameOverState extends Phaser.Scene {
       this.createDeathAnimations();
     } else {
       // Fallback: simple text
-      this.bfDead = this.add.text(x, y, '💀', {
-        fontSize: '128px'
-      }).setOrigin(0.5, 0.5);
+      this.bfDead = this.add
+        .text(x, y, '💀', {
+          fontSize: '128px'
+        })
+        .setOrigin(0.5, 0.5);
     }
   }
 
@@ -207,29 +201,35 @@ export default class GameOverState extends Phaser.Scene {
     const { width, height } = this.cameras.main;
 
     // "GAME OVER" text
-    this.gameOverText = this.add.text(width / 2, 100, 'GAME OVER', {
-      fontFamily: 'Arial Black',
-      fontSize: '72px',
-      color: '#ff0000',
-      stroke: '#000000',
-      strokeThickness: 6
-    }).setOrigin(0.5, 0.5);
+    this.gameOverText = this.add
+      .text(width / 2, 100, 'GAME OVER', {
+        fontFamily: 'Arial Black',
+        fontSize: '72px',
+        color: '#ff0000',
+        stroke: '#000000',
+        strokeThickness: 6
+      })
+      .setOrigin(0.5, 0.5);
     this.gameOverText.setAlpha(0);
 
     // Retry prompt
-    this.retryText = this.add.text(width / 2, height - 120, 'Press ENTER to Retry', {
-      fontFamily: 'Arial',
-      fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.retryText = this.add
+      .text(width / 2, height - 120, 'Press ENTER to Retry', {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
     this.retryText.setAlpha(0);
 
     // Exit prompt
-    this.exitText = this.add.text(width / 2, height - 70, 'Press ESC to Exit', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#888888'
-    }).setOrigin(0.5, 0.5);
+    this.exitText = this.add
+      .text(width / 2, height - 70, 'Press ESC to Exit', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#888888'
+      })
+      .setOrigin(0.5, 0.5);
     this.exitText.setAlpha(0);
   }
 
@@ -333,7 +333,9 @@ export default class GameOverState extends Phaser.Scene {
    * Handle retry input
    */
   onRetry() {
-    if (this.confirmed || this.transitioning || this.phase === 'initial') return;
+    if (this.confirmed || this.transitioning || this.phase === 'initial') {
+      return;
+    }
 
     this.confirmed = true;
     this.phase = 'confirm';
@@ -372,7 +374,9 @@ export default class GameOverState extends Phaser.Scene {
    * Handle exit input
    */
   onExit() {
-    if (this.transitioning || this.phase === 'initial') return;
+    if (this.transitioning || this.phase === 'initial') {
+      return;
+    }
 
     this.transitioning = true;
 
@@ -384,7 +388,10 @@ export default class GameOverState extends Phaser.Scene {
     // Fade out and exit
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start(this.songData?.returnScene || 'MainMenuState', this.songData?.returnSceneData);
+      this.scene.start(
+        this.songData?.returnScene || 'MainMenuState',
+        this.songData?.returnSceneData
+      );
     });
   }
 

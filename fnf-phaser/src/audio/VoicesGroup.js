@@ -107,7 +107,9 @@ class VoicesGroup {
    * @returns {Phaser.Sound.BaseSound | null}
    */
   loadCombined(key) {
-    if (!this.scene?.sound) return null;
+    if (!this.scene?.sound) {
+      return null;
+    }
 
     try {
       this.combinedVoices = this.scene.sound.add(key, {
@@ -127,7 +129,9 @@ class VoicesGroup {
    * @param {string} opponentKey - The opponent voice audio key
    */
   loadSplit(playerKey, opponentKey) {
-    if (!this.scene?.sound) return;
+    if (!this.scene?.sound) {
+      return;
+    }
 
     try {
       if (playerKey) {
@@ -195,8 +199,12 @@ class VoicesGroup {
   pause() {
     try {
       if (this.isSplit) {
-        if (this.playerVoice) this.playerVoice.pause();
-        if (this.opponentVoice) this.opponentVoice.pause();
+        if (this.playerVoice) {
+          this.playerVoice.pause();
+        }
+        if (this.opponentVoice) {
+          this.opponentVoice.pause();
+        }
       } else if (this.combinedVoices) {
         this.combinedVoices.pause();
       }
@@ -214,8 +222,12 @@ class VoicesGroup {
   resume() {
     try {
       if (this.isSplit) {
-        if (this.playerVoice) this.playerVoice.resume();
-        if (this.opponentVoice) this.opponentVoice.resume();
+        if (this.playerVoice) {
+          this.playerVoice.resume();
+        }
+        if (this.opponentVoice) {
+          this.opponentVoice.resume();
+        }
       } else if (this.combinedVoices) {
         this.combinedVoices.resume();
       }
@@ -233,8 +245,12 @@ class VoicesGroup {
   stop() {
     try {
       if (this.isSplit) {
-        if (this.playerVoice) this.playerVoice.stop();
-        if (this.opponentVoice) this.opponentVoice.stop();
+        if (this.playerVoice) {
+          this.playerVoice.stop();
+        }
+        if (this.opponentVoice) {
+          this.opponentVoice.stop();
+        }
       } else if (this.combinedVoices) {
         this.combinedVoices.stop();
       }
@@ -255,8 +271,12 @@ class VoicesGroup {
 
     try {
       if (this.isSplit) {
-        if (this.playerVoice) this.playerVoice.seek = seekTime;
-        if (this.opponentVoice) this.opponentVoice.seek = seekTime;
+        if (this.playerVoice) {
+          this.playerVoice.seek = seekTime;
+        }
+        if (this.opponentVoice) {
+          this.opponentVoice.seek = seekTime;
+        }
       } else if (this.combinedVoices) {
         this.combinedVoices.seek = seekTime;
       }
@@ -359,7 +379,8 @@ class VoicesGroup {
       }
 
       if (this.opponentVoice) {
-        const vol = this.allMuted || this.opponentMuted ? 0 : this.opponentVolume * this.masterVolume;
+        const vol =
+          this.allMuted || this.opponentMuted ? 0 : this.opponentVolume * this.masterVolume;
         this.opponentVoice.setVolume(vol);
       }
     } else if (this.combinedVoices) {

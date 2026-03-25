@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Controls, NoteDirection } from '../src/input/InputSystem.js';
+import SaveManager from '../src/data/SaveManager.js';
 
 describe('Controls', () => {
   let controls;
@@ -16,6 +17,7 @@ describe('Controls', () => {
       removeItem: vi.fn()
     });
 
+    SaveManager.resetInstance();
     controls = new Controls();
   });
 
@@ -70,7 +72,7 @@ describe('Controls', () => {
     it('should return keybinds for RIGHT direction', () => {
       const keys = controls.getNoteKeybinds(NoteDirection.RIGHT);
       expect(keys).toContain('ArrowRight');
-      expect(keys).toContain('KeyE');
+      expect(keys).toContain('KeyD');
     });
 
     it('should return empty array for invalid direction', () => {
@@ -156,7 +158,7 @@ describe('Controls', () => {
       expect(controls.getDirectionForKey('KeyA')).toBe(NoteDirection.LEFT);
       expect(controls.getDirectionForKey('KeyS')).toBe(NoteDirection.DOWN);
       expect(controls.getDirectionForKey('KeyW')).toBe(NoteDirection.UP);
-      expect(controls.getDirectionForKey('KeyE')).toBe(NoteDirection.RIGHT);
+      expect(controls.getDirectionForKey('KeyD')).toBe(NoteDirection.RIGHT);
     });
 
     it('should return -1 for unknown key', () => {
@@ -184,17 +186,18 @@ describe('Controls', () => {
     it('should save keybinds to localStorage', () => {
       controls.saveToStorage();
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'fnf_controls',
+        'fnf-options',
         expect.any(String)
       );
     });
 
     it('should load keybinds from localStorage', () => {
       const savedData = JSON.stringify({
-        noteKeybinds: { left: ['KeyZ'] },
-        uiKeybinds: { accept: ['KeyX'] }
+        keyLeft: 'Z',
+        keyLeftAlt: 'LEFT'
       });
       localStorage.getItem = vi.fn(() => savedData);
+      SaveManager.resetInstance();
 
       const newControls = new Controls();
       expect(newControls.noteKeybinds.left).toContain('KeyZ');

@@ -5,6 +5,7 @@
 
 import { createRegistry } from '../../core/Registry.js';
 import { resolveAssetPath } from '../../utils/AssetPathResolver.js';
+import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
 const DEFAULTS = {
   VERSION: '1.1.0',
@@ -46,13 +47,15 @@ function cleanAssetData(asset) {
 const NoteStyleRegistry = createRegistry(
   {
     registryId: 'NOTESTYLE',
-    dataFilePath: 'data/notestyles',
+    dataFilePath: getSharedRegistryPath('notestyles'),
     versionRule: DEFAULTS.VERSION_RULE,
     entityName: 'Style',
 
     validateData(data, fileName) {
       if (!data.version) {
-        console.warn(`[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`);
+        console.warn(
+          `[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`
+        );
       }
       if (!data.assets || typeof data.assets !== 'object') {
         console.error(`[${this.registryId}] Missing or invalid assets for: ${fileName}`);
@@ -64,7 +67,9 @@ const NoteStyleRegistry = createRegistry(
     cleanData(data) {
       const cleanedAssets = {};
       for (const [key, assetData] of Object.entries(data.assets)) {
-        if (assetData) cleanedAssets[key] = cleanAssetData(assetData);
+        if (assetData) {
+          cleanedAssets[key] = cleanAssetData(assetData);
+        }
       }
       return {
         version: data.version || DEFAULTS.VERSION,
@@ -77,7 +82,8 @@ const NoteStyleRegistry = createRegistry(
 
     createEntry(id, data) {
       return {
-        id, data,
+        id,
+        data,
         name: data.name,
         fallback: data.fallback,
         assetKeys: Object.keys(data.assets),
@@ -94,14 +100,22 @@ const NoteStyleRegistry = createRegistry(
       },
       getAsset(styleId, assetKey) {
         const entry = this.fetchEntry(styleId);
-        if (!entry) return null;
-        if (entry.data.assets[assetKey]) return entry.data.assets[assetKey];
-        if (entry.fallback) return this.getAsset(entry.fallback, assetKey);
+        if (!entry) {
+          return null;
+        }
+        if (entry.data.assets[assetKey]) {
+          return entry.data.assets[assetKey];
+        }
+        if (entry.fallback) {
+          return this.getAsset(entry.fallback, assetKey);
+        }
         return null;
       },
       getResolvedAsset(styleId, assetKey) {
         const asset = this.getAsset(styleId, assetKey);
-        if (!asset) return null;
+        if (!asset) {
+          return null;
+        }
         return { ...asset, resolvedPath: this.resolveAssetPath(asset.assetPath) };
       },
       resolveAssetPath(assetPath) {
@@ -112,17 +126,23 @@ const NoteStyleRegistry = createRegistry(
       },
       getNoteData(styleId, direction) {
         const asset = this.getAsset(styleId, ASSET_KEYS.NOTE);
-        if (!asset || !asset.data) return null;
+        if (!asset || !asset.data) {
+          return null;
+        }
         return asset.data[DIRECTIONS[direction]] || null;
       },
       getStrumlineData(styleId, direction, state) {
         const asset = this.getAsset(styleId, ASSET_KEYS.STRUMLINE);
-        if (!asset || !asset.data) return null;
+        if (!asset || !asset.data) {
+          return null;
+        }
         return asset.data[`${DIRECTIONS[direction]}${state}`] || null;
       },
       getSplashData(styleId, direction) {
         const asset = this.getAsset(styleId, ASSET_KEYS.SPLASH);
-        if (!asset || !asset.data) return null;
+        if (!asset || !asset.data) {
+          return null;
+        }
         return asset.data[`${DIRECTIONS[direction]}Splashes`] || null;
       },
       areSplashesEnabled(styleId) {
@@ -144,36 +164,62 @@ const NoteStyleRegistry = createRegistry(
       },
       getStyleDisplayInfo(styleId) {
         const entry = this.fetchEntry(styleId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
         const noteAsset = entry.data.assets.note;
         return {
-          id: entry.id, name: entry.name, author: entry.data.author,
-          fallback: entry.fallback, isPixel: noteAsset?.isPixel ?? false,
-          assetCount: entry.assetKeys.length, hasSplashes: this.areSplashesEnabled(styleId)
+          id: entry.id,
+          name: entry.name,
+          author: entry.data.author,
+          fallback: entry.fallback,
+          isPixel: noteAsset?.isPixel ?? false,
+          assetCount: entry.assetKeys.length,
+          hasSplashes: this.areSplashesEnabled(styleId)
         };
       },
       getAllAssetPaths(styleId) {
         const paths = new Set();
         const entry = this.fetchEntry(styleId);
-        if (!entry) return [];
+        if (!entry) {
+          return [];
+        }
         for (const asset of Object.values(entry.data.assets)) {
           if (asset.assetPath) {
             const resolved = resolveAssetPath(asset.assetPath);
-            if (resolved) paths.add(resolved);
+            if (resolved) {
+              paths.add(resolved);
+            }
           }
-          if (asset.data) this._collectNestedPaths(asset.data, paths);
+          if (asset.data) {
+            this._collectNestedPaths(asset.data, paths);
+          }
         }
         if (entry.fallback) {
-          for (const path of this.getAllAssetPaths(entry.fallback)) paths.add(path);
+          for (const path of this.getAllAssetPaths(entry.fallback)) {
+            paths.add(path);
+          }
         }
         return Array.from(paths);
       },
       _collectNestedPaths(data, paths) {
-        if (!data || typeof data !== 'object') return;
+        if (!data || typeof data !== 'object') {
+          return;
+        }
         for (const value of Object.values(data)) {
           if (typeof value === 'object' && value !== null) {
-            if (value.assetPath) { const r = resolveAssetPath(value.assetPath); if (r) paths.add(r); }
-            if (value.audioPath) { const r = resolveAssetPath(value.audioPath); if (r) paths.add(r); }
+            if (value.assetPath) {
+              const r = resolveAssetPath(value.assetPath);
+              if (r) {
+                paths.add(r);
+              }
+            }
+            if (value.audioPath) {
+              const r = resolveAssetPath(value.audioPath);
+              if (r) {
+                paths.add(r);
+              }
+            }
             this._collectNestedPaths(value, paths);
           }
         }

@@ -114,7 +114,7 @@ export default class PauseSubState extends Phaser.Scene {
     this.load.setPath('assets/');
 
     if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'audio/scrollMenu.mp3');
+      this.load.audio('scroll-sound', 'assets/funkin.assets/preload/sounds/scrollMenu.mp3');
     }
   }
 
@@ -130,21 +130,25 @@ export default class PauseSubState extends Phaser.Scene {
     this.overlay.fillRect(0, 0, width, height);
 
     // Pause title
-    this.add.text(width / 2, 150, 'PAUSED', {
-      fontFamily: 'Arial Black',
-      fontSize: '64px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 6
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 150, 'PAUSED', {
+        fontFamily: 'Arial Black',
+        fontSize: '64px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 6
+      })
+      .setOrigin(0.5, 0.5);
 
     // Song info (if available)
     if (this.songData?.songName) {
-      this.add.text(width / 2, 220, this.songData.songName, {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#888888'
-      }).setOrigin(0.5, 0.5);
+      this.add
+        .text(width / 2, 220, this.songData.songName, {
+          fontFamily: 'Arial',
+          fontSize: '24px',
+          color: '#888888'
+        })
+        .setOrigin(0.5, 0.5);
     }
 
     // Menu options
@@ -202,21 +206,25 @@ export default class PauseSubState extends Phaser.Scene {
     this.difficultyContainer.add(bg);
 
     // Title
-    const title = this.add.text(0, -70, 'Select Difficulty', {
-      fontFamily: 'Arial',
-      fontSize: '28px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    const title = this.add
+      .text(0, -70, 'Select Difficulty', {
+        fontFamily: 'Arial',
+        fontSize: '28px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
     this.difficultyContainer.add(title);
 
     // Difficulty texts
     this.difficultyTexts = [];
     this.difficulties.forEach((diff, index) => {
-      const text = this.add.text(0, -20 + index * 40, diff.toUpperCase(), {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#ffffff'
-      }).setOrigin(0.5, 0.5);
+      const text = this.add
+        .text(0, -20 + index * 40, diff.toUpperCase(), {
+          fontFamily: 'Arial',
+          fontSize: '24px',
+          color: '#ffffff'
+        })
+        .setOrigin(0.5, 0.5);
       this.difficultyContainer.add(text);
       this.difficultyTexts.push(text);
     });
@@ -245,7 +253,9 @@ export default class PauseSubState extends Phaser.Scene {
    * Navigate up
    */
   onNavigateUp() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.difficultyMode) {
       this.selectedDifficultyIndex--;
@@ -267,7 +277,9 @@ export default class PauseSubState extends Phaser.Scene {
    * Navigate down
    */
   onNavigateDown() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.difficultyMode) {
       this.selectedDifficultyIndex++;
@@ -289,7 +301,9 @@ export default class PauseSubState extends Phaser.Scene {
    * Select current option
    */
   onSelect() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.difficultyMode) {
       this.confirmDifficulty();
@@ -304,7 +318,9 @@ export default class PauseSubState extends Phaser.Scene {
    * Go back / Resume
    */
   onBack() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.difficultyMode) {
       this.hideDifficultySelector();
@@ -377,7 +393,7 @@ export default class PauseSubState extends Phaser.Scene {
     this.difficultyContainer.setVisible(true);
 
     // Hide main options
-    this.optionTexts.forEach(text => text.setVisible(false));
+    this.optionTexts.forEach((text) => text.setVisible(false));
 
     this.updateDisplay();
   }
@@ -390,7 +406,7 @@ export default class PauseSubState extends Phaser.Scene {
     this.difficultyContainer.setVisible(false);
 
     // Show main options
-    this.optionTexts.forEach(text => text.setVisible(true));
+    this.optionTexts.forEach((text) => text.setVisible(true));
 
     this.updateDisplay();
   }

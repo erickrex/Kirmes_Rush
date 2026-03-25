@@ -375,7 +375,9 @@ class NoteSprite extends FunkinSprite {
    * @returns {this}
    */
   setParam(name, value) {
-    if (!this.noteData) return this;
+    if (!this.noteData) {
+      return this;
+    }
 
     if (!this.noteData.params) {
       this.noteData.params = [];

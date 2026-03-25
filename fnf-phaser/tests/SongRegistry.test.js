@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import SongRegistry from '../src/data/registries/SongRegistry.js';
+import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
 // Sample song metadata based on actual FNF format
 const sampleMetadata = {
@@ -95,7 +96,7 @@ describe('SongRegistry', () => {
     });
 
     it('should have correct data path', () => {
-      expect(registry.dataFilePath).toBe('data/songs');
+      expect(registry.dataFilePath).toBe(getSharedRegistryPath('songs'));
     });
   });
 
@@ -280,19 +281,23 @@ describe('SongRegistry', () => {
 
   describe('Path Methods', () => {
     it('should generate correct metadata path', () => {
-      expect(registry.getMetadataPath('bopeebo')).toBe('data/songs/bopeebo/bopeebo-metadata.json');
+      expect(registry.getMetadataPath('bopeebo')).toBe(
+        `${getSharedRegistryPath('songs')}/bopeebo/bopeebo-metadata.json`
+      );
       expect(registry.getMetadataPath('bopeebo', 'default')).toBe(
-        'data/songs/bopeebo/bopeebo-metadata.json'
+        `${getSharedRegistryPath('songs')}/bopeebo/bopeebo-metadata.json`
       );
       expect(registry.getMetadataPath('bopeebo', 'erect')).toBe(
-        'data/songs/bopeebo/bopeebo-metadata-erect.json'
+        `${getSharedRegistryPath('songs')}/bopeebo/bopeebo-metadata-erect.json`
       );
     });
 
     it('should generate correct chart path', () => {
-      expect(registry.getChartPath('bopeebo')).toBe('data/songs/bopeebo/bopeebo-chart.json');
+      expect(registry.getChartPath('bopeebo')).toBe(
+        `${getSharedRegistryPath('songs')}/bopeebo/bopeebo-chart.json`
+      );
       expect(registry.getChartPath('bopeebo', 'pico')).toBe(
-        'data/songs/bopeebo/bopeebo-chart-pico.json'
+        `${getSharedRegistryPath('songs')}/bopeebo/bopeebo-chart-pico.json`
       );
     });
 

@@ -4,6 +4,7 @@
  */
 
 import { createRegistry } from '../../core/Registry.js';
+import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
 /**
  * @typedef {Object} AnimationData
@@ -112,7 +113,7 @@ function cleanHealthIconData(iconData, charData) {
     id: icon.id || null,
     scale: icon.scale ?? DEFAULTS.SCALE,
     flipX: icon.flipX ?? DEFAULTS.FLIP_X,
-    isPixel: icon.isPixel ?? (charData.isPixel ?? DEFAULTS.IS_PIXEL),
+    isPixel: icon.isPixel ?? charData.isPixel ?? DEFAULTS.IS_PIXEL,
     offsets: icon.offsets || [...DEFAULTS.HEALTH_ICON_OFFSETS]
   };
 }
@@ -133,13 +134,15 @@ function cleanDeathData(deathData) {
 const CharacterRegistry = createRegistry(
   {
     registryId: 'CHARACTER',
-    dataFilePath: 'data/characters',
+    dataFilePath: getSharedRegistryPath('characters'),
     versionRule: DEFAULTS.VERSION_RULE,
     entityName: 'Character',
 
     validateData(data, fileName) {
       if (!data.version) {
-        console.warn(`[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`);
+        console.warn(
+          `[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`
+        );
       }
       if (!data.assetPath) {
         console.error(`[${this.registryId}] Missing assetPath for: ${fileName}`);
@@ -223,7 +226,9 @@ const CharacterRegistry = createRegistry(
 
       getHealthIconData(charId) {
         const entry = this.fetchEntry(charId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
 
         const iconData = { ...entry.data.healthIcon };
         if (!iconData.id) {
@@ -248,7 +253,9 @@ const CharacterRegistry = createRegistry(
 
       getCharacterDisplayInfo(charId) {
         const entry = this.fetchEntry(charId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
 
         return {
           id: entry.id,
@@ -268,15 +275,22 @@ const CharacterRegistry = createRegistry(
 
       getSpriteAssetPath(charId) {
         const entry = this.fetchEntry(charId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
         return `images/${entry.data.assetPath}`;
       },
 
       getXmlAssetPath(charId) {
         const entry = this.fetchEntry(charId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
 
-        if (entry.renderType !== RenderType.SPARROW && entry.renderType !== RenderType.MULTI_SPARROW) {
+        if (
+          entry.renderType !== RenderType.SPARROW &&
+          entry.renderType !== RenderType.MULTI_SPARROW
+        ) {
           return null;
         }
 

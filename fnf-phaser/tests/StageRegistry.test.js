@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import StageRegistry from '../src/data/registries/StageRegistry.js';
+import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
 // Sample stage data based on actual FNF format (mainStage.json)
 const sampleMainStage = {
@@ -123,7 +124,7 @@ describe('StageRegistry', () => {
     });
 
     it('should have correct data path', () => {
-      expect(registry.dataFilePath).toBe('data/stages');
+      expect(registry.dataFilePath).toBe(getSharedRegistryPath('stages'));
     });
   });
 
@@ -399,7 +400,7 @@ describe('StageRegistry', () => {
     });
 
     it('should get stage path', () => {
-      expect(testRegistry.getStagePath('mainStage')).toBe('data/stages/mainStage.json');
+      expect(testRegistry.getStagePath('mainStage')).toBe(`${getSharedRegistryPath('stages')}/mainStage.json`);
     });
 
     it('should get prop asset path with directory', () => {

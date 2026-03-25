@@ -170,7 +170,9 @@ class ScoreDisplay {
    * Create the text object
    */
   createText() {
-    if (!this.scene) return;
+    if (!this.scene) {
+      return;
+    }
 
     // Create Phaser text
     this.text = this.scene.add?.text(this.x, this.y, '', {
@@ -351,7 +353,9 @@ class ScoreDisplay {
    * Update the text content
    */
   updateText() {
-    if (!this.text) return;
+    if (!this.text) {
+      return;
+    }
 
     const content = this.buildText();
     this.text.setText(content);
@@ -403,7 +407,9 @@ class ScoreDisplay {
     const totalHit = tallies.totalNotesHit ?? 0;
     const totalNotes = tallies.totalNotes ?? 0;
 
-    if (totalNotes === 0) return 0;
+    if (totalNotes === 0) {
+      return 0;
+    }
 
     // Weight hits by judgement quality
     const sick = tallies.sick ?? 0;
@@ -415,7 +421,9 @@ class ScoreDisplay {
     const weightedHits = sick * 1.0 + good * 0.75 + bad * 0.5 + shit * 0.25;
     const maxPossible = totalHit;
 
-    if (maxPossible === 0) return 0;
+    if (maxPossible === 0) {
+      return 0;
+    }
 
     return (weightedHits / maxPossible) * 100;
   }

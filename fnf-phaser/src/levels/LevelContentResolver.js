@@ -1,6 +1,8 @@
 /**
- * @fileoverview Resolves level song IDs against the public song manifest set.
+ * @fileoverview Resolves level song IDs against the app-owned song manifest set.
  */
+
+import { APP_MANIFESTS_PATH } from '../utils/GameDataPaths.js';
 
 export const DEFAULT_MANIFEST_IDS = [
   'tutorial',
@@ -14,7 +16,7 @@ export const DEFAULT_MANIFEST_IDS = [
   'weekend1'
 ];
 
-export const MANIFEST_BASE_PATH = 'data/manifests';
+export const MANIFEST_BASE_PATH = APP_MANIFESTS_PATH;
 
 /**
  * Fetch JSON with a small error wrapper so scene code gets actionable failures.
@@ -59,7 +61,10 @@ export default class LevelContentResolver {
 
     const manifests = await Promise.all(
       this.manifestIds.map(async (manifestId) => {
-        const manifest = await fetchJson(`${MANIFEST_BASE_PATH}/${manifestId}.json`, this.fetchImpl);
+        const manifest = await fetchJson(
+          `${MANIFEST_BASE_PATH}/${manifestId}.json`,
+          this.fetchImpl
+        );
         return {
           id: manifest.id ?? manifestId,
           name: manifest.name ?? manifestId,

@@ -147,7 +147,9 @@ class FunkinCamera {
    * @param {boolean} [instant=false] - Whether to snap immediately
    */
   followObject(target, instant = false) {
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     const x = target.x + (target.width || 0) / 2;
     const y = target.y + (target.height || 0) / 2;
@@ -230,9 +232,15 @@ class FunkinCamera {
    * @param {number} [offset] - Beat offset
    */
   configureBeatZoom(intensity, rate, offset) {
-    if (intensity !== undefined) this.bopIntensity = intensity;
-    if (rate !== undefined) this.bopRate = rate;
-    if (offset !== undefined) this.bopOffset = offset;
+    if (intensity !== undefined) {
+      this.bopIntensity = intensity;
+    }
+    if (rate !== undefined) {
+      this.bopRate = rate;
+    }
+    if (offset !== undefined) {
+      this.bopOffset = offset;
+    }
   }
 
   /**
@@ -248,7 +256,9 @@ class FunkinCamera {
    * @param {number} beat - Current beat number
    */
   onBeatHit(beat) {
-    if (!this.bopEnabled) return;
+    if (!this.bopEnabled) {
+      return;
+    }
 
     // Check if this beat should trigger a bop
     const adjustedBeat = beat - this.bopOffset;
@@ -266,7 +276,9 @@ class FunkinCamera {
    * @param {number} delta - Delta time in ms
    */
   update(delta) {
-    if (!this.camera) return;
+    if (!this.camera) {
+      return;
+    }
 
     // Update follow position
     if (this.isFollowing && this.followTarget) {
@@ -335,7 +347,9 @@ class FunkinCamera {
    * @param {Function} [callback] - Callback when complete
    */
   fade(duration = 500, color = 0x000000, fadeIn = false, callback = null) {
-    if (!this.camera) return;
+    if (!this.camera) {
+      return;
+    }
 
     const r = (color >> 16) & 0xff;
     const g = (color >> 8) & 0xff;
@@ -387,7 +401,9 @@ class FunkinCamera {
    * @returns {{x: number, y: number}}
    */
   getCenter() {
-    if (!this.camera) return { x: 0, y: 0 };
+    if (!this.camera) {
+      return { x: 0, y: 0 };
+    }
 
     return {
       x: this.camera.scrollX + this.camera.width / 2,

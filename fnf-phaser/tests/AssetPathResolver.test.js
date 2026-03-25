@@ -21,66 +21,66 @@ describe('AssetPathResolver', () => {
   });
 
   describe('shared: prefix', () => {
-    it('resolves shared:notes to images/shared/notes', () => {
-      expect(resolveAssetPath('shared:notes')).toBe('images/shared/notes');
+    it('resolves shared:notes to shared/images/notes', () => {
+      expect(resolveAssetPath('shared:notes')).toBe('shared/images/notes');
     });
 
-    it('resolves shared:path/to/asset to images/shared/path/to/asset', () => {
-      expect(resolveAssetPath('shared:path/to/asset')).toBe('images/shared/path/to/asset');
+    it('resolves shared:path/to/asset to shared/images/path/to/asset', () => {
+      expect(resolveAssetPath('shared:path/to/asset')).toBe('shared/images/path/to/asset');
     });
   });
 
   describe('default: prefix', () => {
-    it('resolves default:hud to images/preload/hud', () => {
-      expect(resolveAssetPath('default:hud')).toBe('images/preload/hud');
+    it('resolves default:hud to preload/images/hud', () => {
+      expect(resolveAssetPath('default:hud')).toBe('preload/images/hud');
     });
 
-    it('resolves default:path/to/asset to images/preload/path/to/asset', () => {
-      expect(resolveAssetPath('default:path/to/asset')).toBe('images/preload/path/to/asset');
+    it('resolves default:path/to/asset to preload/images/path/to/asset', () => {
+      expect(resolveAssetPath('default:path/to/asset')).toBe('preload/images/path/to/asset');
     });
   });
 
   describe('custom prefix', () => {
-    it('resolves week1:stage to images/week1/stage', () => {
-      expect(resolveAssetPath('week1:stage')).toBe('images/week1/stage');
+    it('resolves week1:stage to week1/images/stage', () => {
+      expect(resolveAssetPath('week1:stage')).toBe('week1/images/stage');
     });
 
-    it('resolves custom:deep/path to images/custom/deep/path', () => {
-      expect(resolveAssetPath('custom:deep/path')).toBe('images/custom/deep/path');
+    it('resolves custom:deep/path to custom/images/deep/path', () => {
+      expect(resolveAssetPath('custom:deep/path')).toBe('custom/images/deep/path');
     });
   });
 
   describe('bare path (no colon)', () => {
-    it('resolves bare path to images/<path>', () => {
-      expect(resolveAssetPath('myAsset')).toBe('images/myAsset');
+    it('resolves bare path to shared/images/<path>', () => {
+      expect(resolveAssetPath('myAsset')).toBe('shared/images/myAsset');
     });
 
     it('resolves bare path with slashes', () => {
-      expect(resolveAssetPath('some/nested/path')).toBe('images/some/nested/path');
+      expect(resolveAssetPath('some/nested/path')).toBe('shared/images/some/nested/path');
     });
   });
 
   describe('multiple colons - splits only on first', () => {
-    it('resolves prefix:path:extra to images/prefix/path:extra', () => {
-      expect(resolveAssetPath('prefix:path:extra')).toBe('images/prefix/path:extra');
+    it('resolves prefix:path:extra to prefix/images/path:extra', () => {
+      expect(resolveAssetPath('prefix:path:extra')).toBe('prefix/images/path:extra');
     });
 
-    it('resolves a:b:c:d to images/a/b:c:d', () => {
-      expect(resolveAssetPath('a:b:c:d')).toBe('images/a/b:c:d');
+    it('resolves a:b:c:d to a/images/b:c:d', () => {
+      expect(resolveAssetPath('a:b:c:d')).toBe('a/images/b:c:d');
     });
   });
 
   describe('matches NoteStyleRegistry behavior', () => {
-    it('resolves shared:notes same as NoteStyleRegistry', () => {
-      expect(resolveAssetPath('shared:notes')).toBe('images/shared/notes');
+    it('resolves shared:notes for note atlas', () => {
+      expect(resolveAssetPath('shared:notes')).toBe('shared/images/notes');
     });
 
-    it('resolves shared:noteStrumline same as NoteStyleRegistry', () => {
-      expect(resolveAssetPath('shared:noteStrumline')).toBe('images/shared/noteStrumline');
+    it('resolves shared:noteStrumline for strumline atlas', () => {
+      expect(resolveAssetPath('shared:noteStrumline')).toBe('shared/images/noteStrumline');
     });
 
-    it('resolves shared:noteSplashes same as NoteStyleRegistry', () => {
-      expect(resolveAssetPath('shared:noteSplashes')).toBe('images/shared/noteSplashes');
+    it('resolves shared:noteSplashes for splash atlas', () => {
+      expect(resolveAssetPath('shared:noteSplashes')).toBe('shared/images/noteSplashes');
     });
   });
 });

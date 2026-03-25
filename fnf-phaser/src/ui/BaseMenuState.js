@@ -72,7 +72,9 @@ export default class BaseMenuState extends Phaser.Scene {
   /** Navigate up through the menu list with wrapping. */
   onNavigateUp() {
     const itemCount = this.getItemCount();
-    if (this.transitioning || itemCount === 0) return;
+    if (this.transitioning || itemCount === 0) {
+      return;
+    }
     this.selectedIndex = (this.selectedIndex - 1 + itemCount) % itemCount;
     this.playScrollSound();
     this.updateSelection();
@@ -81,7 +83,9 @@ export default class BaseMenuState extends Phaser.Scene {
   /** Navigate down through the menu list with wrapping. */
   onNavigateDown() {
     const itemCount = this.getItemCount();
-    if (this.transitioning || itemCount === 0) return;
+    if (this.transitioning || itemCount === 0) {
+      return;
+    }
     this.selectedIndex = (this.selectedIndex + 1) % itemCount;
     this.playScrollSound();
     this.updateSelection();
@@ -89,7 +93,9 @@ export default class BaseMenuState extends Phaser.Scene {
 
   /** Confirm the current selection with transition guard. */
   onSelect() {
-    if (this.transitioning || this.getItemCount() === 0) return;
+    if (this.transitioning || this.getItemCount() === 0) {
+      return;
+    }
     this.transitioning = true;
     this.playConfirmSound();
     this.executeSelection();
@@ -97,7 +103,9 @@ export default class BaseMenuState extends Phaser.Scene {
 
   /** Go back / cancel with transition guard. */
   onBack() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
     this.transitioning = true;
     this.playCancelSound();
     this.executeBack();
@@ -237,13 +245,13 @@ export default class BaseMenuState extends Phaser.Scene {
    */
   preloadMenuSounds() {
     if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'audio/scrollMenu.mp3');
+      this.load.audio('scroll-sound', 'assets/funkin.assets/preload/sounds/scrollMenu.mp3');
     }
     if (!this.cache.audio.exists('confirm-sound')) {
-      this.load.audio('confirm-sound', 'audio/confirmMenu.mp3');
+      this.load.audio('confirm-sound', 'assets/funkin.assets/preload/sounds/confirmMenu.mp3');
     }
     if (!this.cache.audio.exists('cancel-sound')) {
-      this.load.audio('cancel-sound', 'audio/cancelMenu.mp3');
+      this.load.audio('cancel-sound', 'assets/funkin.assets/preload/sounds/cancelMenu.mp3');
     }
   }
 }

@@ -41,8 +41,14 @@ export function createSongFlowController(context) {
       playState.countdownActive = true;
       playState.countdownStep = 0;
 
-      // Reset conductor
-      conductor.reset();
+      // Reset conductor state for countdown
+      conductor.songPosition = 0;
+      conductor.currentStep = 0;
+      conductor.currentBeat = 0;
+      conductor.currentMeasure = 0;
+      conductor.currentStepTime = 0;
+      conductor.currentBeatTime = 0;
+      conductor.currentMeasureTime = 0;
       conductor.songPosition = -conductor.beatLengthMs * 4;
 
       // Emit countdown start
@@ -112,7 +118,11 @@ export function createSongFlowController(context) {
         playState.startReplayPlayback();
       }
       // Start replay recording if enabled (not in replay mode) and feature is enabled
-      else if (playState.replayRecordingEnabled && playState.replayRecorder && playState.isFeatureEnabled('replayRecording')) {
+      else if (
+        playState.replayRecordingEnabled &&
+        playState.replayRecorder &&
+        playState.isFeatureEnabled('replayRecording')
+      ) {
         const songId = playState.songData?.id || playState.songData?.name || 'unknown';
         playState.replayRecorder.start(songId, playState.difficulty);
       }
@@ -120,7 +130,9 @@ export function createSongFlowController(context) {
       // Initialize input buffer if enabled and feature is enabled
       if (playState.inputBufferEnabled && playState.isFeatureEnabled('inputBuffer')) {
         const saveManager = SaveManager.getInstance();
-        const bufferWindow = saveManager?.loaded ? saveManager.getOption('inputBufferWindow') ?? 50 : 50;
+        const bufferWindow = saveManager?.loaded
+          ? (saveManager.getOption('inputBufferWindow') ?? 50)
+          : 50;
         if (!playState.inputBuffer) {
           playState.inputBuffer = new InputBuffer(bufferWindow);
         } else {
@@ -166,18 +178,22 @@ export function createSongFlowController(context) {
       // Calculate final rank
       const rank = Scoring.calculateRank(playState.tallies);
 
+      // Get timing stats from InputStatistics if available
+      const timingStats = playState.inputStatistics?.getStats() ?? null;
+
       // Emit event
       eventBus.emit(Events.SONG_END, {
         score: playState.score,
         tallies: playState.tallies,
         rank,
         replayData,
-        isReplay: wasReplayMode
+        isReplay: wasReplayMode,
+        timingStats
       });
 
       // Callback
       if (playState.onSongEnd) {
-        playState.onSongEnd(playState.score, playState.tallies, rank, replayData);
+        playState.onSongEnd(playState.score, playState.tallies, rank, replayData, timingStats);
       }
     },
 
@@ -214,7 +230,9 @@ export function createSongFlowController(context) {
      * Clean up resources. Idempotent — subsequent calls are no-ops.
      */
     destroy() {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       destroyed = true;
     }
   };

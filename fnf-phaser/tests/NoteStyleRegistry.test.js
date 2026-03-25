@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import NoteStyleRegistry from '../src/data/registries/NoteStyleRegistry.js';
+import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
 // Sample note style data based on actual FNF format (funkin.json)
 const sampleFunkinStyle = {
@@ -148,7 +149,7 @@ describe('NoteStyleRegistry', () => {
     });
 
     it('should have correct data path', () => {
-      expect(registry.dataFilePath).toBe('data/notestyles');
+      expect(registry.dataFilePath).toBe(getSharedRegistryPath('notestyles'));
     });
   });
 
@@ -386,22 +387,22 @@ describe('NoteStyleRegistry', () => {
   describe('Path Resolution', () => {
     it('should resolve shared: prefix', () => {
       const resolved = registry.resolveAssetPath('shared:notes');
-      expect(resolved).toBe('images/shared/notes');
+      expect(resolved).toBe('shared/images/notes');
     });
 
     it('should resolve default: prefix', () => {
       const resolved = registry.resolveAssetPath('default:ui/popup/funkin/sick');
-      expect(resolved).toBe('images/preload/ui/popup/funkin/sick');
+      expect(resolved).toBe('preload/images/ui/popup/funkin/sick');
     });
 
     it('should resolve week prefix', () => {
       const resolved = registry.resolveAssetPath('week6:weeb/pixelUI/arrows-pixels');
-      expect(resolved).toBe('images/week6/weeb/pixelUI/arrows-pixels');
+      expect(resolved).toBe('week6/images/weeb/pixelUI/arrows-pixels');
     });
 
     it('should handle paths without prefix', () => {
       const resolved = registry.resolveAssetPath('notes');
-      expect(resolved).toBe('images/notes');
+      expect(resolved).toBe('shared/images/notes');
     });
 
     it('should return null for null path', () => {
@@ -490,17 +491,17 @@ describe('NoteStyleRegistry', () => {
 
     it('should get all asset paths for a style', () => {
       const paths = testRegistry.getAllAssetPaths('funkin');
-      expect(paths).toContain('images/shared/notes');
-      expect(paths).toContain('images/shared/noteStrumline');
-      expect(paths).toContain('images/shared/noteSplashes');
+      expect(paths).toContain('shared/images/notes');
+      expect(paths).toContain('shared/images/noteStrumline');
+      expect(paths).toContain('shared/images/noteSplashes');
     });
 
     it('should include fallback paths', () => {
       const paths = testRegistry.getAllAssetPaths('pixel');
       // Should include pixel's own paths
-      expect(paths).toContain('images/week6/weeb/pixelUI/arrows-pixels');
+      expect(paths).toContain('week6/images/weeb/pixelUI/arrows-pixels');
       // Should also include funkin's paths via fallback
-      expect(paths).toContain('images/preload/ui/popup/funkin/sick');
+      expect(paths).toContain('preload/images/ui/popup/funkin/sick');
     });
   });
 

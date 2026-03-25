@@ -37,7 +37,9 @@ export function createNoteProcessor(context) {
    */
   function onNoteHitEvent(data) {
     const gs = context.gameplayState;
-    if (!gs) return;
+    if (!gs) {
+      return;
+    }
 
     gs.updateScore(data.score);
     gs.updateCombo(data.judgement);
@@ -52,7 +54,9 @@ export function createNoteProcessor(context) {
    */
   function onNoteMissEvent() {
     const gs = context.gameplayState;
-    if (!gs) return;
+    if (!gs) {
+      return;
+    }
 
     gs.combo = 0;
     gs.tallies.missed++;
@@ -70,13 +74,19 @@ export function createNoteProcessor(context) {
      */
     checkMissedNotes() {
       const { playState } = context;
-      if (!playState.playerStrumline) return;
+      if (!playState.playerStrumline) {
+        return;
+      }
 
       const missThreshold = playState.songPosition - Constants.HIT_WINDOW_MS;
 
       for (const note of playState.playerStrumline.notes) {
-        if (!note || !note.alive) continue;
-        if (note.hasBeenHit || note.hasMissed) continue;
+        if (!note || !note.alive) {
+          continue;
+        }
+        if (note.hasBeenHit || note.hasMissed) {
+          continue;
+        }
 
         if (note.strumTime < missThreshold) {
           processor.missNote(note);
@@ -90,11 +100,17 @@ export function createNoteProcessor(context) {
      */
     processOpponentNotes() {
       const { playState } = context;
-      if (!playState.opponentStrumline) return;
+      if (!playState.opponentStrumline) {
+        return;
+      }
 
       for (const note of playState.opponentStrumline.notes) {
-        if (!note || !note.alive) continue;
-        if (note.hasBeenHit) continue;
+        if (!note || !note.alive) {
+          continue;
+        }
+        if (note.hasBeenHit) {
+          continue;
+        }
 
         if (note.strumTime <= playState.songPosition) {
           processor.opponentHitNote(note);
@@ -241,7 +257,7 @@ export function createNoteProcessor(context) {
      * @param {Object} note - The note sprite
      */
     opponentHitNote(note) {
-      const { playState } = context;
+      const { playState, scene } = context;
 
       // Mark as hit
       note.hasBeenHit = true;
@@ -254,6 +270,15 @@ export function createNoteProcessor(context) {
       // Hit the note on strumline (visual feedback)
       playState.opponentStrumline.hitNote(note);
 
+      // Reset receptor back to static after a brief flash
+      if (scene?.time) {
+        scene.time.delayedCall(150, () => {
+          if (playState.opponentStrumline) {
+            playState.opponentStrumline.playStatic(note.direction);
+          }
+        });
+      }
+
       // Emit event
       eventBus.emit(Events.OPPONENT_NOTE_HIT, { note });
     },
@@ -262,7 +287,9 @@ export function createNoteProcessor(context) {
      * Clean up EventBus listeners. Idempotent — subsequent calls are no-ops.
      */
     destroy() {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       destroyed = true;
 
       eventBus.off(Events.NOTE_HIT, onNoteHitEvent);

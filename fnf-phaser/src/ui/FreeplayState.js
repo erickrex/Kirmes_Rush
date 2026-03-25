@@ -1,6 +1,10 @@
 /**
  * @fileoverview Freeplay State - Individual song selection
  * Implements FR-6.4: Freeplay song selection with capsules
+ *
+ * Retained intentionally as future freeplay scaffolding. It stays hidden from
+ * the current shipped menu and should reuse SaveManager-based score/progress
+ * paths when freeplay is productized again.
  */
 
 import BaseMenuState from './BaseMenuState.js';
@@ -26,15 +30,69 @@ export default class FreeplayState extends BaseMenuState {
 
     /** @type {SongCapsule[]} */
     this.songs = [
-      { id: 'tutorial', name: 'Tutorial', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 100 },
-      { id: 'bopeebo', name: 'Bopeebo', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 100 },
-      { id: 'fresh', name: 'Fresh', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 120 },
-      { id: 'dad-battle', name: 'Dad Battle', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 180 },
-      { id: 'spookeez', name: 'Spookeez', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 150 },
-      { id: 'south', name: 'South', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 165 },
-      { id: 'pico', name: 'Pico', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 150 },
-      { id: 'philly-nice', name: 'Philly Nice', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 175 },
-      { id: 'blammed', name: 'Blammed', artist: 'Kawai Sprite', difficulties: ['easy', 'normal', 'hard'], bpm: 165 }
+      {
+        id: 'tutorial',
+        name: 'Tutorial',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 100
+      },
+      {
+        id: 'bopeebo',
+        name: 'Bopeebo',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 100
+      },
+      {
+        id: 'fresh',
+        name: 'Fresh',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 120
+      },
+      {
+        id: 'dad-battle',
+        name: 'Dad Battle',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 180
+      },
+      {
+        id: 'spookeez',
+        name: 'Spookeez',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 150
+      },
+      {
+        id: 'south',
+        name: 'South',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 165
+      },
+      {
+        id: 'pico',
+        name: 'Pico',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 150
+      },
+      {
+        id: 'philly-nice',
+        name: 'Philly Nice',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 175
+      },
+      {
+        id: 'blammed',
+        name: 'Blammed',
+        artist: 'Kawai Sprite',
+        difficulties: ['easy', 'normal', 'hard'],
+        bpm: 165
+      }
     ];
 
     /** @type {number} */
@@ -106,9 +164,7 @@ export default class FreeplayState extends BaseMenuState {
   // ========================================
 
   preload() {
-    this.load.setPath('assets/');
-    this.load.image('freeplay-bg', 'images/menu/menuDesat.png');
-    this.load.image('capsule', 'images/freeplay/capsule.png');
+    this.load.image('freeplay-bg', 'assets/funkin.assets/preload/images/menuDesat.png');
     this.preloadMenuSounds();
   }
 
@@ -123,10 +179,15 @@ export default class FreeplayState extends BaseMenuState {
 
     this.createBackground('freeplay-bg', 0x1a3a5c, 0x0a1a2c);
 
-    this.add.text(width / 2, 40, 'FREEPLAY', {
-      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff',
-      stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 40, 'FREEPLAY', {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
 
     this.createCapsules();
     this.createInfoPanel();
@@ -154,15 +215,27 @@ export default class FreeplayState extends BaseMenuState {
     bg.fillRoundedRect(50, 0, width - 400, 70, 10);
     container.add(bg);
 
-    const nameText = this.add.text(70, 15, '', { fontFamily: 'Arial', fontSize: '28px', color: '#ffffff' });
+    const nameText = this.add.text(70, 15, '', {
+      fontFamily: 'Arial',
+      fontSize: '28px',
+      color: '#ffffff'
+    });
     container.add(nameText);
     container.setData('nameText', nameText);
 
-    const artistText = this.add.text(70, 45, '', { fontFamily: 'Arial', fontSize: '16px', color: '#aaaaaa' });
+    const artistText = this.add.text(70, 45, '', {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#aaaaaa'
+    });
     container.add(artistText);
     container.setData('artistText', artistText);
 
-    const scoreText = this.add.text(width - 420, 25, '', { fontFamily: 'Arial', fontSize: '20px', color: '#ffff00' });
+    const scoreText = this.add.text(width - 420, 25, '', {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#ffff00'
+    });
     container.add(scoreText);
     container.setData('scoreText', scoreText);
 
@@ -178,31 +251,66 @@ export default class FreeplayState extends BaseMenuState {
     graphics.fillRoundedRect(panelX - 20, 120, 300, 250, 10);
 
     this.add.text(panelX, 140, 'BPM:', { fontFamily: 'Arial', fontSize: '20px', color: '#888888' });
-    this.bpmText = this.add.text(panelX + 60, 140, '0', { fontFamily: 'Arial', fontSize: '20px', color: '#ffffff' });
+    this.bpmText = this.add.text(panelX + 60, 140, '0', {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#ffffff'
+    });
 
-    this.add.text(panelX, 180, 'HIGH SCORE:', { fontFamily: 'Arial', fontSize: '20px', color: '#888888' });
-    this.scoreText = this.add.text(panelX, 210, '0', { fontFamily: 'Arial Black', fontSize: '32px', color: '#ffff00' });
+    this.add.text(panelX, 180, 'HIGH SCORE:', {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#888888'
+    });
+    this.scoreText = this.add.text(panelX, 210, '0', {
+      fontFamily: 'Arial Black',
+      fontSize: '32px',
+      color: '#ffff00'
+    });
   }
 
   createDifficultySelector() {
     const { width, height } = this.cameras.main;
 
-    this.add.text(width - 200, height - 100, 'DIFFICULTY:', {
-      fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width - 200, height - 100, 'DIFFICULTY:', {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
 
-    this.difficultyText = this.add.text(width - 200, height - 60, '', {
-      fontFamily: 'Arial Black', fontSize: '28px', color: '#00ff00',
-      stroke: '#000000', strokeThickness: 2
-    }).setOrigin(0.5, 0.5);
+    this.difficultyText = this.add
+      .text(width - 200, height - 60, '', {
+        fontFamily: 'Arial Black',
+        fontSize: '28px',
+        color: '#00ff00',
+        stroke: '#000000',
+        strokeThickness: 2
+      })
+      .setOrigin(0.5, 0.5);
 
-    this.add.text(width - 300, height - 60, '<', { fontFamily: 'Arial', fontSize: '28px', color: '#ffffff' }).setOrigin(0.5, 0.5);
-    this.add.text(width - 100, height - 60, '>', { fontFamily: 'Arial', fontSize: '28px', color: '#ffffff' }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width - 300, height - 60, '<', {
+        fontFamily: 'Arial',
+        fontSize: '28px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
+    this.add
+      .text(width - 100, height - 60, '>', {
+        fontFamily: 'Arial',
+        fontSize: '28px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   createLetterFilter() {
     this.letterFilterText = this.add.text(50, this.cameras.main.height - 50, 'Filter: ALL', {
-      fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#ffffff'
     });
   }
 
@@ -211,25 +319,35 @@ export default class FreeplayState extends BaseMenuState {
   // ========================================
 
   onDifficultyLeft() {
-    if (this.transitioning || this.filteredSongs.length === 0) return;
+    if (this.transitioning || this.filteredSongs.length === 0) {
+      return;
+    }
     const song = this.filteredSongs[this.selectedIndex];
     this.selectedDifficultyIndex--;
-    if (this.selectedDifficultyIndex < 0) this.selectedDifficultyIndex = song.difficulties.length - 1;
+    if (this.selectedDifficultyIndex < 0) {
+      this.selectedDifficultyIndex = song.difficulties.length - 1;
+    }
     this.playScrollSound();
     this.updateDisplay();
   }
 
   onDifficultyRight() {
-    if (this.transitioning || this.filteredSongs.length === 0) return;
+    if (this.transitioning || this.filteredSongs.length === 0) {
+      return;
+    }
     const song = this.filteredSongs[this.selectedIndex];
     this.selectedDifficultyIndex++;
-    if (this.selectedDifficultyIndex >= song.difficulties.length) this.selectedDifficultyIndex = 0;
+    if (this.selectedDifficultyIndex >= song.difficulties.length) {
+      this.selectedDifficultyIndex = 0;
+    }
     this.playScrollSound();
     this.updateDisplay();
   }
 
   onCycleFilter() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
     const letters = [null, ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
     const currentIndex = letters.indexOf(this.letterFilter);
     this.letterFilter = letters[(currentIndex + 1) % letters.length];
@@ -241,10 +359,14 @@ export default class FreeplayState extends BaseMenuState {
     if (this.letterFilter === null) {
       this.filteredSongs = [...this.songs];
     } else {
-      this.filteredSongs = this.songs.filter(song => song.name.toUpperCase().startsWith(this.letterFilter));
+      this.filteredSongs = this.songs.filter((song) =>
+        song.name.toUpperCase().startsWith(this.letterFilter)
+      );
     }
     this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredSongs.length - 1));
-    if (this.letterFilterText) this.letterFilterText.setText(`Filter: ${this.letterFilter || 'ALL'}`);
+    if (this.letterFilterText) {
+      this.letterFilterText.setText(`Filter: ${this.letterFilter || 'ALL'}`);
+    }
   }
 
   // ========================================
@@ -272,8 +394,12 @@ export default class FreeplayState extends BaseMenuState {
 
     if (this.filteredSongs.length > 0) {
       const song = this.filteredSongs[this.selectedIndex];
-      if (this.bpmText) this.bpmText.setText(`${song.bpm || '?'}`);
-      if (this.scoreText) this.scoreText.setText(`${song.highScore || 0}`);
+      if (this.bpmText) {
+        this.bpmText.setText(`${song.bpm || '?'}`);
+      }
+      if (this.scoreText) {
+        this.scoreText.setText(`${song.highScore || 0}`);
+      }
       if (this.difficultyText) {
         const difficulty = song.difficulties[this.selectedDifficultyIndex];
         this.difficultyText.setText(difficulty.toUpperCase());

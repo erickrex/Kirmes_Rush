@@ -5,6 +5,8 @@
  */
 
 import { resolveAssetPath } from '../utils/AssetPathResolver.js';
+import { SHARED_ASSET_ROOT } from '../utils/GameDataPaths.js';
+import { createPreparedPlaySession } from './PreparedPlaySession.js';
 
 /**
  * @typedef {Object} AssetEntry
@@ -14,7 +16,7 @@ import { resolveAssetPath } from '../utils/AssetPathResolver.js';
  * @property {string} [atlasURL] - URL to the XML file (for atlas type)
  */
 
-const ASSET_PREFIX = 'assets/funkin.assets/';
+const ASSET_PREFIX = `${SHARED_ASSET_ROOT}/`;
 
 /**
  * Prefix a resolved path with `assets/funkin.assets/` idempotently.
@@ -23,8 +25,12 @@ const ASSET_PREFIX = 'assets/funkin.assets/';
  * @returns {string}
  */
 function prefixPath(resolvedPath) {
-  if (!resolvedPath) return resolvedPath;
-  if (resolvedPath.startsWith(ASSET_PREFIX)) return resolvedPath;
+  if (!resolvedPath) {
+    return resolvedPath;
+  }
+  if (resolvedPath.startsWith(ASSET_PREFIX)) {
+    return resolvedPath;
+  }
   return `${ASSET_PREFIX}${resolvedPath}`;
 }
 
@@ -39,7 +45,9 @@ export function buildCharacterEntries(characterIds, characterRegistry) {
   const seen = new Set();
 
   for (const id of characterIds) {
-    if (seen.has(id)) continue;
+    if (seen.has(id)) {
+      continue;
+    }
     seen.add(id);
 
     const assetPath = characterRegistry.getAssetPath(id);
@@ -49,7 +57,9 @@ export function buildCharacterEntries(characterIds, characterRegistry) {
     }
 
     const resolved = resolveAssetPath(assetPath);
-    if (!resolved) continue;
+    if (!resolved) {
+      continue;
+    }
 
     const prefixed = prefixPath(resolved);
     entries.push({
@@ -79,10 +89,14 @@ export function buildStageEntries(stageId, stageRegistry) {
   const entries = [];
 
   for (const prop of props) {
-    if (!prop.assetPath) continue;
+    if (!prop.assetPath || prop.assetPath.startsWith('#')) {
+      continue;
+    }
 
     const resolved = resolveAssetPath(prop.assetPath);
-    if (!resolved) continue;
+    if (!resolved) {
+      continue;
+    }
 
     const prefixed = prefixPath(resolved);
     const hasAnimations = Array.isArray(prop.animations) && prop.animations.length > 0;
@@ -106,8 +120,29 @@ export function buildStageEntries(stageId, stageRegistry) {
   return entries;
 }
 
-/** Asset keys to resolve for note styles */
-const NOTE_STYLE_ASSET_KEYS = ['note', 'noteStrumline', 'noteSplash', 'holdNote'];
+const NOTE_STYLE_ASSET_KEYS = {
+  note: 'atlas',
+  noteStrumline: 'atlas',
+  noteSplash: 'atlas',
+  holdNote: 'image',
+  countdownTwo: 'image',
+  countdownOne: 'image',
+  countdownGo: 'image',
+  judgementSick: 'image',
+  judgementGood: 'image',
+  judgementBad: 'image',
+  judgementShit: 'image',
+  comboNumber0: 'image',
+  comboNumber1: 'image',
+  comboNumber2: 'image',
+  comboNumber3: 'image',
+  comboNumber4: 'image',
+  comboNumber5: 'image',
+  comboNumber6: 'image',
+  comboNumber7: 'image',
+  comboNumber8: 'image',
+  comboNumber9: 'image'
+};
 
 /**
  * Build note style entries for a note style ID.
@@ -118,17 +153,24 @@ const NOTE_STYLE_ASSET_KEYS = ['note', 'noteStrumline', 'noteSplash', 'holdNote'
 export function buildNoteStyleEntries(noteStyleId, noteStyleRegistry) {
   const entries = [];
 
-  for (const assetKey of NOTE_STYLE_ASSET_KEYS) {
+  for (const [assetKey, type] of Object.entries(NOTE_STYLE_ASSET_KEYS)) {
     const asset = noteStyleRegistry.getResolvedAsset(noteStyleId, assetKey);
-    if (!asset || !asset.resolvedPath) continue;
+    if (!asset || !asset.resolvedPath) {
+      continue;
+    }
 
     const prefixed = prefixPath(asset.resolvedPath);
-    entries.push({
-      type: 'atlas',
+    const entry = {
+      type,
       key: `notestyle-${noteStyleId}-${assetKey}`,
-      path: `${prefixed}.png`,
-      atlasURL: `${prefixed}.xml`
-    });
+      path: `${prefixed}.png`
+    };
+
+    if (type === 'atlas') {
+      entry.atlasURL = `${prefixed}.xml`;
+    }
+
+    entries.push(entry);
   }
 
   return entries;
@@ -144,7 +186,9 @@ export function deduplicateEntries(entries) {
   const result = [];
 
   for (const entry of entries) {
-    if (seen.has(entry.key)) continue;
+    if (seen.has(entry.key)) {
+      continue;
+    }
     seen.add(entry.key);
     result.push(entry);
   }
@@ -161,29 +205,27 @@ export function deduplicateEntries(entries) {
 export function buildManifest(session, registries) {
   const { characterRegistry, stageRegistry, noteStyleRegistry } = registries;
   const songData = session.songData || {};
+  const features = session.level?.features ?? {};
 
-  // Extract character IDs from the characters object (e.g. { player: 'bf', opponent: 'dad', girlfriend: 'gf' })
-  const characters = songData.characters || {};
-  const characterIds = Object.values(characters).filter(Boolean);
+  // Extract the playable character IDs from the prepared session contract.
+  const characters = features.characters === false ? {} : songData.characters || {};
+  const characterIds = ['player', 'opponent', 'girlfriend']
+    .map((key) => characters[key])
+    .filter((characterId) => typeof characterId === 'string' && characterId.length > 0);
 
-  const stageId = songData.stage;
+  const stageId = features.stage === false ? null : songData.stage;
   const noteStyleId = songData.noteStyle;
 
   // Start with existing audio assets from the session
   const audioEntries = session.assets || [];
 
   // Build entries from each registry
-  const charEntries = characterIds.length > 0
-    ? buildCharacterEntries(characterIds, characterRegistry)
-    : [];
+  const charEntries =
+    characterIds.length > 0 ? buildCharacterEntries(characterIds, characterRegistry) : [];
 
-  const stageEntries = stageId
-    ? buildStageEntries(stageId, stageRegistry)
-    : [];
+  const stageEntries = stageId ? buildStageEntries(stageId, stageRegistry) : [];
 
-  const noteStyleEntries = noteStyleId
-    ? buildNoteStyleEntries(noteStyleId, noteStyleRegistry)
-    : [];
+  const noteStyleEntries = noteStyleId ? buildNoteStyleEntries(noteStyleId, noteStyleRegistry) : [];
 
   // Merge all entries and deduplicate
   const allEntries = [...audioEntries, ...charEntries, ...stageEntries, ...noteStyleEntries];
@@ -199,22 +241,44 @@ export function buildManifest(session, registries) {
  * @returns {(scene: Object) => Promise<{assets: AssetEntry[], nextSceneData: Object, nextScene: string}>}
  */
 export function buildPrepareCallback(levelInput, registries) {
-  return async (_scene) => {
+  return async (scene) => {
     let builder = registries.levelSessionBuilder;
     if (!builder) {
       const { default: LevelSessionBuilder } = await import('./LevelSessionBuilder.js');
       builder = new LevelSessionBuilder();
     }
-    const session = await builder.build(levelInput);
-    const manifestEntries = buildManifest(session, registries);
+    const baseSession = await builder.build(levelInput);
+    const characters = Object.values(baseSession.songData?.characters ?? {}).filter(Boolean);
+    const uniqueCharacters = [...new Set(characters)];
+    const stageId = baseSession.songData?.stage ?? null;
+    const noteStyleId = baseSession.songData?.noteStyle ?? null;
+
+    if (scene) {
+      await Promise.all([
+        uniqueCharacters.length > 0 &&
+        typeof registries.characterRegistry?.loadEntriesAsync === 'function'
+          ? registries.characterRegistry.loadEntriesAsync(scene, uniqueCharacters)
+          : Promise.resolve(),
+        stageId && typeof registries.stageRegistry?.loadEntriesAsync === 'function'
+          ? registries.stageRegistry.loadEntriesAsync(scene, [stageId])
+          : Promise.resolve(),
+        noteStyleId && typeof registries.noteStyleRegistry?.loadEntriesAsync === 'function'
+          ? registries.noteStyleRegistry.loadEntriesAsync(scene, [noteStyleId])
+          : Promise.resolve()
+      ]);
+    }
+
+    const manifestEntries = buildManifest(baseSession, registries);
+    const session = createPreparedPlaySession({
+      ...baseSession,
+      assets: manifestEntries
+    });
 
     return {
-      assets: manifestEntries,
+      assets: session.assets,
       nextSceneData: {
-        chart: session.chart,
-        songData: session.songData,
-        audio: session.audio,
-        metadata: session.metadata
+        levelId: session.level?.id ?? null,
+        session
       },
       nextScene: 'PlayState'
     };

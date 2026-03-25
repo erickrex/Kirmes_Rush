@@ -1,6 +1,10 @@
 /**
  * @fileoverview Story Menu State - Week/Level selection
  * Implements FR-6.3: Story mode week selection
+ *
+ * Retained intentionally as future story-mode scaffolding. It stays hidden from
+ * the current shipped menu and should reuse SaveManager-based progression when
+ * story mode is wired back in.
  */
 
 import BaseMenuState from './BaseMenuState.js';
@@ -25,14 +29,54 @@ export default class StoryMenuState extends BaseMenuState {
 
     /** @type {WeekData[]} */
     this.weeks = [
-      { id: 'tutorial', name: 'Tutorial', tracks: ['Tutorial'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week1', name: 'Week 1', tracks: ['Bopeebo', 'Fresh', 'Dad Battle'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week2', name: 'Week 2', tracks: ['Spookeez', 'South', 'Monster'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week3', name: 'Week 3', tracks: ['Pico', 'Philly Nice', 'Blammed'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week4', name: 'Week 4', tracks: ['Satin Panties', 'High', 'MILF'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week5', name: 'Week 5', tracks: ['Cocoa', 'Eggnog', 'Winter Horrorland'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week6', name: 'Week 6', tracks: ['Senpai', 'Roses', 'Thorns'], difficulties: ['easy', 'normal', 'hard'] },
-      { id: 'week7', name: 'Week 7', tracks: ['Ugh', 'Guns', 'Stress'], difficulties: ['easy', 'normal', 'hard'] }
+      {
+        id: 'tutorial',
+        name: 'Tutorial',
+        tracks: ['Tutorial'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week1',
+        name: 'Week 1',
+        tracks: ['Bopeebo', 'Fresh', 'Dad Battle'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week2',
+        name: 'Week 2',
+        tracks: ['Spookeez', 'South', 'Monster'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week3',
+        name: 'Week 3',
+        tracks: ['Pico', 'Philly Nice', 'Blammed'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week4',
+        name: 'Week 4',
+        tracks: ['Satin Panties', 'High', 'MILF'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week5',
+        name: 'Week 5',
+        tracks: ['Cocoa', 'Eggnog', 'Winter Horrorland'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week6',
+        name: 'Week 6',
+        tracks: ['Senpai', 'Roses', 'Thorns'],
+        difficulties: ['easy', 'normal', 'hard']
+      },
+      {
+        id: 'week7',
+        name: 'Week 7',
+        tracks: ['Ugh', 'Guns', 'Stress'],
+        difficulties: ['easy', 'normal', 'hard']
+      }
     ];
 
     /** @type {number} */
@@ -105,8 +149,7 @@ export default class StoryMenuState extends BaseMenuState {
   // ========================================
 
   preload() {
-    this.load.setPath('assets/');
-    this.load.image('story-bg', 'images/menu/menuBGMagenta.png');
+    this.load.image('story-bg', 'assets/funkin.assets/preload/images/menuBGMagenta.png');
     this.preloadMenuSounds();
   }
 
@@ -119,10 +162,15 @@ export default class StoryMenuState extends BaseMenuState {
 
     this.createBackground('story-bg', 0x2e1a2e, 0x3e1a3e);
 
-    this.add.text(width / 2, 50, 'STORY MODE', {
-      fontFamily: 'Arial Black', fontSize: '48px', color: '#ffffff',
-      stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 50, 'STORY MODE', {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
 
     this.createWeekList();
     this.createTrackListPanel();
@@ -137,10 +185,15 @@ export default class StoryMenuState extends BaseMenuState {
     this.weekTexts = [];
     this.weeks.forEach((week, index) => {
       const text = this.add.text(100, 150 + index * 60, week.name, {
-        fontFamily: 'Arial', fontSize: '32px', color: '#ffffff',
-        stroke: '#000000', strokeThickness: 2
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2
       });
-      if (week.locked) text.setColor('#666666');
+      if (week.locked) {
+        text.setColor('#666666');
+      }
       this.weekTexts.push(text);
     });
   }
@@ -154,40 +207,66 @@ export default class StoryMenuState extends BaseMenuState {
     graphics.fillRoundedRect(panelX - 20, 130, 280, 200, 10);
 
     this.add.text(panelX, 150, 'TRACKS:', {
-      fontFamily: 'Arial', fontSize: '24px', color: '#ffff00'
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#ffff00'
     });
 
     this.trackListText = this.add.text(panelX, 190, '', {
-      fontFamily: 'Arial', fontSize: '20px', color: '#ffffff', lineSpacing: 8
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#ffffff',
+      lineSpacing: 8
     });
   }
 
   createDifficultySelector() {
     const { width, height } = this.cameras.main;
 
-    this.add.text(width / 2, height - 120, 'DIFFICULTY:', {
-      fontFamily: 'Arial', fontSize: '24px', color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, height - 120, 'DIFFICULTY:', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
 
-    this.difficultyText = this.add.text(width / 2, height - 80, '', {
-      fontFamily: 'Arial Black', fontSize: '36px', color: '#00ff00',
-      stroke: '#000000', strokeThickness: 3
-    }).setOrigin(0.5, 0.5);
+    this.difficultyText = this.add
+      .text(width / 2, height - 80, '', {
+        fontFamily: 'Arial Black',
+        fontSize: '36px',
+        color: '#00ff00',
+        stroke: '#000000',
+        strokeThickness: 3
+      })
+      .setOrigin(0.5, 0.5);
 
-    this.add.text(width / 2 - 150, height - 80, '<', {
-      fontFamily: 'Arial', fontSize: '36px', color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2 - 150, height - 80, '<', {
+        fontFamily: 'Arial',
+        fontSize: '36px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
 
-    this.add.text(width / 2 + 150, height - 80, '>', {
-      fontFamily: 'Arial', fontSize: '36px', color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2 + 150, height - 80, '>', {
+        fontFamily: 'Arial',
+        fontSize: '36px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   createScoreDisplay() {
     const { width } = this.cameras.main;
-    this.scoreText = this.add.text(width - 20, 20, 'SCORE: 0', {
-      fontFamily: 'Arial', fontSize: '24px', color: '#ffffff'
-    }).setOrigin(1, 0);
+    this.scoreText = this.add
+      .text(width - 20, 20, 'SCORE: 0', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      })
+      .setOrigin(1, 0);
   }
 
   // ========================================
@@ -195,19 +274,27 @@ export default class StoryMenuState extends BaseMenuState {
   // ========================================
 
   onDifficultyLeft() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
     const week = this.weeks[this.selectedIndex];
     this.selectedDifficultyIndex--;
-    if (this.selectedDifficultyIndex < 0) this.selectedDifficultyIndex = week.difficulties.length - 1;
+    if (this.selectedDifficultyIndex < 0) {
+      this.selectedDifficultyIndex = week.difficulties.length - 1;
+    }
     this.playScrollSound();
     this.updateDisplay();
   }
 
   onDifficultyRight() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
     const week = this.weeks[this.selectedIndex];
     this.selectedDifficultyIndex++;
-    if (this.selectedDifficultyIndex >= week.difficulties.length) this.selectedDifficultyIndex = 0;
+    if (this.selectedDifficultyIndex >= week.difficulties.length) {
+      this.selectedDifficultyIndex = 0;
+    }
     this.playScrollSound();
     this.updateDisplay();
   }
@@ -229,22 +316,35 @@ export default class StoryMenuState extends BaseMenuState {
       }
     });
 
-    if (this.trackListText) this.trackListText.setText(week.tracks.join('\n'));
+    if (this.trackListText) {
+      this.trackListText.setText(week.tracks.join('\n'));
+    }
 
     if (this.difficultyText) {
       const difficulty = week.difficulties[this.selectedDifficultyIndex];
       this.difficultyText.setText(difficulty.toUpperCase());
-      const colors = { easy: '#00ff00', normal: '#ffff00', hard: '#ff0000', erect: '#ff00ff', nightmare: '#8800ff' };
+      const colors = {
+        easy: '#00ff00',
+        normal: '#ffff00',
+        hard: '#ff0000',
+        erect: '#ff00ff',
+        nightmare: '#8800ff'
+      };
       this.difficultyText.setColor(colors[difficulty] || '#ffffff');
     }
 
-    if (this.scoreText) this.scoreText.setText('SCORE: 0');
+    if (this.scoreText) {
+      this.scoreText.setText('SCORE: 0');
+    }
   }
 
   startWeek(week) {
     const difficulty = week.difficulties[this.selectedDifficultyIndex];
     this.transitionToScene('PlayState', {
-      weekId: week.id, tracks: week.tracks, difficulty, currentTrack: 0
+      weekId: week.id,
+      tracks: week.tracks,
+      difficulty,
+      currentTrack: 0
     });
   }
 

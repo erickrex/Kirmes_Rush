@@ -181,7 +181,6 @@ export default class LoadingState extends Phaser.Scene {
 
     // Setup loading events
     this.setupLoadingEvents();
-
   }
 
   /**
@@ -296,7 +295,7 @@ export default class LoadingState extends Phaser.Scene {
   loadAssets() {
     let queuedAssets = 0;
 
-    this.assets.forEach(asset => {
+    this.assets.forEach((asset) => {
       if (typeof asset === 'string') {
         // Simple string path - infer type from extension
         const ext = asset.split('.').pop().toLowerCase();
@@ -354,7 +353,11 @@ export default class LoadingState extends Phaser.Scene {
             queuedAssets++;
             break;
           case 'atlas':
-            this.load.atlas(key, path, options.atlasURL);
+            if (options.atlasURL && options.atlasURL.endsWith('.xml')) {
+              this.load.atlasXML(key, path, options.atlasURL);
+            } else {
+              this.load.atlas(key, path, options.atlasURL);
+            }
             queuedAssets++;
             break;
           case 'json':
@@ -440,7 +443,8 @@ export default class LoadingState extends Phaser.Scene {
       console.error('[LoadingState] Preparation failed:', error);
       this.preparing = false;
       this.hasError = true;
-      this.errorMessage = error instanceof Error ? error.message : 'Failed to prepare loading state';
+      this.errorMessage =
+        error instanceof Error ? error.message : 'Failed to prepare loading state';
       this.onLoadComplete();
     }
   }

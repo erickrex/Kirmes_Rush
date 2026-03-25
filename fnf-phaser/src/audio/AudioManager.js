@@ -143,7 +143,9 @@ class AudioManager {
    * @returns {Phaser.Sound.BaseSound | null}
    */
   loadInstrumental(key) {
-    if (!this.scene?.sound) return null;
+    if (!this.scene?.sound) {
+      return null;
+    }
 
     try {
       this.instrumental = this.scene.sound.add(key, {
@@ -195,7 +197,9 @@ class AudioManager {
    * @param {number} [startTime=0] - Start time in milliseconds
    */
   play(startTime = 0) {
-    if (!this.instrumental) return;
+    if (!this.instrumental) {
+      return;
+    }
 
     const seekTime = startTime / Constants.MS_PER_SEC;
 
@@ -217,7 +221,9 @@ class AudioManager {
    * Pause the audio
    */
   pause() {
-    if (!this.instrumental || !this.isPlaying) return;
+    if (!this.instrumental || !this.isPlaying) {
+      return;
+    }
 
     try {
       this.instrumental.pause();
@@ -236,7 +242,9 @@ class AudioManager {
    * Resume the audio
    */
   resume() {
-    if (!this.instrumental || !this.isPaused) return;
+    if (!this.instrumental || !this.isPaused) {
+      return;
+    }
 
     try {
       this.instrumental.resume();
@@ -255,7 +263,9 @@ class AudioManager {
    * Stop the audio
    */
   stop() {
-    if (!this.instrumental) return;
+    if (!this.instrumental) {
+      return;
+    }
 
     try {
       this.instrumental.stop();
@@ -275,7 +285,9 @@ class AudioManager {
    * @param {number} timeMs - Time in milliseconds
    */
   seek(timeMs) {
-    if (!this.instrumental) return;
+    if (!this.instrumental) {
+      return;
+    }
 
     const seekTime = Math.max(0, timeMs / Constants.MS_PER_SEC);
 
@@ -299,7 +311,9 @@ class AudioManager {
    * @returns {number}
    */
   get currentTime() {
-    if (!this.instrumental) return 0;
+    if (!this.instrumental) {
+      return 0;
+    }
 
     try {
       // Phaser's seek property returns time in seconds
@@ -315,7 +329,9 @@ class AudioManager {
    * @returns {boolean} Whether resync was performed
    */
   resync() {
-    if (!this.instrumental || !this.voices) return false;
+    if (!this.instrumental || !this.voices) {
+      return false;
+    }
 
     const instTime = this.currentTime;
     const voicesTime = this.voices.currentTime;
@@ -333,7 +349,9 @@ class AudioManager {
    * Force resync voices to instrumental
    */
   forceResync() {
-    if (!this.instrumental || !this.voices) return;
+    if (!this.instrumental || !this.voices) {
+      return;
+    }
     this.voices.seek(this.currentTime);
   }
 
@@ -408,7 +426,9 @@ class AudioManager {
    * @returns {number}
    */
   get duration() {
-    if (!this.instrumental) return 0;
+    if (!this.instrumental) {
+      return 0;
+    }
     return (this.instrumental.duration ?? 0) * Constants.MS_PER_SEC;
   }
 
@@ -418,7 +438,9 @@ class AudioManager {
    */
   get progress() {
     const dur = this.duration;
-    if (dur <= 0) return 0;
+    if (dur <= 0) {
+      return 0;
+    }
     return this.currentTime / dur;
   }
 
@@ -427,7 +449,9 @@ class AudioManager {
    * @returns {boolean}
    */
   get hasEnded() {
-    if (!this.instrumental) return false;
+    if (!this.instrumental) {
+      return false;
+    }
     return this.currentTime >= this.duration - 100; // 100ms buffer
   }
 
@@ -441,7 +465,9 @@ class AudioManager {
    * @returns {Phaser.Sound.BaseSound | null}
    */
   loadSFX(key) {
-    if (!this.scene?.sound) return null;
+    if (!this.scene?.sound) {
+      return null;
+    }
 
     // Check if already cached
     if (this.sfxCache.has(key)) {
@@ -470,7 +496,9 @@ class AudioManager {
    * @returns {Phaser.Sound.BaseSound | null}
    */
   playSFX(key, config = {}) {
-    if (!this.scene?.sound || this.muted) return null;
+    if (!this.scene?.sound || this.muted) {
+      return null;
+    }
 
     try {
       // Get or create the sound
@@ -479,7 +507,9 @@ class AudioManager {
         sfx = this.loadSFX(key);
       }
 
-      if (!sfx) return null;
+      if (!sfx) {
+        return null;
+      }
 
       // Calculate effective volume
       const volume = (config.volume ?? 1) * this.sfxVolume * this.masterVolume;

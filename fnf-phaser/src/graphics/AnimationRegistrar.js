@@ -19,9 +19,16 @@ export function registerCharacterAnimations(scene, textureKey, animations) {
       frameConfig.frames = anim.frameIndices;
     }
 
+    const frames = scene.anims.generateFrameNames(textureKey, frameConfig);
+
+    // Skip animations with no valid frames in the atlas
+    if (!frames || frames.length === 0) {
+      continue;
+    }
+
     const config = {
       key: anim.name,
-      frames: scene.anims.generateFrameNames(textureKey, frameConfig),
+      frames,
       frameRate: anim.frameRate,
       repeat: anim.looped ? -1 : 0
     };

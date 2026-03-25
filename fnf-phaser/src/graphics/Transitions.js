@@ -180,12 +180,16 @@ class Transitions {
     if (direction === 'out') {
       this.scene.cameras.main.fadeOut(duration, r, g, b);
       this.scene.cameras.main.once('camerafadeoutcomplete', () => {
-        if (config.onComplete) config.onComplete();
+        if (config.onComplete) {
+          config.onComplete();
+        }
       });
     } else {
       this.scene.cameras.main.fadeIn(duration, r, g, b);
       this.scene.cameras.main.once('camerafadeincomplete', () => {
-        if (config.onComplete) config.onComplete();
+        if (config.onComplete) {
+          config.onComplete();
+        }
       });
     }
   }
@@ -208,7 +212,10 @@ class Transitions {
     // Create overlay
     this.createOverlay(config.color ?? 0x000000);
 
-    let startX = 0, startY = 0, endX = 0, endY = 0;
+    let startX = 0,
+      startY = 0,
+      endX = 0,
+      endY = 0;
 
     // Calculate positions based on type and direction
     if (direction === 'out') {
@@ -263,7 +270,9 @@ class Transitions {
         if (direction === 'in') {
           this.destroyOverlay();
         }
-        if (config.onComplete) config.onComplete();
+        if (config.onComplete) {
+          config.onComplete();
+        }
       }
     });
   }
@@ -309,7 +318,9 @@ class Transitions {
         if (direction === 'in') {
           camera.setZoom(1);
         }
-        if (config.onComplete) config.onComplete();
+        if (config.onComplete) {
+          config.onComplete();
+        }
       }
     });
   }
@@ -377,7 +388,9 @@ class Transitions {
 
     // Complete after all stickers are placed
     this.scene.time.delayedCall(duration, () => {
-      if (config.onComplete) config.onComplete();
+      if (config.onComplete) {
+        config.onComplete();
+      }
     });
   }
 
@@ -430,7 +443,9 @@ class Transitions {
 
     this.scene.time.delayedCall(duration, () => {
       this.stickers = [];
-      if (config.onComplete) config.onComplete();
+      if (config.onComplete) {
+        config.onComplete();
+      }
     });
   }
 
@@ -511,24 +526,36 @@ class Transitions {
     graphics.moveTo(cx, cy + 10 * scale);
 
     graphics.bezierCurveTo(
-      cx, cy - 5 * scale,
-      cx - 15 * scale, cy - 5 * scale,
-      cx - 15 * scale, cy + 5 * scale
+      cx,
+      cy - 5 * scale,
+      cx - 15 * scale,
+      cy - 5 * scale,
+      cx - 15 * scale,
+      cy + 5 * scale
     );
     graphics.bezierCurveTo(
-      cx - 15 * scale, cy + 15 * scale,
-      cx, cy + 20 * scale,
-      cx, cy + 25 * scale
+      cx - 15 * scale,
+      cy + 15 * scale,
+      cx,
+      cy + 20 * scale,
+      cx,
+      cy + 25 * scale
     );
     graphics.bezierCurveTo(
-      cx, cy + 20 * scale,
-      cx + 15 * scale, cy + 15 * scale,
-      cx + 15 * scale, cy + 5 * scale
+      cx,
+      cy + 20 * scale,
+      cx + 15 * scale,
+      cy + 15 * scale,
+      cx + 15 * scale,
+      cy + 5 * scale
     );
     graphics.bezierCurveTo(
-      cx + 15 * scale, cy - 5 * scale,
-      cx, cy - 5 * scale,
-      cx, cy + 10 * scale
+      cx + 15 * scale,
+      cy - 5 * scale,
+      cx,
+      cy - 5 * scale,
+      cx,
+      cy + 10 * scale
     );
 
     graphics.fillPath();
@@ -563,7 +590,9 @@ class Transitions {
         duration,
         ease: 'Sine.easeInOut',
         onComplete: () => {
-          if (config.onComplete) config.onComplete();
+          if (config.onComplete) {
+            config.onComplete();
+          }
         }
       });
     } else {
@@ -579,7 +608,9 @@ class Transitions {
         ease: 'Sine.easeInOut',
         onComplete: () => {
           this.destroyOverlay();
-          if (config.onComplete) config.onComplete();
+          if (config.onComplete) {
+            config.onComplete();
+          }
         }
       });
     }
@@ -640,7 +671,7 @@ class Transitions {
 
     this.destroyOverlay();
 
-    this.stickers.forEach(s => s.destroy());
+    this.stickers.forEach((s) => s.destroy());
     this.stickers = [];
 
     this.transitioning = false;

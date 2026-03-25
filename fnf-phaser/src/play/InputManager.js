@@ -68,11 +68,18 @@ export function createInputManager(context) {
      */
     handleNoteInput(direction, timestamp) {
       const { playState, noteProcessor } = context;
-      if (!playState.playerStrumline) return;
+      if (!playState.playerStrumline) {
+        return;
+      }
 
       // Record input for replay if recording
       if (playState.replayRecorder && playState.replayRecorder.isRecording()) {
-        playState.replayRecorder.recordInput('press', direction, `Key${direction}`, playState.songPosition);
+        playState.replayRecorder.recordInput(
+          'press',
+          direction,
+          `Key${direction}`,
+          playState.songPosition
+        );
       }
 
       // Mark key as held
@@ -111,11 +118,18 @@ export function createInputManager(context) {
      */
     handleNoteRelease(direction, timestamp) {
       const { playState } = context;
-      if (!playState.playerStrumline) return;
+      if (!playState.playerStrumline) {
+        return;
+      }
 
       // Record input for replay if recording
       if (playState.replayRecorder && playState.replayRecorder.isRecording()) {
-        playState.replayRecorder.recordInput('release', direction, `Key${direction}`, playState.songPosition);
+        playState.replayRecorder.recordInput(
+          'release',
+          direction,
+          `Key${direction}`,
+          playState.songPosition
+        );
       }
 
       // Mark key as released
@@ -127,7 +141,9 @@ export function createInputManager(context) {
      * Clean up resources. Idempotent — subsequent calls are no-ops.
      */
     destroy() {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       destroyed = true;
     }
   };

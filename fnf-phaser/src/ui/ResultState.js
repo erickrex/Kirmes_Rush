@@ -4,7 +4,6 @@
  */
 
 import Phaser from 'phaser';
-import * as Constants from '../core/Constants.js';
 import Scoring from '../play/Scoring.js';
 
 /**
@@ -90,6 +89,12 @@ export default class ResultState extends Phaser.Scene {
      * @type {boolean}
      */
     this.scoreAnimationComplete = false;
+
+    /**
+     * Whether this run created a new local best
+     * @type {boolean}
+     */
+    this.newHighScore = false;
   }
 
   /**
@@ -101,6 +106,8 @@ export default class ResultState extends Phaser.Scene {
     this.tallies = data?.tallies || this.tallies;
     this.rank = data?.rank || Scoring.calculateRank(this.tallies);
     this.songData = data?.songData || null;
+    this.timingStats = data?.timingStats || null;
+    this.newHighScore = data?.newHighScore === true;
     this.displayedScore = 0;
     this.transitioning = false;
     this.scoreAnimationComplete = false;
@@ -110,19 +117,10 @@ export default class ResultState extends Phaser.Scene {
    * Preload assets
    */
   preload() {
-    this.load.setPath('assets/');
-
-    // Rank images
-    this.load.image('rank-perfect', 'images/results/rankPerfect.png');
-    this.load.image('rank-excellent', 'images/results/rankExcellent.png');
-    this.load.image('rank-great', 'images/results/rankGreat.png');
-    this.load.image('rank-good', 'images/results/rankGood.png');
-    this.load.image('rank-loss', 'images/results/rankLoss.png');
-
-    // Result music (rank-specific)
-    this.load.audio('result-music-perfect', 'audio/resultsPerfect.mp3');
-    this.load.audio('result-music-excellent', 'audio/resultsExcellent.mp3');
-    this.load.audio('result-music-normal', 'audio/resultsNormal.mp3');
+    // Result music (rank-specific) — no rank images; text fallback handles display
+    this.load.audio('result-music-perfect', 'assets/funkin.assets/shared/music/resultsPERFECT/resultsPERFECT.mp3');
+    this.load.audio('result-music-excellent', 'assets/funkin.assets/shared/music/resultsEXCELLENT/resultsEXCELLENT.mp3');
+    this.load.audio('result-music-normal', 'assets/funkin.assets/shared/music/resultsNORMAL/resultsNORMAL.mp3');
   }
 
   /**
@@ -140,8 +138,17 @@ export default class ResultState extends Phaser.Scene {
     // Score display
     this.createScoreDisplay();
 
+    if (this.newHighScore) {
+      this.createHighScoreBanner();
+    }
+
     // Tallies breakdown
     this.createTalliesDisplay();
+
+    // Timing analysis (if available)
+    if (this.timingStats) {
+      this.createTimingAnalysis();
+    }
 
     // Rank display
     this.createRankDisplay();
@@ -203,21 +210,25 @@ export default class ResultState extends Phaser.Scene {
 
     // Song name
     const songName = this.songData?.songName || 'Unknown Song';
-    this.add.text(width / 2, 50, songName, {
-      fontFamily: 'Arial Black',
-      fontSize: '48px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 50, songName, {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
 
     // Difficulty
     const difficulty = this.songData?.difficulty || 'normal';
-    this.add.text(width / 2, 100, difficulty.toUpperCase(), {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#cccccc'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 100, difficulty.toUpperCase(), {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#cccccc'
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   /**
@@ -227,29 +238,48 @@ export default class ResultState extends Phaser.Scene {
     const { width, height } = this.cameras.main;
 
     // Score label
-    this.add.text(width / 2, height / 2 - 100, 'SCORE', {
-      fontFamily: 'Arial',
-      fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, height / 2 - 100, 'SCORE', {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
 
     // Score value
-    this.scoreText = this.add.text(width / 2, height / 2 - 40, '0', {
-      fontFamily: 'Arial Black',
-      fontSize: '72px',
-      color: '#ffff00',
-      stroke: '#000000',
-      strokeThickness: 6
-    }).setOrigin(0.5, 0.5);
+    this.scoreText = this.add
+      .text(width / 2, height / 2 - 40, '0', {
+        fontFamily: 'Arial Black',
+        fontSize: '72px',
+        color: '#ffff00',
+        stroke: '#000000',
+        strokeThickness: 6
+      })
+      .setOrigin(0.5, 0.5);
 
     // Accuracy
     const accuracy = this.calculateAccuracy();
-    this.accuracyText = this.add.text(width / 2, height / 2 + 30, `${accuracy.toFixed(2)}%`, {
-      fontFamily: 'Arial',
-      fontSize: '36px',
-      color: '#00ff00'
-    }).setOrigin(0.5, 0.5);
+    this.accuracyText = this.add
+      .text(width / 2, height / 2 + 30, `${accuracy.toFixed(2)}%`, {
+        fontFamily: 'Arial',
+        fontSize: '36px',
+        color: '#00ff00'
+      })
+      .setOrigin(0.5, 0.5);
     this.accuracyText.setAlpha(0);
+  }
+
+  createHighScoreBanner() {
+    const { width, height } = this.cameras.main;
+    this.add
+      .text(width / 2, height / 2 - 155, 'NEW LOCAL BEST', {
+        fontFamily: 'Arial Black',
+        fontSize: '28px',
+        color: '#facc15',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   /**
@@ -275,34 +305,99 @@ export default class ResultState extends Phaser.Scene {
       const x = startX + index * spacing;
 
       // Label
-      this.add.text(x, startY, tally.label, {
-        fontFamily: 'Arial',
-        fontSize: '18px',
-        color: '#888888'
-      }).setOrigin(0, 0);
+      this.add
+        .text(x, startY, tally.label, {
+          fontFamily: 'Arial',
+          fontSize: '18px',
+          color: '#888888'
+        })
+        .setOrigin(0, 0);
 
       // Value
-      const valueText = this.add.text(x, startY + 25, '0', {
-        fontFamily: 'Arial Black',
-        fontSize: '32px',
-        color: tally.color
-      }).setOrigin(0, 0);
+      const valueText = this.add
+        .text(x, startY + 25, '0', {
+          fontFamily: 'Arial Black',
+          fontSize: '32px',
+          color: tally.color
+        })
+        .setOrigin(0, 0);
 
       this.tallyTexts.push({ text: valueText, target: tally.value });
     });
 
     // Max combo
-    this.add.text(startX + talliesData.length * spacing, startY, 'MAX COMBO', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      color: '#888888'
-    }).setOrigin(0, 0);
+    this.add
+      .text(startX + talliesData.length * spacing, startY, 'MAX COMBO', {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#888888'
+      })
+      .setOrigin(0, 0);
 
-    this.maxComboText = this.add.text(startX + talliesData.length * spacing, startY + 25, '0', {
-      fontFamily: 'Arial Black',
-      fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0, 0);
+    this.maxComboText = this.add
+      .text(startX + talliesData.length * spacing, startY + 25, '0', {
+        fontFamily: 'Arial Black',
+        fontSize: '32px',
+        color: '#ffffff'
+      })
+      .setOrigin(0, 0);
+  }
+
+  /**
+   * Create timing analysis section from InputStatistics data
+   * Displays average offset, early/late/perfect counts, and per-judgement averages
+   */
+  createTimingAnalysis() {
+    if (!this.timingStats || !this.timingStats.offsets || this.timingStats.offsets.length === 0) {
+      return;
+    }
+
+    const { width, height } = this.cameras.main;
+    const startX = width - 350;
+    const startY = height / 2 + 100;
+
+    // Average offset with Early/Late label
+    const avgMs = this.timingStats.averageOffset;
+    const label = avgMs < 0 ? 'Early' : avgMs > 0 ? 'Late' : '';
+    const avgText = `Avg: ${Math.abs(avgMs).toFixed(1)}ms${label ? ` (${label})` : ''}`;
+
+    this.timingAvgText = this.add
+      .text(startX, startY, avgText, {
+        fontFamily: 'Arial',
+        fontSize: '22px',
+        color: '#ffffff'
+      })
+      .setOrigin(0, 0);
+
+    // Early / Late / Perfect counts
+    const ratioText = `Early: ${this.timingStats.earlyCount} | Late: ${this.timingStats.lateCount} | Perfect: ${this.timingStats.perfectCount}`;
+    this.timingRatioText = this.add
+      .text(startX, startY + 30, ratioText, {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#cccccc'
+      })
+      .setOrigin(0, 0);
+
+    // Per-judgement average offsets
+    this.timingJudgementTexts = [];
+    let yOffset = 60;
+    const byJudgement = this.timingStats.byJudgement;
+    for (const [judgement, data] of Object.entries(byJudgement)) {
+      if (data.count > 0) {
+        const jLabel = data.avgOffset < 0 ? 'Early' : data.avgOffset > 0 ? 'Late' : '';
+        const jText = `${judgement}: ${Math.abs(data.avgOffset).toFixed(1)}ms${jLabel ? ` (${jLabel})` : ''} [${data.count} hits]`;
+        const text = this.add
+          .text(startX, startY + yOffset, jText, {
+            fontFamily: 'Arial',
+            fontSize: '16px',
+            color: '#aaaaaa'
+          })
+          .setOrigin(0, 0);
+        this.timingJudgementTexts.push(text);
+        yOffset += 25;
+      }
+    }
   }
 
   /**
@@ -319,13 +414,15 @@ export default class ResultState extends Phaser.Scene {
       this.rankSprite.setScale(0);
     } else {
       // Fallback text
-      this.rankText = this.add.text(width - 150, height / 2, this.rank, {
-        fontFamily: 'Arial Black',
-        fontSize: '64px',
-        color: this.getRankTextColor(),
-        stroke: '#000000',
-        strokeThickness: 4
-      }).setOrigin(0.5, 0.5);
+      this.rankText = this.add
+        .text(width - 150, height / 2, this.rank, {
+          fontFamily: 'Arial Black',
+          fontSize: '64px',
+          color: this.getRankTextColor(),
+          stroke: '#000000',
+          strokeThickness: 4
+        })
+        .setOrigin(0.5, 0.5);
       this.rankText.setScale(0);
     }
   }
@@ -355,11 +452,13 @@ export default class ResultState extends Phaser.Scene {
   createContinuePrompt() {
     const { width, height } = this.cameras.main;
 
-    this.continueText = this.add.text(width / 2, height - 50, 'Press ENTER to continue', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    this.continueText = this.add
+      .text(width / 2, height - 50, 'Press ENTER to continue', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
     this.continueText.setAlpha(0);
   }
 
@@ -485,7 +584,9 @@ export default class ResultState extends Phaser.Scene {
    */
   animateRank() {
     const target = this.rankSprite || this.rankText;
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     this.tweens.add({
       targets: target,
@@ -510,7 +611,9 @@ export default class ResultState extends Phaser.Scene {
    * @returns {number}
    */
   calculateAccuracy() {
-    if (this.tallies.totalNotes === 0) return 0;
+    if (this.tallies.totalNotes === 0) {
+      return 0;
+    }
     return (this.tallies.totalNotesHit / this.tallies.totalNotes) * 100;
   }
 
@@ -518,7 +621,9 @@ export default class ResultState extends Phaser.Scene {
    * Handle continue input
    */
   onContinue() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     // If score animation not complete, skip to end
     if (!this.scoreAnimationComplete) {
@@ -579,5 +684,6 @@ export default class ResultState extends Phaser.Scene {
     this.continueText = null;
     this.tallyTexts = [];
     this.songData = null;
+    this.timingStats = null;
   }
 }

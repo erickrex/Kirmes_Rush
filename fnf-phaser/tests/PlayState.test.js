@@ -155,6 +155,12 @@ const createMockScene = () => ({
       // Execute immediately for testing
       callback();
     })
+  },
+  textures: {
+    exists: vi.fn(() => true)
+  },
+  anims: {
+    exists: vi.fn(() => true)
   }
 });
 
@@ -683,6 +689,63 @@ describe('PlayState', () => {
 
       expect(callback).toHaveBeenCalled();
     });
+
+    it('should include timingStats in SONG_END payload when InputStatistics exists', () => {
+      // Enable competitive stats
+      playState.levelSystem = null; // freeplay → enabled
+      playState.init({ song: {} });
+
+      // Record some hits
+      playState.inputStatistics.recordHit(-5, 'sick');
+      playState.inputStatistics.recordHit(3, 'good');
+
+      playState.endSong();
+
+      expect(EventBus.emit).toHaveBeenCalledWith(
+        Events.SONG_END,
+        expect.objectContaining({
+          timingStats: expect.objectContaining({
+            offsets: [-5, 3],
+            averageOffset: expect.any(Number)
+          })
+        })
+      );
+    });
+
+    it('should include timingStats as null in SONG_END payload when InputStatistics is null', () => {
+      // Disable competitive stats
+      playState.levelSystem = {
+        isFeatureEnabled: (name) => false
+      };
+      playState.init({ song: {} });
+
+      playState.endSong();
+
+      expect(EventBus.emit).toHaveBeenCalledWith(
+        Events.SONG_END,
+        expect.objectContaining({
+          timingStats: null
+        })
+      );
+    });
+
+    it('should pass timingStats to onSongEnd callback', () => {
+      const callback = vi.fn();
+      playState.levelSystem = null;
+      playState.init({ song: {} });
+      playState.onSongEnd = callback;
+
+      playState.inputStatistics.recordHit(-2, 'sick');
+      playState.endSong();
+
+      // onSongEnd(score, tallies, rank, replayData, timingStats)
+      // Verify the 5th argument (timingStats) contains the recorded offset
+      const callArgs = callback.mock.calls[0];
+      expect(callArgs).toHaveLength(5);
+      expect(callArgs[4]).toEqual(expect.objectContaining({
+        offsets: [-2]
+      }));
+    });
   });
 
   describe('pause/resume', () => {
@@ -1205,12 +1268,10 @@ describe('PlayState', () => {
 
         playState.endSong();
 
-        expect(callback).toHaveBeenCalledWith(
-          expect.any(Number),
-          expect.any(Object),
-          expect.any(String),
-          expect.any(Object) // replayData
-        );
+        // onSongEnd now receives 5 args: score, tallies, rank, replayData, timingStats
+        const callArgs = callback.mock.calls[0];
+        expect(callArgs).toHaveLength(5);
+        expect(callArgs[3]).toEqual(expect.any(Object)); // replayData
       });
     });
 

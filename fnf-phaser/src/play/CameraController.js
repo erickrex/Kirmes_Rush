@@ -47,13 +47,16 @@ export function createCameraController(context) {
      */
     setupCameras() {
       const { scene, playState } = context;
-      if (!scene?.cameras) return;
+      if (!scene?.cameras) {
+        return;
+      }
 
       controller.camGame = scene.cameras.main;
 
       // Create HUD camera
       controller.camHUD = scene.cameras.add(
-        0, 0,
+        0,
+        0,
         scene.scale?.width ?? 1280,
         scene.scale?.height ?? 720
       );
@@ -78,7 +81,9 @@ export function createCameraController(context) {
       controller.cameraFocusTarget = target;
 
       const character = controller.getCameraFocusCharacter(target);
-      if (!character || !controller.funkinCamera) return;
+      if (!character || !controller.funkinCamera) {
+        return;
+      }
 
       const focusPoint = character.getCameraFocusPoint();
 
@@ -127,7 +132,9 @@ export function createCameraController(context) {
      * @param {Object} eventData - Event payload with zoom and instant
      */
     handleZoomCameraEvent(eventData) {
-      if (!controller.funkinCamera) return;
+      if (!controller.funkinCamera) {
+        return;
+      }
 
       const zoom = eventData?.zoom ?? eventData?.value?.zoom ?? 1.0;
       const instant = eventData?.instant ?? eventData?.value?.instant ?? false;
@@ -140,7 +147,9 @@ export function createCameraController(context) {
      * Idempotent — subsequent calls are no-ops.
      */
     destroy() {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       destroyed = true;
 
       eventBus.off(Events.FOCUS_CAMERA, controller.handleFocusCameraEvent);

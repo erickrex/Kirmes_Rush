@@ -299,7 +299,9 @@ class SustainTrail {
    * @param {Object} noteStyle - The note style configuration
    */
   setupHoldNoteGraphic(noteStyle) {
-    if (!noteStyle) return;
+    if (!noteStyle) {
+      return;
+    }
 
     // Get the hold note asset path
     if (typeof noteStyle.getHoldNoteAssetPath === 'function') {
@@ -377,8 +379,12 @@ class SustainTrail {
    * @param {number} length - New length in milliseconds
    */
   setSustainLength(length) {
-    if (length < 0) length = 0;
-    if (this.sustainLength === length) return;
+    if (length < 0) {
+      length = 0;
+    }
+    if (this.sustainLength === length) {
+      return;
+    }
 
     this.sustainLength = length;
     this.updateDimensions();
@@ -390,10 +396,15 @@ class SustainTrail {
    * @param {number} [songTime=0] - Current song time in milliseconds
    */
   updateClipping(songTime = 0) {
-    if (this.customVertexData) return;
+    if (this.customVertexData) {
+      return;
+    }
 
     const scrollSpeed = this.parentStrumline?.scrollSpeed ?? 1.0;
-    let clipHeight = SustainTrail.sustainHeight(this.sustainLength - (songTime - this.strumTime), scrollSpeed);
+    let clipHeight = SustainTrail.sustainHeight(
+      this.sustainLength - (songTime - this.strumTime),
+      scrollSpeed
+    );
     clipHeight = Math.max(0, Math.min(clipHeight, this.graphicHeight));
 
     if (clipHeight <= 0.1) {
@@ -418,7 +429,12 @@ class SustainTrail {
 
     // Bottom left
     this.vertices[4] = 0;
-    this.vertices[5] = partHeight > 0 ? (this.flipY ? bottomHeight : this.vertices[1] + partHeight) : this.vertices[1];
+    this.vertices[5] =
+      partHeight > 0
+        ? this.flipY
+          ? bottomHeight
+          : this.vertices[1] + partHeight
+        : this.vertices[1];
 
     // Bottom right
     this.vertices[6] = this.graphicWidth;
@@ -454,7 +470,8 @@ class SustainTrail {
     const capUvRight = capUvLeft + 1 / 8;
 
     this.uvtData[8] = capUvLeft;
-    this.uvtData[9] = partHeight > 0 ? 0 : (bottomHeight - clipHeight) / this.zoom / this.graphicHeight;
+    this.uvtData[9] =
+      partHeight > 0 ? 0 : (bottomHeight - clipHeight) / this.zoom / this.graphicHeight;
     this.uvtData[10] = capUvRight;
     this.uvtData[11] = this.uvtData[9];
     this.uvtData[12] = capUvLeft;
@@ -472,7 +489,9 @@ class SustainTrail {
    * @param {number} songPosition - Current song position in milliseconds
    */
   update(songPosition) {
-    if (!this.alive || !this.active) return;
+    if (!this.alive || !this.active) {
+      return;
+    }
 
     // Update clipping if being held
     if (this.hitNote && !this.missedNote) {
@@ -582,7 +601,9 @@ class SustainTrail {
    * @param {number} offsetY - Y offset for drawing
    */
   draw(graphics, offsetX = 0, offsetY = 0) {
-    if (!this.visible || this.alpha <= 0) return;
+    if (!this.visible || this.alpha <= 0) {
+      return;
+    }
 
     // In a full implementation, this would draw triangles using the vertex data
     // For now, we'll draw a simple rectangle as a placeholder

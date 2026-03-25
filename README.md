@@ -2,111 +2,136 @@
 
 <h2>Friday Night Funkin' - Phaser JS Edition</h2>
 
-A web-based rhythm game rebuilt in Phaser 3.90.0, originally created for [Ludum Dare 47](https://ldjam.com/events/ludum-dare/47).
-
-This game was made with love to Newgrounds and its community. Extra love to Tom Fulp.
+A Phaser 3 rebuild of Friday Night Funkin' focused on a stable 5-level browser release.
 
 </div>
 
-## About This Version
-
-This is a complete JavaScript rewrite of Friday Night Funkin' using [Phaser 3](https://phaser.io/). The original game was built in HaxeFlixel - this version maintains feature parity while targeting modern web browsers.
-
-### Features
-- 🎮 Full gameplay with all original songs (Tutorial through Weekend 1)
-- 🎵 Precise audio synchronization (±5ms accuracy)
-- ⌨️ Low-latency input handling (<16ms)
-- 💾 Local save system for high scores and preferences
-- 🌐 Runs in any modern browser (Chrome, Firefox, Safari, Edge)
-
 ## Quick Start
 
-### Play Online
-- [Newgrounds](https://www.newgrounds.com/portal/view/770371) (Original HaxeFlixel version)
-
-### Run Locally
+If you already have the repo:
 
 ```bash
-# Clone the repository
-git clone --recursive https://github.com/FunkinCrew/Funkin.git
-cd Funkin/fnf-phaser
-
-# Install dependencies
+cd fnf-phaser
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Then open `http://localhost:5173` in your browser.
+Then open `http://localhost:3000`.
 
-### Build for Production
+If you need to clone it first:
 
 ```bash
+git clone --recursive https://github.com/FunkinCrew/Funkin.git
+cd Funkin/fnf-phaser
+npm install
+npm run dev
+```
+
+## Current Release Scope
+
+The current shipped game flow is:
+
+`Title -> Main Menu -> Levels -> Loading -> Play -> Result/Game Over -> Levels`
+
+This release intentionally exposes only:
+
+- `Levels`
+- `Options`
+
+The playable progression is a curated 5-level path:
+
+1. `Level 1: Basics`
+2. `Level 2: Rhythm`
+3. `Level 3: Performance`
+4. `Level 4: Challenge`
+5. `Level 5: Mastery`
+
+## What Is Included
+
+- Five playable levels backed by real song charts and shared Funkin asset data
+- Progressive feature unlocks across those five levels
+- Local persistence through `SaveManager` for options, controls, scores, and progress
+- Result-screen high score updates and level completion tracking
+- Automated unit and integration smoke coverage for the shipped release path
+
+## What Is Preserved But Hidden
+
+Legacy mode modules such as Story Menu, Freeplay, and Replay Browser are still present in the codebase, but they are intentionally not exposed in the current menu. They are retained as scaffolding for future mode work rather than treated as dead code.
+
+## Build
+
+```bash
+cd fnf-phaser
 npm run build
 ```
 
-The built files will be in `fnf-phaser/dist/`.
+The production output is written to `fnf-phaser/dist/`.
+
+## Verification
+
+```bash
+cd fnf-phaser
+npm test
+npm run test:integration
+npm run lint
+npm run build
+```
+
+Current status:
+
+- `npm test` passes
+- `npm run test:integration` passes
+- `npm run lint` passes with warnings
+- `npm run build` passes
+- `npm run typecheck` still reports outstanding legacy JSDoc/type issues and is not yet green
 
 ## Project Structure
 
 ```
 fnf-phaser/
 ├── src/
-│   ├── core/       # Conductor, EventBus, Registry
-│   ├── play/       # PlayState, Strumline, Scoring
-│   ├── ui/         # Menu states, HUD components
-│   ├── audio/      # AudioManager, VoicesGroup
-│   ├── graphics/   # FunkinSprite, Transitions
-│   ├── input/      # Controls, PreciseInput
-│   └── data/       # Parsers, Registries
-├── assets/         # Game assets (linked from funkin.assets)
-├── tests/          # Unit and integration tests
-└── docs/           # Documentation
+│   ├── audio/
+│   ├── core/
+│   ├── data/
+│   ├── graphics/
+│   ├── input/
+│   ├── levels/
+│   ├── play/
+│   ├── scenes/
+│   └── ui/
+├── assets/data/          # App-owned 5-level manifests and manifest indexes
+├── tests/                # Unit tests
+├── tests/integration/    # Release-path smoke tests
+└── dist/                 # Production build output
 ```
+
+Shared Funkin content remains sourced from `assets/funkin.assets/` at the repository root and is bridged into the Phaser app during development and build.
 
 ## Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md) - System design and patterns
-- [Browser Testing](fnf-phaser/docs/BROWSER_TESTING.md) - Cross-browser compatibility
-- [Audio Sync Testing](fnf-phaser/docs/AUDIO_SYNC_TESTING.md) - Timing accuracy verification
-- [Performance Optimization](fnf-phaser/docs/PERFORMANCE_OPTIMIZATION.md) - Performance strategies
-
-## Running Tests
-
-```bash
-cd fnf-phaser
-# Unit tests (default; stable in CI)
-npm test
-
-# Integration tests (requires browser/canvas-capable environment)
-npm run test:integration
-```
-
-Use `npm run test:all` to run both.
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Browser Testing](fnf-phaser/docs/BROWSER_TESTING.md)
+- [Audio Sync Testing](fnf-phaser/docs/AUDIO_SYNC_TESTING.md)
+- [Performance Optimization](fnf-phaser/docs/PERFORMANCE_OPTIMIZATION.md)
 
 ## Tech Stack
 
-- **Framework**: [Phaser 3.90.0](https://phaser.io/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **Testing**: [Vitest](https://vitest.dev/)
-- **Language**: JavaScript (ES6+)
+- [Phaser 3.90.0](https://phaser.io/)
+- [Vite](https://vitejs.dev/)
+- [Vitest](https://vitest.dev/)
+- JavaScript (ES modules)
 
-## Credits and Special Thanks
+## Credits
 
-Full credits can be found in-game, or in the `credits.json` file which is located [here](https://github.com/FunkinCrew/funkin.assets/blob/main/exclude/data/credits.json).
+Full credits can be found in-game and in the upstream Funkin asset data.
 
 ### Original Game
+
 - [ninjamuffin99](https://twitter.com/ninja_muffin99) - Lead Programmer
 - [PhantomArcade3K](https://twitter.com/phantomarcade3k) - Artist and Animator
 - [Kawaisprite](https://twitter.com/kawaisprite) - Musician
 - [Evilsk8r](https://twitter.com/evilsk8r) - Art
 
-### Special Thanks
-- [Tom Fulp](https://twitter.com/tomfulp) - For Newgrounds
-- The entire Funkin' Crew team
-- Our contributors on GitHub
-
 ## License
 
-See [LICENSE.md](LICENSE.md) for details.
+See [LICENSE.md](LICENSE.md).

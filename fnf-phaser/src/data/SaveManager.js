@@ -3,11 +3,13 @@
  * Implements FR-10.1, FR-10.2, FR-10.3: Save/load high scores, options, and progress
  */
 
+import { ARROW_STORED_KEYS, codeToStoredKey } from '../input/KeybindStorage.js';
+
 /**
  * Current save data version for migration handling
  * @type {string}
  */
-const SAVE_VERSION = '1.0.0';
+const SAVE_VERSION = '1.1.0';
 
 /**
  * Storage keys
@@ -18,7 +20,8 @@ export const StorageKeys = {
   OPTIONS: 'fnf-options',
   SCORES: 'fnf-scores',
   PROGRESS: 'fnf-progress',
-  VERSION: 'fnf-version'
+  VERSION: 'fnf-version',
+  LEGACY_CONTROLS: 'fnf_controls'
 };
 
 /**
@@ -84,6 +87,7 @@ const DEFAULT_OPTIONS = {
 const DEFAULT_PROGRESS = {
   unlockedWeeks: ['tutorial', 'week1'],
   completedSongs: [],
+  completedLevels: [],
   storyProgress: {}
 };
 
@@ -95,8 +99,22 @@ function getDefaultProgress() {
   return {
     unlockedWeeks: [...DEFAULT_PROGRESS.unlockedWeeks],
     completedSongs: [...DEFAULT_PROGRESS.completedSongs],
+    completedLevels: [...DEFAULT_PROGRESS.completedLevels],
     storyProgress: { ...DEFAULT_PROGRESS.storyProgress }
   };
+}
+
+function uniqueList(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function chooseStoredKeys(codes, fallbackPrimary, fallbackAlternate) {
+  const storedKeys = uniqueList(codes.map((code) => codeToStoredKey(code)));
+  const primary =
+    storedKeys.find((key) => !ARROW_STORED_KEYS.has(key)) ?? storedKeys[0] ?? fallbackPrimary;
+  const alternate = storedKeys.find((key) => key !== primary) ?? fallbackAlternate;
+
+  return { primary, alternate };
 }
 
 /**
@@ -204,9 +222,13 @@ class SaveManager {
    * @returns {boolean} Whether initialization was successful
    */
   init() {
-    if (this.loaded) return true;
+    if (this.loaded) {
+      return true;
+    }
 
     try {
+      this.checkStorageAvailability();
+
       // Check for version and migrate if needed
       this.checkVersion();
 
@@ -214,6 +236,7 @@ class SaveManager {
       this.loadOptions();
       this.loadScores();
       this.loadProgress();
+      this.migrateLegacyControls();
 
       this.loaded = true;
       return true;
@@ -278,6 +301,55 @@ class SaveManager {
     } catch (e) {
       console.warn('[SaveManager] Failed to load options:', e);
       this.options = { ...DEFAULT_OPTIONS };
+    }
+  }
+
+  migrateLegacyControls() {
+    try {
+      const raw = this.getItem(StorageKeys.LEGACY_CONTROLS);
+      if (!raw) {
+        return false;
+      }
+
+      const parsed = JSON.parse(raw);
+      const noteKeybinds = parsed?.noteKeybinds;
+      if (!noteKeybinds || typeof noteKeybinds !== 'object') {
+        return false;
+      }
+
+      const left = chooseStoredKeys(
+        noteKeybinds.left ?? [],
+        this.options.keyLeft,
+        this.options.keyLeftAlt
+      );
+      const down = chooseStoredKeys(
+        noteKeybinds.down ?? [],
+        this.options.keyDown,
+        this.options.keyDownAlt
+      );
+      const up = chooseStoredKeys(noteKeybinds.up ?? [], this.options.keyUp, this.options.keyUpAlt);
+      const right = chooseStoredKeys(
+        noteKeybinds.right ?? [],
+        this.options.keyRight,
+        this.options.keyRightAlt
+      );
+
+      this.options = {
+        ...this.options,
+        keyLeft: left.primary,
+        keyLeftAlt: left.alternate,
+        keyDown: down.primary,
+        keyDownAlt: down.alternate,
+        keyUp: up.primary,
+        keyUpAlt: up.alternate,
+        keyRight: right.primary,
+        keyRightAlt: right.alternate
+      };
+      this.saveOptions();
+      return true;
+    } catch (e) {
+      console.warn('[SaveManager] Failed to migrate legacy controls:', e);
+      return false;
     }
   }
 
@@ -538,7 +610,14 @@ class SaveManager {
       const data = this.getItem(StorageKeys.PROGRESS);
       if (data) {
         const parsed = JSON.parse(data);
-        this.progress = { ...getDefaultProgress(), ...parsed };
+        this.progress = {
+          ...getDefaultProgress(),
+          ...parsed,
+          unlockedWeeks: uniqueList(parsed.unlockedWeeks ?? DEFAULT_PROGRESS.unlockedWeeks),
+          completedSongs: uniqueList(parsed.completedSongs),
+          completedLevels: uniqueList(parsed.completedLevels),
+          storyProgress: { ...DEFAULT_PROGRESS.storyProgress, ...(parsed.storyProgress ?? {}) }
+        };
       } else {
         this.progress = getDefaultProgress();
       }
@@ -591,7 +670,7 @@ class SaveManager {
     if (difficulty) {
       return this.progress.completedSongs.includes(`${songId}:${difficulty}`);
     }
-    return this.progress.completedSongs.some(s => s.startsWith(`${songId}:`));
+    return this.progress.completedSongs.some((s) => s.startsWith(`${songId}:`));
   }
 
   /**
@@ -605,6 +684,35 @@ class SaveManager {
       this.progress.completedSongs.push(key);
       this.saveProgress();
     }
+  }
+
+  isLevelCompleted(levelId) {
+    return this.progress.completedLevels.includes(levelId);
+  }
+
+  completeLevel(levelId) {
+    if (!levelId) {
+      return;
+    }
+
+    if (!this.progress.completedLevels.includes(levelId)) {
+      this.progress.completedLevels.push(levelId);
+      this.saveProgress();
+    }
+  }
+
+  recordSongResult(result) {
+    const { levelId, songId, difficulty, score, rank, accuracy, maxCombo } = result;
+
+    const newHighScore = this.setHighScore(songId, difficulty, {
+      score,
+      rank,
+      accuracy,
+      maxCombo
+    });
+    this.completeSong(songId, difficulty);
+    this.completeLevel(levelId);
+    return newHighScore;
   }
 
   /**
@@ -645,7 +753,9 @@ class SaveManager {
    * @private
    */
   getItem(key) {
-    if (!this.storageAvailable) return null;
+    if (!this.storageAvailable) {
+      return null;
+    }
     try {
       return localStorage.getItem(key);
     } catch (e) {
@@ -661,7 +771,9 @@ class SaveManager {
    * @private
    */
   setItem(key, value) {
-    if (!this.storageAvailable) return;
+    if (!this.storageAvailable) {
+      return;
+    }
     try {
       localStorage.setItem(key, value);
     } catch (e) {
@@ -675,7 +787,9 @@ class SaveManager {
    * @private
    */
   removeItem(key) {
-    if (!this.storageAvailable) return;
+    if (!this.storageAvailable) {
+      return;
+    }
     try {
       localStorage.removeItem(key);
     } catch (e) {
@@ -699,6 +813,7 @@ class SaveManager {
     this.removeItem(StorageKeys.SCORES);
     this.removeItem(StorageKeys.PROGRESS);
     this.removeItem(StorageKeys.VERSION);
+    this.removeItem(StorageKeys.LEGACY_CONTROLS);
   }
 
   /**
@@ -706,12 +821,16 @@ class SaveManager {
    * @returns {string}
    */
   exportData() {
-    return JSON.stringify({
-      version: SAVE_VERSION,
-      options: this.options,
-      scores: Object.fromEntries(this.scores),
-      progress: this.progress
-    }, null, 2);
+    return JSON.stringify(
+      {
+        version: SAVE_VERSION,
+        options: this.options,
+        scores: Object.fromEntries(this.scores),
+        progress: this.progress
+      },
+      null,
+      2
+    );
   }
 
   /**
@@ -734,7 +853,17 @@ class SaveManager {
       }
 
       if (data.progress) {
-        this.progress = { ...getDefaultProgress(), ...data.progress };
+        this.progress = {
+          ...getDefaultProgress(),
+          ...data.progress,
+          unlockedWeeks: uniqueList(data.progress.unlockedWeeks ?? DEFAULT_PROGRESS.unlockedWeeks),
+          completedSongs: uniqueList(data.progress.completedSongs),
+          completedLevels: uniqueList(data.progress.completedLevels),
+          storyProgress: {
+            ...DEFAULT_PROGRESS.storyProgress,
+            ...(data.progress.storyProgress ?? {})
+          }
+        };
         this.saveProgress();
       }
 

@@ -111,8 +111,7 @@ class SparrowParser {
     const imagePath = atlasMatch ? atlasMatch[1] : '';
 
     // Extract all SubTexture elements
-    const subTextureRegex =
-      /<SubTexture\s+([^>]+)\/?\s*>/gi;
+    const subTextureRegex = /<SubTexture\s+([^>]+)\/?\s*>/gi;
     const frames = [];
     const frameMap = new Map();
 
@@ -375,7 +374,10 @@ class SparrowParser {
     if (!exactMatch) {
       const matchingFrames = [];
       for (const [animPrefix, anim] of atlas.animations) {
-        if (animPrefix.startsWith(prefix) || animPrefix.toLowerCase().startsWith(prefix.toLowerCase())) {
+        if (
+          animPrefix.startsWith(prefix) ||
+          animPrefix.toLowerCase().startsWith(prefix.toLowerCase())
+        ) {
           matchingFrames.push(...anim.frames);
         }
       }

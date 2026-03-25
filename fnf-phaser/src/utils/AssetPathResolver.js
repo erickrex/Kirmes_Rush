@@ -19,14 +19,21 @@
  * @returns {string|null}
  */
 export function resolveAssetPath(assetPath) {
-  if (!assetPath) return null;
-  if (assetPath.startsWith('shared:')) return `images/shared/${assetPath.slice(7)}`;
-  if (assetPath.startsWith('default:')) return `images/preload/${assetPath.slice(8)}`;
+  if (!assetPath) {
+    return null;
+  }
+  if (assetPath.startsWith('shared:')) {
+    return `shared/images/${assetPath.slice(7)}`;
+  }
+  if (assetPath.startsWith('default:')) {
+    return `preload/images/${assetPath.slice(8)}`;
+  }
   const colonIndex = assetPath.indexOf(':');
   if (colonIndex !== -1) {
     const prefix = assetPath.slice(0, colonIndex);
     const path = assetPath.slice(colonIndex + 1);
-    return `images/${prefix}/${path}`;
+    return `${prefix}/images/${path}`;
   }
-  return `images/${assetPath}`;
+  // Bare paths (no prefix) resolve to shared/images/ where most game assets live
+  return `shared/images/${assetPath}`;
 }

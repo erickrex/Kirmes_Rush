@@ -199,7 +199,9 @@ class Character extends FunkinSprite {
    * @param {Array} animations - Animation data array
    */
   setupAnimations(animations) {
-    if (!animations || !Array.isArray(animations)) return;
+    if (!animations || !Array.isArray(animations)) {
+      return;
+    }
 
     for (const anim of animations) {
       // Store animation offsets
@@ -272,7 +274,9 @@ class Character extends FunkinSprite {
    * Play hold animation for current sing direction
    */
   holdNote() {
-    if (this.singDirection < 0) return;
+    if (this.singDirection < 0) {
+      return;
+    }
 
     const holdAnimName = CharacterRegistry.getHoldAnimationName(this.singDirection);
 
@@ -310,7 +314,9 @@ class Character extends FunkinSprite {
    */
   dance(forceRestart = false) {
     // Don't dance while singing or stunned
-    if (this.isSinging || this.isStunned) return;
+    if (this.isSinging || this.isStunned) {
+      return;
+    }
 
     super.dance(forceRestart);
   }
@@ -405,7 +411,9 @@ class Character extends FunkinSprite {
    * @returns {boolean}
    */
   canPlayAnimation(animName) {
-    if (!this.canPlayOtherAnims) return false;
+    if (!this.canPlayOtherAnims) {
+      return false;
+    }
     return this.hasAnimation(animName);
   }
 

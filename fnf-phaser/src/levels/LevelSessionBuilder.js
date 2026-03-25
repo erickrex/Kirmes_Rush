@@ -4,6 +4,7 @@
 
 import ChartParser from '../data/parsers/ChartParser.js';
 import LevelContentResolver, { fetchJson } from './LevelContentResolver.js';
+import { createPreparedPlaySession } from './PreparedPlaySession.js';
 import LevelSystem, { LevelManifest } from './LevelSystem.js';
 
 function normalizeNote(note, features = {}) {
@@ -70,6 +71,29 @@ function buildAudioEntries(song) {
   return { audio, entries };
 }
 
+function buildCharacterConfig(song, metadata, features = {}) {
+  if (features.characters === false) {
+    return {};
+  }
+
+  const merged = {
+    ...(song?.characters ?? {}),
+    ...(metadata?.playData?.characters ?? {})
+  };
+
+  const characters = {
+    player: typeof merged.player === 'string' ? merged.player : null,
+    opponent: typeof merged.opponent === 'string' ? merged.opponent : null,
+    girlfriend: typeof merged.girlfriend === 'string' ? merged.girlfriend : null
+  };
+
+  return Object.fromEntries(
+    Object.entries(characters).filter(
+      ([, characterId]) => typeof characterId === 'string' && characterId.length > 0
+    )
+  );
+}
+
 /**
  * Builds normalized gameplay sessions for the five progressive levels.
  */
@@ -87,9 +111,7 @@ export default class LevelSessionBuilder {
    * @returns {Promise<Object>}
    */
   async build(levelInput) {
-    const level = typeof levelInput === 'string'
-      ? await this.loadLevel(levelInput)
-      : levelInput;
+    const level = typeof levelInput === 'string' ? await this.loadLevel(levelInput) : levelInput;
 
     if (!level) {
       throw new Error('Level session build failed: level not found');
@@ -115,13 +137,13 @@ export default class LevelSessionBuilder {
     const separatedNotes = ChartParser.separateNotes(normalizedNotes);
     const { audio, entries } = buildAudioEntries(song);
 
-    const songName = song.name ?? metadata.songName ?? level.name;
-    const characters = song.characters ?? metadata.playData?.characters ?? {};
+    const songName = metadata.songName ?? song.name ?? level.name;
+    const characters = buildCharacterConfig(song, metadata, level.features);
+    const stageId =
+      level.features?.stage === false ? null : (metadata.playData?.stage ?? song.stage ?? null);
 
-    return {
+    return createPreparedPlaySession({
       level,
-      song,
-      metadata,
       difficulty,
       chart: {
         timeChanges: metadata.timeChanges ?? [],
@@ -134,20 +156,22 @@ export default class LevelSessionBuilder {
       },
       audio,
       assets: entries,
+      metadata,
       songData: {
         id: song.id,
         name: songName,
         songName,
         difficulty,
-        artist: song.artist ?? metadata.artist ?? 'Unknown',
-        stage: song.stage ?? metadata.playData?.stage ?? null,
+        artist: metadata.artist ?? song.artist ?? 'Unknown',
+        stage: stageId,
         noteStyle: metadata.playData?.noteStyle ?? null,
         characters,
         returnScene: 'LevelSelectState',
         returnSceneData: { selectedLevelId: level.id },
-        levelId: level.id
+        levelId: level.id,
+        manifestId: song.manifestId ?? null
       }
-    };
+    });
   }
 
   /**

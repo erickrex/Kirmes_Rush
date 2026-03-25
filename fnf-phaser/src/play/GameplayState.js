@@ -117,7 +117,9 @@ export function createGameplayState(context) {
      * Clean up resources. Idempotent — subsequent calls are no-ops.
      */
     destroy() {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       destroyed = true;
       // Reset state to free references
       state.tallies = null;

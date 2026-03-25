@@ -117,7 +117,9 @@ class NoteSplash {
    * @returns {Object | null} The splash sprite
    */
   spawn(x, y, direction) {
-    if (!this.enabled) return null;
+    if (!this.enabled) {
+      return null;
+    }
 
     // Get from pool or create new
     let splash = this.splashPool.pop();
@@ -126,7 +128,9 @@ class NoteSplash {
       splash = this.createSplash();
     }
 
-    if (!splash) return null;
+    if (!splash) {
+      return null;
+    }
 
     // Configure splash
     splash.x = x;
@@ -171,7 +175,9 @@ class NoteSplash {
    * @returns {Object | null}
    */
   spawnAtReceptor(receptor, direction) {
-    if (!receptor) return null;
+    if (!receptor) {
+      return null;
+    }
     return this.spawn(receptor.x, receptor.y, direction);
   }
 

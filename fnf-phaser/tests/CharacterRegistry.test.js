@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import CharacterRegistry from '../src/data/registries/CharacterRegistry.js';
+import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
 // Sample character data based on actual FNF format (bf.json)
 const sampleBfData = {
@@ -95,7 +96,7 @@ describe('CharacterRegistry', () => {
     });
 
     it('should have correct data path', () => {
-      expect(registry.dataFilePath).toBe('data/characters');
+      expect(registry.dataFilePath).toBe(getSharedRegistryPath('characters'));
     });
   });
 
@@ -461,7 +462,7 @@ describe('CharacterRegistry', () => {
     });
 
     it('should get character path', () => {
-      expect(testRegistry.getCharacterPath('bf')).toBe('data/characters/bf.json');
+      expect(testRegistry.getCharacterPath('bf')).toBe(`${getSharedRegistryPath('characters')}/bf.json`);
     });
 
     it('should get sprite asset path', () => {

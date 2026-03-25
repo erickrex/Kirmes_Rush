@@ -4,7 +4,6 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
-import EventBus, { Events } from '../core/EventBus.js';
 
 /**
  * @typedef {Object} MenuItem
@@ -21,6 +20,8 @@ export default class MainMenuState extends BaseMenuState {
   constructor() {
     super({ key: 'MainMenuState' });
 
+    // The current release intentionally exposes only Levels and Options. Story,
+    // Freeplay, and Replay scenes stay in the codebase as future-mode scaffolding.
     /** @type {MenuItem[]} */
     this.menuItems = [
       { name: 'Levels', scene: 'LevelSelectState' },
@@ -82,10 +83,9 @@ export default class MainMenuState extends BaseMenuState {
   // ========================================
 
   preload() {
-    this.load.setPath('assets/');
-    this.load.image('menu-bg', 'images/menu/menuBG.png');
+    this.load.image('menu-bg', 'assets/funkin.assets/preload/images/menuBG.png');
     if (!this.cache.audio.exists('menu-music')) {
-      this.load.audio('menu-music', 'audio/freakyMenu.mp3');
+      this.load.audio('menu-music', 'assets/funkin.assets/preload/music/freakyMenu/freakyMenu.mp3');
     }
     this.preloadMenuSounds();
   }
@@ -105,20 +105,22 @@ export default class MainMenuState extends BaseMenuState {
   createMenuItems() {
     const { width, height } = this.cameras.main;
     const centerX = width / 2;
-    const startY = height / 2 - ((this.menuItems.length - 1) * 40);
+    const startY = height / 2 - (this.menuItems.length - 1) * 40;
 
     this.menuTexts = [];
 
     this.menuItems.forEach((item, index) => {
       const y = startY + index * 80;
-      const text = this.add.text(centerX, y, item.name, {
-        fontFamily: 'Arial Black',
-        fontSize: '48px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4,
-        align: 'center'
-      }).setOrigin(0.5, 0.5);
+      const text = this.add
+        .text(centerX, y, item.name, {
+          fontFamily: 'Arial Black',
+          fontSize: '48px',
+          color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 4,
+          align: 'center'
+        })
+        .setOrigin(0.5, 0.5);
 
       item.text = text;
       this.menuTexts.push(text);

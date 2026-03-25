@@ -1,0 +1,69 @@
+{
+  "id": "week4",
+  "name": "Mommy Must Murder",
+  "songs": [
+    {
+      "id": "satin-panties",
+      "name": "Satin Panties",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/satin-panties/satin-panties-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/satin-panties/satin-panties-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/satin-panties/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/satin-panties/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/satin-panties/Voices-mom.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "mom",
+        "girlfriend": "gf"
+      },
+      "stage": "limo"
+    },
+    {
+      "id": "high",
+      "name": "High",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/high/high-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/high/high-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/high/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/high/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/high/Voices-mom.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "mom",
+        "girlfriend": "gf"
+      },
+      "stage": "limo"
+    },
+    {
+      "id": "milf",
+      "name": "MILF",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/funkin.assets/preload/data/songs/milf/milf-chart.json",
+        "metadata": "assets/funkin.assets/preload/data/songs/milf/milf-metadata.json",
+        "instrumental": "assets/funkin.assets/songs/milf/Inst.ogg",
+        "vocals": {
+          "player": "assets/funkin.assets/songs/milf/Voices-bf.ogg",
+          "opponent": "assets/funkin.assets/songs/milf/Voices-mom.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "mom",
+        "girlfriend": "gf"
+      },
+      "stage": "limo"
+    }
+  ]
+}

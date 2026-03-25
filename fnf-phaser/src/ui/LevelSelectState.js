@@ -3,8 +3,12 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
+import SaveManager from '../data/SaveManager.js';
+import CharacterRegistry from '../data/registries/CharacterRegistry.js';
+import NoteStyleRegistry from '../data/registries/NoteStyleRegistry.js';
+import StageRegistry from '../data/registries/StageRegistry.js';
+import { buildPrepareCallback } from '../levels/AssetManifestBuilder.js';
 import LevelSystem from '../levels/LevelSystem.js';
-import LevelSessionBuilder from '../levels/LevelSessionBuilder.js';
 
 /**
  * LevelSelectState - Shows the 5 progressive levels and launches gameplay.
@@ -20,8 +24,11 @@ export default class LevelSelectState extends BaseMenuState {
     this.descriptionText = null;
     this.songText = null;
     this.difficultyText = null;
+    this.bestScoreText = null;
+    this.progressText = null;
     this.statusText = null;
     this.selectedLevelId = null;
+    this.saveManager = SaveManager.getInstance();
   }
 
   init(data) {
@@ -39,6 +46,7 @@ export default class LevelSelectState extends BaseMenuState {
   create() {
     this.transitioning = false;
     this.selectedIndex = 0;
+    this.saveManager.init();
 
     this.createBackground(null, 0x0f1724, 0x1b2436);
     this.createStaticUi();
@@ -82,9 +90,23 @@ export default class LevelSelectState extends BaseMenuState {
       color: '#7dd3fc'
     });
 
-    this.descriptionText = this.add.text(width - 420, 290, '', {
+    this.bestScoreText = this.add.text(width - 420, 285, '', {
       fontFamily: 'Arial',
-      fontSize: '20px',
+      fontSize: '18px',
+      color: '#facc15',
+      wordWrap: { width: 320 }
+    });
+
+    this.progressText = this.add.text(width - 420, 325, '', {
+      fontFamily: 'Arial',
+      fontSize: '18px',
+      color: '#86efac',
+      wordWrap: { width: 320 }
+    });
+
+    this.descriptionText = this.add.text(width - 420, 370, '', {
+      fontFamily: 'Arial',
+      fontSize: '19px',
       color: '#d1d5db',
       wordWrap: { width: 320 }
     });
@@ -161,6 +183,26 @@ export default class LevelSelectState extends BaseMenuState {
       this.difficultyText.setText(`Difficulty: ${level.difficulty.toUpperCase()}`);
     }
 
+    const highScore = this.saveManager.getHighScore(level.songId, level.difficulty);
+    const completed = this.saveManager.isLevelCompleted(level.id);
+
+    if (this.bestScoreText) {
+      if (highScore) {
+        this.bestScoreText.setText(
+          `Best: ${highScore.score.toLocaleString()} | ${highScore.rank} | ${highScore.accuracy.toFixed(2)}%`
+        );
+      } else {
+        this.bestScoreText.setText('Best: No saved result yet');
+      }
+    }
+
+    if (this.progressText) {
+      this.progressText.setText(
+        completed ? 'Status: Completed locally' : 'Status: Not cleared yet'
+      );
+      this.progressText.setColor(completed ? '#86efac' : '#fca5a5');
+    }
+
     if (this.descriptionText) {
       this.descriptionText.setText(level.description || '');
     }
@@ -177,18 +219,11 @@ export default class LevelSelectState extends BaseMenuState {
       nextScene: 'PlayState',
       message: `Loading ${level.name}...`,
       minDuration: 300,
-      prepareCallback: async () => {
-        const builder = new LevelSessionBuilder();
-        const session = await builder.build(level);
-
-        return {
-          assets: session.assets,
-          nextSceneData: {
-            levelId: level.id,
-            session
-          }
-        };
-      }
+      prepareCallback: buildPrepareCallback(level, {
+        characterRegistry: CharacterRegistry.getInstance(),
+        stageRegistry: StageRegistry.getInstance(),
+        noteStyleRegistry: NoteStyleRegistry.getInstance()
+      })
     });
   }
 
@@ -203,6 +238,8 @@ export default class LevelSelectState extends BaseMenuState {
     this.descriptionText = null;
     this.songText = null;
     this.difficultyText = null;
+    this.bestScoreText = null;
+    this.progressText = null;
     this.statusText = null;
   }
 }

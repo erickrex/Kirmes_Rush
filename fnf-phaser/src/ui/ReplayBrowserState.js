@@ -8,6 +8,9 @@
  * - Delete with confirmation
  * - Song filter
  * - Empty state handling
+ *
+ * Retained intentionally as future replay-mode scaffolding. It stays hidden
+ * from the current shipped menu until the release path supports it end-to-end.
  */
 
 import Phaser from 'phaser';
@@ -131,13 +134,13 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.load.setPath('assets/');
 
     if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'audio/scrollMenu.mp3');
+      this.load.audio('scroll-sound', 'assets/funkin.assets/preload/sounds/scrollMenu.mp3');
     }
     if (!this.cache.audio.exists('confirm-sound')) {
-      this.load.audio('confirm-sound', 'audio/confirmMenu.mp3');
+      this.load.audio('confirm-sound', 'assets/funkin.assets/preload/sounds/confirmMenu.mp3');
     }
     if (!this.cache.audio.exists('cancel-sound')) {
-      this.load.audio('cancel-sound', 'audio/cancelMenu.mp3');
+      this.load.audio('cancel-sound', 'assets/funkin.assets/preload/sounds/cancelMenu.mp3');
     }
   }
 
@@ -164,13 +167,15 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.createBackground();
 
     // Title
-    this.add.text(width / 2, 40, 'REPLAY BROWSER', {
-      fontFamily: 'Arial Black',
-      fontSize: '48px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(width / 2, 40, 'REPLAY BROWSER', {
+        fontFamily: 'Arial Black',
+        fontSize: '48px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+      })
+      .setOrigin(0.5, 0.5);
 
     // Replay list
     this.createReplayList();
@@ -207,7 +212,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.allReplays = this.replayManager.getReplayList();
 
     // Extract unique songs for filtering
-    const songSet = new Set(this.allReplays.map(r => r.songId));
+    const songSet = new Set(this.allReplays.map((r) => r.songId));
     this.availableSongs = ['ALL', ...Array.from(songSet).sort()];
 
     this.applyFilter();
@@ -224,10 +229,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
     }
 
     // Clamp selected index
-    this.selectedIndex = Math.min(
-      this.selectedIndex,
-      Math.max(0, this.filteredReplays.length - 1)
-    );
+    this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredReplays.length - 1));
 
     // Update scroll offset
     this.updateScrollOffset();
@@ -443,11 +445,13 @@ export default class ReplayBrowserState extends Phaser.Scene {
   createEmptyState() {
     const { width, height } = this.cameras.main;
 
-    this.emptyStateText = this.add.text(width / 2 - 150, height / 2, 'No replays found', {
-      fontFamily: 'Arial',
-      fontSize: '32px',
-      color: '#888888'
-    }).setOrigin(0.5, 0.5);
+    this.emptyStateText = this.add
+      .text(width / 2 - 150, height / 2, 'No replays found', {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#888888'
+      })
+      .setOrigin(0.5, 0.5);
 
     this.emptyStateText.setVisible(false);
   }
@@ -482,34 +486,42 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.deleteConfirmOverlay.add(box);
 
     // Title
-    const title = this.add.text(width / 2, boxY + 30, 'DELETE REPLAY?', {
-      fontFamily: 'Arial Black',
-      fontSize: '28px',
-      color: '#ff0000'
-    }).setOrigin(0.5, 0.5);
+    const title = this.add
+      .text(width / 2, boxY + 30, 'DELETE REPLAY?', {
+        fontFamily: 'Arial Black',
+        fontSize: '28px',
+        color: '#ff0000'
+      })
+      .setOrigin(0.5, 0.5);
     this.deleteConfirmOverlay.add(title);
 
     // Message
-    const message = this.add.text(width / 2, boxY + 70, 'This action cannot be undone.', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0.5);
+    const message = this.add
+      .text(width / 2, boxY + 70, 'This action cannot be undone.', {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#ffffff'
+      })
+      .setOrigin(0.5, 0.5);
     this.deleteConfirmOverlay.add(message);
 
     // Options
-    const confirmText = this.add.text(width / 2 - 80, boxY + 130, 'ENTER: Confirm', {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      color: '#ff0000'
-    }).setOrigin(0.5, 0.5);
+    const confirmText = this.add
+      .text(width / 2 - 80, boxY + 130, 'ENTER: Confirm', {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#ff0000'
+      })
+      .setOrigin(0.5, 0.5);
     this.deleteConfirmOverlay.add(confirmText);
 
-    const cancelText = this.add.text(width / 2 + 80, boxY + 130, 'ESC: Cancel', {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      color: '#00ff00'
-    }).setOrigin(0.5, 0.5);
+    const cancelText = this.add
+      .text(width / 2 + 80, boxY + 130, 'ESC: Cancel', {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#00ff00'
+      })
+      .setOrigin(0.5, 0.5);
     this.deleteConfirmOverlay.add(cancelText);
   }
 
@@ -519,11 +531,18 @@ export default class ReplayBrowserState extends Phaser.Scene {
   createInstructions() {
     const { width, height } = this.cameras.main;
 
-    this.add.text(width / 2, height - 30, 'UP/DOWN: Navigate | ENTER: Play | DELETE/BACKSPACE: Delete | LEFT/RIGHT: Filter | ESC: Back', {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      color: '#666666'
-    }).setOrigin(0.5, 0.5);
+    this.add
+      .text(
+        width / 2,
+        height - 30,
+        'UP/DOWN: Navigate | ENTER: Play | DELETE/BACKSPACE: Delete | LEFT/RIGHT: Filter | ESC: Back',
+        {
+          fontFamily: 'Arial',
+          fontSize: '14px',
+          color: '#666666'
+        }
+      )
+      .setOrigin(0.5, 0.5);
   }
 
   /**
@@ -558,8 +577,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Navigate up
    */
   onNavigateUp() {
-    if (this.transitioning || this.showingDeleteConfirm) return;
-    if (this.filteredReplays.length === 0) return;
+    if (this.transitioning || this.showingDeleteConfirm) {
+      return;
+    }
+    if (this.filteredReplays.length === 0) {
+      return;
+    }
 
     this.selectedIndex--;
     if (this.selectedIndex < 0) {
@@ -575,8 +598,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Navigate down
    */
   onNavigateDown() {
-    if (this.transitioning || this.showingDeleteConfirm) return;
-    if (this.filteredReplays.length === 0) return;
+    if (this.transitioning || this.showingDeleteConfirm) {
+      return;
+    }
+    if (this.filteredReplays.length === 0) {
+      return;
+    }
 
     this.selectedIndex++;
     if (this.selectedIndex >= this.filteredReplays.length) {
@@ -592,8 +619,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Filter left (previous song)
    */
   onFilterLeft() {
-    if (this.transitioning || this.showingDeleteConfirm) return;
-    if (this.availableSongs.length === 0) return;
+    if (this.transitioning || this.showingDeleteConfirm) {
+      return;
+    }
+    if (this.availableSongs.length === 0) {
+      return;
+    }
 
     this.songFilterIndex--;
     if (this.songFilterIndex < 0) {
@@ -614,8 +645,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Filter right (next song)
    */
   onFilterRight() {
-    if (this.transitioning || this.showingDeleteConfirm) return;
-    if (this.availableSongs.length === 0) return;
+    if (this.transitioning || this.showingDeleteConfirm) {
+      return;
+    }
+    if (this.availableSongs.length === 0) {
+      return;
+    }
 
     this.songFilterIndex++;
     if (this.songFilterIndex >= this.availableSongs.length) {
@@ -636,7 +671,9 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Select current replay to play
    */
   onSelect() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.showingDeleteConfirm) {
       // Confirm delete
@@ -644,7 +681,9 @@ export default class ReplayBrowserState extends Phaser.Scene {
       return;
     }
 
-    if (this.filteredReplays.length === 0) return;
+    if (this.filteredReplays.length === 0) {
+      return;
+    }
 
     this.transitioning = true;
     this.playConfirmSound();
@@ -657,8 +696,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Handle delete key press
    */
   onDelete() {
-    if (this.transitioning) return;
-    if (this.filteredReplays.length === 0) return;
+    if (this.transitioning) {
+      return;
+    }
+    if (this.filteredReplays.length === 0) {
+      return;
+    }
 
     if (this.showingDeleteConfirm) {
       return;
@@ -671,7 +714,9 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Handle backspace key (delete or back depending on context)
    */
   onDeleteKey() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     if (this.showingDeleteConfirm) {
       // Cancel delete
@@ -694,7 +739,9 @@ export default class ReplayBrowserState extends Phaser.Scene {
       return;
     }
 
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     this.transitioning = true;
     this.playCancelSound();

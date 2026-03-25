@@ -332,7 +332,9 @@ class HealthIcon extends FunkinSprite {
    */
   isAnimationFinished() {
     // For legacy icons, always "finished"
-    if (this.isLegacyStyle) return true;
+    if (this.isLegacyStyle) {
+      return true;
+    }
 
     // Check Phaser animation state
     return this.anims?.currentAnim?.isComplete ?? true;
@@ -343,11 +345,17 @@ class HealthIcon extends FunkinSprite {
    * @param {number} curStep - Current step number
    */
   onStepHit(curStep) {
-    if (this.bopEvery === 0) return;
-    if (curStep % this.bopEvery !== 0) return;
+    if (this.bopEvery === 0) {
+      return;
+    }
+    if (curStep % this.bopEvery !== 0) {
+      return;
+    }
 
     // Only bop legacy icons
-    if (!this.isLegacyStyle) return;
+    if (!this.isLegacyStyle) {
+      return;
+    }
 
     this.bop();
   }
@@ -409,7 +417,9 @@ class HealthIcon extends FunkinSprite {
    */
   smoothLerp(current, target, rate) {
     const diff = target - current;
-    if (Math.abs(diff) < 0.1) return target;
+    if (Math.abs(diff) < 0.1) {
+      return target;
+    }
     return current + diff * rate;
   }
 
@@ -453,7 +463,9 @@ class HealthIcon extends FunkinSprite {
    * @param {Object} healthBar - HealthBar instance
    */
   updatePosition(healthBar) {
-    if (!healthBar) return;
+    if (!healthBar) {
+      return;
+    }
 
     const percent = healthBar.getPercent();
     const barX = healthBar.x + healthBar.borderSize;

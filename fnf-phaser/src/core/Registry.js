@@ -345,7 +345,9 @@ class Registry {
    */
   createEntry(_id, _data) {
     if (this._config) {
-      if (!_data) return null;
+      if (!_data) {
+        return null;
+      }
       return this._config.createEntry.call(this, _id, _data);
     }
     throw new Error(`[${this.registryId}] createEntry() must be implemented by subclass`);
@@ -393,8 +395,12 @@ export function createRegistry(config, options = {}) {
 
   // Reset singleton for testing
   Object.defineProperty(ConfigRegistry, 'instance', {
-    get() { return instance; },
-    set(v) { instance = v; },
+    get() {
+      return instance;
+    },
+    set(v) {
+      instance = v;
+    },
     configurable: true
   });
 
@@ -430,7 +436,9 @@ export function createRegistry(config, options = {}) {
 
       ConfigRegistry.prototype[`get${entityName}DisplayInfo`] = function (id) {
         const entry = this.fetchEntry(id);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
         const info = { id: entry.id };
         for (const field of displayInfoFields) {
           if (field in entry) {
@@ -446,7 +454,9 @@ export function createRegistry(config, options = {}) {
         return `${config.registryId}Registry(${this.countEntries()} ${entityName}s)`;
       };
     } else {
-      console.warn(`[${config.registryId}] entityName must be a non-empty string, skipping method generation`);
+      console.warn(
+        `[${config.registryId}] entityName must be a non-empty string, skipping method generation`
+      );
     }
   }
 

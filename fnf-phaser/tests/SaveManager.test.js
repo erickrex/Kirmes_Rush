@@ -388,4 +388,43 @@ describe('SaveManager', () => {
       expect(newManager.getInputDelayCompensation()).toBe(35);
     });
   });
+
+  describe('HUD Stats Defaults', () => {
+    beforeEach(() => {
+      saveManager.init();
+    });
+
+    it('should default showNPS to true', () => {
+      expect(saveManager.getOption('showNPS')).toBe(true);
+    });
+
+    it('should default showGrade to true', () => {
+      expect(saveManager.getOption('showGrade')).toBe(true);
+    });
+
+    it('should default showComboBreaks to true', () => {
+      expect(saveManager.getOption('showComboBreaks')).toBe(true);
+    });
+
+    it('should default showJudgements to false', () => {
+      expect(saveManager.getOption('showJudgements')).toBe(false);
+    });
+
+    it('should fill missing HUD Stats keys from old saves with defaults', () => {
+      // Simulate an old save that has no HUD Stats keys
+      const oldSave = { downscroll: true, masterVolume: 80 };
+      localStorageMock.setItem(StorageKeys.OPTIONS, JSON.stringify(oldSave));
+
+      // Reload options (simulates loadOptions merge)
+      saveManager.loadOptions();
+
+      expect(saveManager.getOption('showNPS')).toBe(true);
+      expect(saveManager.getOption('showGrade')).toBe(true);
+      expect(saveManager.getOption('showComboBreaks')).toBe(true);
+      expect(saveManager.getOption('showJudgements')).toBe(false);
+      // Old values should be preserved
+      expect(saveManager.getOption('downscroll')).toBe(true);
+      expect(saveManager.getOption('masterVolume')).toBe(80);
+    });
+  });
 });

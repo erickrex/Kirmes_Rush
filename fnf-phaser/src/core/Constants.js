@@ -151,6 +151,9 @@ export const DEFAULT_TIMEFORMAT = 'ms';
 /** The default scroll speed for songs. */
 export const DEFAULT_SCROLLSPEED = 1.0;
 
+/** The default number of steps to hold a singing animation. */
+export const DEFAULT_SING_TIME = 8.0;
+
 /** Default numerator for the time signature. */
 export const DEFAULT_TIME_SIGNATURE_NUM = 4;
 

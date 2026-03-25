@@ -86,23 +86,25 @@ export default class TitleState extends Phaser.Scene {
    * Preload assets for the title screen
    */
   preload() {
-    // Load title screen assets
-    this.load.setPath('assets/');
+    // Logo (Sparrow XML atlas from shared assets)
+    this.load.atlasXML(
+      'title-logo',
+      'assets/funkin.assets/preload/images/logoBumpin.png',
+      'assets/funkin.assets/preload/images/logoBumpin.xml'
+    );
 
-    // Logo
-    this.load.image('title-logo', 'images/title/logo.png');
-
-    // GF dance spritesheet (optional)
-    this.load.spritesheet('gf-dance-title', 'images/title/gfDanceTitle.png', {
-      frameWidth: 512,
-      frameHeight: 512
-    });
+    // GF dance (Sparrow XML atlas from shared assets)
+    this.load.atlasXML(
+      'gf-dance-title',
+      'assets/funkin.assets/preload/images/gfDanceTitle.png',
+      'assets/funkin.assets/preload/images/gfDanceTitle.xml'
+    );
 
     // Title music
-    this.load.audio('title-music', 'audio/freakyMenu.mp3');
+    this.load.audio('title-music', 'assets/funkin.assets/preload/music/freakyMenu/freakyMenu.mp3');
 
     // Confirm sound
-    this.load.audio('confirm-sound', 'audio/confirmMenu.mp3');
+    this.load.audio('confirm-sound', 'assets/funkin.assets/preload/sounds/confirmMenu.mp3');
   }
 
   /**
@@ -141,11 +143,13 @@ export default class TitleState extends Phaser.Scene {
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
 
-    // Check if logo texture exists
     if (this.textures.exists('title-logo')) {
-      this.logo = this.add.sprite(centerX, centerY - 100, 'title-logo');
+      // Use the first frame from the Sparrow atlas
+      const frames = this.textures.get('title-logo').getFrameNames();
+      const firstFrame = frames.length > 0 ? frames[0] : undefined;
+      this.logo = this.add.sprite(centerX, centerY - 100, 'title-logo', firstFrame);
       this.logo.setOrigin(0.5, 0.5);
-      this.logo.setScale(0.8);
+      this.logo.setScale(0.5);
     } else {
       // Fallback: Create text-based logo
       this.logo = this.add.text(centerX, centerY - 100, "Friday Night Funkin'", {
@@ -164,20 +168,32 @@ export default class TitleState extends Phaser.Scene {
    * Creates the GF dancer sprite
    */
   createGfDancer() {
-    if (!this.textures.exists('gf-dance-title')) return;
+    if (!this.textures.exists('gf-dance-title')) {
+      return;
+    }
 
     const centerX = this.cameras.main.width / 2;
     const bottomY = this.cameras.main.height;
 
     this.gfDance = this.add.sprite(centerX, bottomY - 200, 'gf-dance-title');
     this.gfDance.setOrigin(0.5, 1);
+    this.gfDance.setScale(0.7);
 
-    // Create dance animation
+    // Build frame list from the Sparrow atlas (gfDance0000..gfDance0029)
+    const frames = this.textures.get('gf-dance-title').getFrameNames();
+    const sortedFrames = frames
+      .filter((name) => name.startsWith('gfDance'))
+      .sort();
+
+    if (sortedFrames.length === 0) {
+      return;
+    }
+
     if (!this.anims.exists('gf-dance')) {
       this.anims.create({
         key: 'gf-dance',
-        frames: this.anims.generateFrameNumbers('gf-dance-title', { start: 0, end: 1 }),
-        frameRate: 12,
+        frames: sortedFrames.map((frame) => ({ key: 'gf-dance-title', frame })),
+        frameRate: 24,
         repeat: -1
       });
     }
@@ -193,17 +209,12 @@ export default class TitleState extends Phaser.Scene {
     const centerY = this.cameras.main.height / 2;
 
     // Create the prompt text
-    this.pressEnterText = this.add.text(
-      centerX,
-      centerY + 200,
-      'Press ENTER to start',
-      {
-        fontFamily: 'Arial',
-        fontSize: '32px',
-        color: '#ffffff',
-        align: 'center'
-      }
-    );
+    this.pressEnterText = this.add.text(centerX, centerY + 200, 'Press ENTER to start', {
+      fontFamily: 'Arial',
+      fontSize: '32px',
+      color: '#ffffff',
+      align: 'center'
+    });
 
     // Center the text origin
     this.pressEnterText.setOrigin(0.5, 0.5);
@@ -318,7 +329,9 @@ export default class TitleState extends Phaser.Scene {
    * Handle ENTER key press
    */
   onEnterPressed() {
-    if (this.transitioning) return;
+    if (this.transitioning) {
+      return;
+    }
 
     // Reset attract timer on any input
     this.resetAttractTimer();
@@ -367,14 +380,16 @@ export default class TitleState extends Phaser.Scene {
    * @param {Object} data - Beat data
    */
   onBeatHit(data) {
-    if (!this.logo) return;
+    if (!this.logo) {
+      return;
+    }
 
     // Bump the logo on beat
     if (this.logoBumpTween) {
       this.logoBumpTween.stop();
     }
 
-    const baseScale = 0.8;
+    const baseScale = 0.5;
     this.logo.setScale(baseScale * 1.05);
 
     this.logoBumpTween = this.tweens.add({

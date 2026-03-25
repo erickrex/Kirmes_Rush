@@ -130,7 +130,7 @@ class ExpandedStatsDisplay extends ScoreDisplay {
 
     // Update judgement counts
     const normalizedJudgement = judgement.toLowerCase();
-    if (this.judgements.hasOwnProperty(normalizedJudgement)) {
+    if (Object.prototype.hasOwnProperty.call(this.judgements, normalizedJudgement)) {
       this.judgements[normalizedJudgement]++;
     }
 
@@ -171,11 +171,15 @@ class ExpandedStatsDisplay extends ScoreDisplay {
    * Calculates accuracy from judgement counts and updates grade.
    */
   updateGradeFromStats() {
-    if (!this.gradeDisplay) return;
+    if (!this.gradeDisplay) {
+      return;
+    }
 
     // Calculate accuracy from judgements
     const totalHits = this.getTotalHits();
-    if (totalHits === 0) return;
+    if (totalHits === 0) {
+      return;
+    }
 
     // Weighted accuracy calculation
     const weightedHits =
@@ -195,12 +199,7 @@ class ExpandedStatsDisplay extends ScoreDisplay {
    * @returns {number}
    */
   getTotalHits() {
-    return (
-      this.judgements.sick +
-      this.judgements.good +
-      this.judgements.bad +
-      this.judgements.shit
-    );
+    return this.judgements.sick + this.judgements.good + this.judgements.bad + this.judgements.shit;
   }
 
   /**
@@ -299,7 +298,7 @@ class ExpandedStatsDisplay extends ScoreDisplay {
       parts.push(`S:${j.sick} G:${j.good} B:${j.bad} X:${j.shit}`);
     }
 
-    return parts.filter(p => p).join(' | ');
+    return parts.filter((p) => p).join(' | ');
   }
 
   /**

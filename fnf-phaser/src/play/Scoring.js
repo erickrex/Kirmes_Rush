@@ -210,7 +210,7 @@ const PBOT1Strategy = {
 const strategies = {
   [ScoringSystem.LEGACY]: LegacyStrategy,
   [ScoringSystem.WEEK7]: Week7Strategy,
-  [ScoringSystem.PBOT1]: PBOT1Strategy,
+  [ScoringSystem.PBOT1]: PBOT1Strategy
 };
 
 /**

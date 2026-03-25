@@ -4,6 +4,7 @@
  */
 
 import { createRegistry } from '../../core/Registry.js';
+import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
 const DEFAULT_VARIATION = 'default';
 const SONG_METADATA_VERSION_RULE = '2.2.x';
@@ -42,7 +43,10 @@ function cleanMetadata(metadata, variation) {
     timeFormat: metadata.timeFormat || 'ms',
     offsets: { instrumental: metadata.offsets?.instrumental ?? 0 },
     timeChanges: metadata.timeChanges.map((tc) => ({
-      t: tc.t ?? 0, bpm: tc.bpm ?? 100, n: tc.n ?? 4, d: tc.d ?? 4,
+      t: tc.t ?? 0,
+      bpm: tc.bpm ?? 100,
+      n: tc.n ?? 4,
+      d: tc.d ?? 4,
       bt: tc.bt ?? [4, 4, 4, 4]
     })),
     playData: cleanPlayData(metadata.playData),
@@ -58,7 +62,7 @@ function cleanMetadata(metadata, variation) {
 const SongRegistry = createRegistry(
   {
     registryId: 'SONG',
-    dataFilePath: 'data/songs',
+    dataFilePath: getSharedRegistryPath('songs'),
     versionRule: SONG_METADATA_VERSION_RULE,
     entityName: 'Song',
 
@@ -76,7 +80,9 @@ const SongRegistry = createRegistry(
         return false;
       }
       if (!data.version) {
-        console.warn(`[${this.registryId}] No version specified for: ${fileName}, assuming compatible`);
+        console.warn(
+          `[${this.registryId}] No version specified for: ${fileName}, assuming compatible`
+        );
       }
       return true;
     },
@@ -113,7 +119,9 @@ const SongRegistry = createRegistry(
 
         const version = data.version;
         if (!version) {
-          console.warn(`[${this.registryId}] No version specified for: ${fileName}, assuming compatible`);
+          console.warn(
+            `[${this.registryId}] No version specified for: ${fileName}, assuming compatible`
+          );
         } else if (!this.validateVersion(version)) {
           console.error(`[${this.registryId}] Incompatible version ${version} for: ${fileName}`);
           return null;
@@ -150,7 +158,9 @@ const SongRegistry = createRegistry(
 
         const version = data.version;
         if (version && !this._validateChartVersion(version)) {
-          console.error(`[${this.registryId}] Incompatible chart version ${version} for: ${fileName}`);
+          console.error(
+            `[${this.registryId}] Incompatible chart version ${version} for: ${fileName}`
+          );
           return null;
         }
 
@@ -174,12 +184,20 @@ const SongRegistry = createRegistry(
       },
 
       _validateChartVersion(version) {
-        if (!version) return true;
+        if (!version) {
+          return true;
+        }
         const versionParts = version.split('.');
         const ruleParts = SONG_CHART_DATA_VERSION_RULE.split('.');
-        if (versionParts.length < 2 || ruleParts.length < 2) return false;
-        if (ruleParts[0] !== 'x' && ruleParts[0] !== versionParts[0]) return false;
-        if (ruleParts[1] !== 'x' && ruleParts[1] !== versionParts[1]) return false;
+        if (versionParts.length < 2 || ruleParts.length < 2) {
+          return false;
+        }
+        if (ruleParts[0] !== 'x' && ruleParts[0] !== versionParts[0]) {
+          return false;
+        }
+        if (ruleParts[1] !== 'x' && ruleParts[1] !== versionParts[1]) {
+          return false;
+        }
         return true;
       },
 
@@ -188,27 +206,40 @@ const SongRegistry = createRegistry(
       // ========================================
 
       getChartData(songId, variation = DEFAULT_VARIATION) {
-        if (!this.chartCache) this.chartCache = new Map();
+        if (!this.chartCache) {
+          this.chartCache = new Map();
+        }
         const songCharts = this.chartCache.get(songId);
         return songCharts ? songCharts.get(variation) || null : null;
       },
 
       cacheChartData(songId, variation, chartData) {
-        if (!this.chartCache) this.chartCache = new Map();
-        if (!this.chartCache.has(songId)) this.chartCache.set(songId, new Map());
+        if (!this.chartCache) {
+          this.chartCache = new Map();
+        }
+        if (!this.chartCache.has(songId)) {
+          this.chartCache.set(songId, new Map());
+        }
         this.chartCache.get(songId).set(variation, chartData);
       },
 
       hasChartData(songId, variation = DEFAULT_VARIATION) {
-        if (!this.chartCache) return false;
+        if (!this.chartCache) {
+          return false;
+        }
         const songCharts = this.chartCache.get(songId);
         return songCharts ? songCharts.has(variation) : false;
       },
 
       clearChartCache(songId) {
-        if (!this.chartCache) return;
-        if (songId) { this.chartCache.delete(songId); }
-        else { this.chartCache.clear(); }
+        if (!this.chartCache) {
+          return;
+        }
+        if (songId) {
+          this.chartCache.delete(songId);
+        } else {
+          this.chartCache.clear();
+        }
       },
 
       // ========================================
@@ -222,7 +253,9 @@ const SongRegistry = createRegistry(
       listAllDifficulties() {
         const difficulties = new Set();
         for (const song of this.getAllEntries()) {
-          for (const diff of song.difficulties) difficulties.add(diff);
+          for (const diff of song.difficulties) {
+            difficulties.add(diff);
+          }
         }
         return Array.from(difficulties);
       },
@@ -263,7 +296,9 @@ const SongRegistry = createRegistry(
 
       getSongDisplayInfo(songId) {
         const song = this.fetchEntry(songId);
-        if (!song) return null;
+        if (!song) {
+          return null;
+        }
         return {
           id: song.id,
           name: song.metadata.songName,
@@ -284,7 +319,9 @@ const SongRegistry = createRegistry(
         // Call parent clearEntries
         const entries = this.entries;
         for (const entry of entries.values()) {
-          if (entry && typeof entry.destroy === 'function') entry.destroy();
+          if (entry && typeof entry.destroy === 'function') {
+            entry.destroy();
+          }
         }
         entries.clear();
         this.loaded = false;

@@ -160,7 +160,9 @@ class HealthBar {
    * Create the graphics objects for rendering
    */
   createGraphics() {
-    if (!this.scene) return;
+    if (!this.scene) {
+      return;
+    }
 
     // Background graphics (border)
     if (this.showBackground) {
@@ -322,7 +324,9 @@ class HealthBar {
    * Draw the background/border
    */
   drawBackground() {
-    if (!this.backgroundGraphics || !this.showBackground) return;
+    if (!this.backgroundGraphics || !this.showBackground) {
+      return;
+    }
 
     this.backgroundGraphics.clear();
     this.backgroundGraphics.fillStyle(this.backgroundColor, 1);
@@ -338,7 +342,9 @@ class HealthBar {
    * Draw the bar fill
    */
   drawBar() {
-    if (!this.barGraphics) return;
+    if (!this.barGraphics) {
+      return;
+    }
 
     this.barGraphics.clear();
 

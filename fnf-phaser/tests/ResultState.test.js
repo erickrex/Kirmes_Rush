@@ -37,7 +37,21 @@ vi.mock('phaser', () => {
           this.config = config;
           this.scene = { key: config.key, start: vi.fn() };
           this.add = {
-            text: vi.fn(() => ({ ...mockText })),
+            text: vi.fn((x, y, text, style) => {
+              const t = {
+                ...mockText,
+                x, y, text, style,
+                setOrigin: vi.fn().mockReturnThis(),
+                setText: vi.fn(function(val) { this.text = val; return this; }),
+                setColor: vi.fn().mockReturnThis(),
+                setScale: vi.fn().mockReturnThis(),
+                setAlpha: vi.fn().mockReturnThis(),
+                destroy: vi.fn()
+              };
+              // Fix setText to use proper this binding
+              t.setText = vi.fn((val) => { t.text = val; return t; });
+              return t;
+            }),
             sprite: vi.fn(() => ({ ...mockSprite })),
             graphics: vi.fn(() => ({
               fillStyle: vi.fn().mockReturnThis(),
@@ -323,6 +337,71 @@ describe('ResultState', () => {
       expect(scene.continueText).toBeNull();
       expect(scene.tallyTexts.length).toBe(0);
       expect(scene.songData).toBeNull();
+      expect(scene.timingStats).toBeNull();
+    });
+  });
+
+  describe('TimingStats Integration', () => {
+    it('should store timingStats from init data', () => {
+      const timingStats = {
+        averageOffset: -3.2,
+        earlyCount: 45,
+        lateCount: 38,
+        perfectCount: 12,
+        offsets: [-5, -3, 2, 0, -4],
+        byJudgement: {
+          sick: { count: 50, avgOffset: -1.5 },
+          good: { count: 30, avgOffset: 3.2 }
+        }
+      };
+      scene.init({ score: 1000, timingStats });
+      expect(scene.timingStats).toEqual(timingStats);
+    });
+
+    it('should default timingStats to null when not provided', () => {
+      scene.init({ score: 1000 });
+      expect(scene.timingStats).toBeNull();
+    });
+
+    it('should render without timing section when timingStats is null', () => {
+      scene.init({ score: 1000 });
+      scene.create();
+      // timingAvgText should not exist
+      expect(scene.timingAvgText).toBeUndefined();
+    });
+
+    it('should render timing section when timingStats is provided', () => {
+      const timingStats = {
+        averageOffset: -3.2,
+        earlyCount: 45,
+        lateCount: 38,
+        perfectCount: 12,
+        offsets: [-5, -3, 2, 0, -4],
+        byJudgement: {
+          sick: { count: 50, avgOffset: -1.5 },
+          good: { count: 30, avgOffset: 3.2 }
+        }
+      };
+      scene.init({ score: 1000, timingStats });
+      scene.create();
+      expect(scene.timingAvgText).toBeDefined();
+      expect(scene.timingAvgText.text).toContain('3.2ms');
+      expect(scene.timingAvgText.text).toContain('Early');
+    });
+
+    it('should clean up timingStats on shutdown', () => {
+      const timingStats = {
+        averageOffset: 0,
+        earlyCount: 0,
+        lateCount: 0,
+        perfectCount: 0,
+        offsets: [0],
+        byJudgement: {}
+      };
+      scene.init({ score: 1000, timingStats });
+      scene.create();
+      scene.shutdown();
+      expect(scene.timingStats).toBeNull();
     });
   });
 });

@@ -183,7 +183,9 @@ class ComboPopup {
       sprite = this.createSprite();
     }
 
-    if (!sprite) return null;
+    if (!sprite) {
+      return null;
+    }
 
     // Configure sprite
     sprite.x = x;
@@ -234,7 +236,9 @@ class ComboPopup {
       sprite = this.createSprite();
     }
 
-    if (!sprite) return null;
+    if (!sprite) {
+      return null;
+    }
 
     // Configure sprite
     sprite.x = x;

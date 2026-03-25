@@ -65,6 +65,7 @@ vi.mock('phaser', () => {
             xml: vi.fn().mockReturnThis(),
             spritesheet: vi.fn().mockReturnThis(),
             atlas: vi.fn().mockReturnThis(),
+            atlasXML: vi.fn().mockReturnThis(),
             totalToLoad: 0
           };
           this.cache = {
@@ -479,13 +480,13 @@ describe('LoadingState', () => {
       state.textures.exists.mockReturnValue(false);
     });
 
-    it('should queue atlas entries via this.load.atlas()', () => {
+    it('should queue atlas entries via this.load.atlasXML() for XML atlases', () => {
       state.assets = [
         { type: 'atlas', key: 'char-bf', path: 'assets/funkin.assets/shared/images/BOYFRIEND.png', atlasURL: 'assets/funkin.assets/shared/images/BOYFRIEND.xml' }
       ];
       const queued = state.loadAssets();
 
-      expect(state.load.atlas).toHaveBeenCalledWith(
+      expect(state.load.atlasXML).toHaveBeenCalledWith(
         'char-bf',
         'assets/funkin.assets/shared/images/BOYFRIEND.png',
         'assets/funkin.assets/shared/images/BOYFRIEND.xml'
@@ -500,6 +501,7 @@ describe('LoadingState', () => {
       ];
       const queued = state.loadAssets();
 
+      expect(state.load.atlasXML).not.toHaveBeenCalled();
       expect(state.load.atlas).not.toHaveBeenCalled();
       expect(queued).toBe(0);
     });
@@ -537,14 +539,11 @@ describe('LoadingState', () => {
 
       expect(mockBuilder.build).toHaveBeenCalledWith('level-1');
       expect(result.nextScene).toBe('PlayState');
-      expect(result.nextSceneData).toHaveProperty('chart');
-      expect(result.nextSceneData).toHaveProperty('songData');
-      expect(result.nextSceneData).toHaveProperty('audio');
-      expect(result.nextSceneData).toHaveProperty('metadata');
-      expect(result.nextSceneData.chart).toBe(mockSession.chart);
-      expect(result.nextSceneData.songData).toBe(mockSession.songData);
-      expect(result.nextSceneData.audio).toBe(mockSession.audio);
-      expect(result.nextSceneData.metadata).toBe(mockSession.metadata);
+      expect(result.nextSceneData).toHaveProperty('session');
+      expect(result.nextSceneData.session.chart).toBe(mockSession.chart);
+      expect(result.nextSceneData.session.songData).toBe(mockSession.songData);
+      expect(result.nextSceneData.session.audio).toBe(mockSession.audio);
+      expect(result.nextSceneData.session.metadata).toBe(mockSession.metadata);
       expect(Array.isArray(result.assets)).toBe(true);
     });
   });

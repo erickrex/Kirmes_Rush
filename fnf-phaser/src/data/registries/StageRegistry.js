@@ -4,6 +4,7 @@
  */
 
 import { createRegistry } from '../../core/Registry.js';
+import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
 /**
  * @typedef {Object} StageAnimationData
@@ -135,13 +136,15 @@ function cleanCharacterPositions(characters) {
 const StageRegistry = createRegistry(
   {
     registryId: 'STAGE',
-    dataFilePath: 'data/stages',
+    dataFilePath: getSharedRegistryPath('stages'),
     versionRule: DEFAULTS.VERSION_RULE,
     entityName: 'Stage',
 
     validateData(data, fileName) {
       if (!data.version) {
-        console.warn(`[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`);
+        console.warn(
+          `[${this.registryId}] No version for: ${fileName}, assuming ${DEFAULTS.VERSION}`
+        );
       }
       if (data.props && !Array.isArray(data.props)) {
         console.error(`[${this.registryId}] Invalid props format for: ${fileName}`);
@@ -223,7 +226,9 @@ const StageRegistry = createRegistry(
 
       getStageDisplayInfo(stageId) {
         const entry = this.fetchEntry(stageId);
-        if (!entry) return null;
+        if (!entry) {
+          return null;
+        }
 
         return {
           id: entry.id,
@@ -231,7 +236,9 @@ const StageRegistry = createRegistry(
           directory: entry.data.directory,
           cameraZoom: entry.data.cameraZoom,
           propCount: entry.data.props.length,
-          hasAnimatedProps: entry.data.props.some((p) => p.animations.length > 0 || p.danceEvery > 0)
+          hasAnimatedProps: entry.data.props.some(
+            (p) => p.animations.length > 0 || p.danceEvery > 0
+          )
         };
       },
 
@@ -241,7 +248,9 @@ const StageRegistry = createRegistry(
 
       getPropAssetPath(stageId, propName) {
         const prop = this.getProp(stageId, propName);
-        if (!prop) return null;
+        if (!prop) {
+          return null;
+        }
 
         const directory = this.getDirectory(stageId);
         if (directory) {
@@ -257,7 +266,9 @@ const StageRegistry = createRegistry(
 
         for (const prop of props) {
           if (prop.assetPath) {
-            const path = directory ? `images/${directory}/${prop.assetPath}` : `images/${prop.assetPath}`;
+            const path = directory
+              ? `images/${directory}/${prop.assetPath}`
+              : `images/${prop.assetPath}`;
             paths.add(path);
           }
         }

@@ -59,7 +59,9 @@ export class ReplayRecorder {
   seed = 0;
   metadata = {};
 
-  constructor() { this.reset(); }
+  constructor() {
+    this.reset();
+  }
 
   start(songId, difficulty) {
     this.reset();
@@ -71,7 +73,9 @@ export class ReplayRecorder {
   }
 
   recordInput(type, direction, keyCode, songPosition) {
-    if (!this.recording) return;
+    if (!this.recording) {
+      return;
+    }
     this.inputs.push({ time: songPosition, type, direction, keyCode });
   }
 
@@ -89,14 +93,17 @@ export class ReplayRecorder {
       metadata: {
         ...this.metadata,
         gameVersion: '1.0.0',
-        accuracy: tallies.totalNotesHit && tallies.totalNotes
-          ? (tallies.totalNotesHit / tallies.totalNotes) * 100
-          : 0
+        accuracy:
+          tallies.totalNotesHit && tallies.totalNotes
+            ? (tallies.totalNotesHit / tallies.totalNotes) * 100
+            : 0
       }
     };
   }
 
-  discard() { this.reset(); }
+  discard() {
+    this.reset();
+  }
 
   reset() {
     this.recording = false;
@@ -108,8 +115,12 @@ export class ReplayRecorder {
     this.metadata = {};
   }
 
-  isRecording() { return this.recording; }
-  getInputCount() { return this.inputs.length; }
+  isRecording() {
+    return this.recording;
+  }
+  getInputCount() {
+    return this.inputs.length;
+  }
 }
 
 // ========================================
@@ -126,7 +137,9 @@ export class ReplayPlayer {
   inputIndex = 0;
   playing = false;
 
-  constructor() { this.reset(); }
+  constructor() {
+    this.reset();
+  }
 
   load(replayData) {
     if (!replayData) {
@@ -157,7 +170,9 @@ export class ReplayPlayer {
   }
 
   getInputsForPosition(songPosition) {
-    if (!this.playing || !this.replayData) return [];
+    if (!this.playing || !this.replayData) {
+      return [];
+    }
     const inputs = [];
     const allInputs = this.replayData.inputs;
     while (this.inputIndex < allInputs.length && allInputs[this.inputIndex].time <= songPosition) {
@@ -168,11 +183,15 @@ export class ReplayPlayer {
   }
 
   isComplete() {
-    if (!this.replayData) return true;
+    if (!this.replayData) {
+      return true;
+    }
     return this.inputIndex >= this.replayData.inputs.length;
   }
 
-  stop() { this.playing = false; }
+  stop() {
+    this.playing = false;
+  }
 
   reset() {
     this.replayData = null;
@@ -180,14 +199,26 @@ export class ReplayPlayer {
     this.playing = false;
   }
 
-  isPlaying() { return this.playing; }
-  getSongId() { return this.replayData?.songId ?? null; }
-  getDifficulty() { return this.replayData?.difficulty ?? null; }
-  getOriginalScore() { return this.replayData?.score ?? 0; }
-  getTotalInputs() { return this.replayData?.inputs.length ?? 0; }
+  isPlaying() {
+    return this.playing;
+  }
+  getSongId() {
+    return this.replayData?.songId ?? null;
+  }
+  getDifficulty() {
+    return this.replayData?.difficulty ?? null;
+  }
+  getOriginalScore() {
+    return this.replayData?.score ?? 0;
+  }
+  getTotalInputs() {
+    return this.replayData?.inputs.length ?? 0;
+  }
 
   getRemainingInputs() {
-    if (!this.replayData) return 0;
+    if (!this.replayData) {
+      return 0;
+    }
     return this.replayData.inputs.length - this.inputIndex;
   }
 }
@@ -206,7 +237,9 @@ export class ReplayManager {
 
   replayIndex = [];
 
-  constructor() { this.loadIndex(); }
+  constructor() {
+    this.loadIndex();
+  }
 
   /** @private */
   loadIndex() {
@@ -236,7 +269,9 @@ export class ReplayManager {
   saveReplay(replayData) {
     while (this.replayIndex.length >= ReplayManager.MAX_REPLAYS) {
       const oldest = this.replayIndex.pop();
-      if (oldest) this.deleteReplayData(oldest.id);
+      if (oldest) {
+        this.deleteReplayData(oldest.id);
+      }
     }
 
     const id = this.generateId();
@@ -268,7 +303,9 @@ export class ReplayManager {
   loadReplay(replayId) {
     try {
       const data = localStorage.getItem(`${ReplayManager.STORAGE_KEY}_${replayId}`);
-      if (data) return JSON.parse(data);
+      if (data) {
+        return JSON.parse(data);
+      }
     } catch (error) {
       console.error('ReplayManager: Failed to load replay', error);
     }
@@ -286,7 +323,9 @@ export class ReplayManager {
 
   deleteReplay(replayId) {
     const index = this.replayIndex.findIndex((entry) => entry.id === replayId);
-    if (index === -1) return false;
+    if (index === -1) {
+      return false;
+    }
     this.replayIndex.splice(index, 1);
     this.saveIndex();
     this.deleteReplayData(replayId);
@@ -301,11 +340,17 @@ export class ReplayManager {
     return this.getReplayList().filter((entry) => entry.songId === songId);
   }
 
-  getReplayCount() { return this.replayIndex.length; }
-  isAtCapacity() { return this.replayIndex.length >= ReplayManager.MAX_REPLAYS; }
+  getReplayCount() {
+    return this.replayIndex.length;
+  }
+  isAtCapacity() {
+    return this.replayIndex.length >= ReplayManager.MAX_REPLAYS;
+  }
 
   clearAll() {
-    for (const entry of this.replayIndex) this.deleteReplayData(entry.id);
+    for (const entry of this.replayIndex) {
+      this.deleteReplayData(entry.id);
+    }
     this.replayIndex = [];
     this.saveIndex();
   }

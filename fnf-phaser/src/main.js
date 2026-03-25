@@ -16,6 +16,7 @@ import GameOverState from './ui/GameOverState.js';
 import ResultState from './ui/ResultState.js';
 import LoadingState from './ui/LoadingState.js';
 import ReplayBrowserState from './ui/ReplayBrowserState.js';
+import SaveManager from './data/SaveManager.js';
 
 /**
  * Game configuration
@@ -66,6 +67,8 @@ const config = {
  * The main Phaser game instance
  * @type {Phaser.Game}
  */
+SaveManager.getInstance().init();
+
 const game = new Phaser.Game(config);
 
 export default game;
