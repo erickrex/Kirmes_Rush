@@ -238,6 +238,8 @@ export default class OptionsState extends BaseMenuState {
     this.selectedCategoryIndex = 0;
     /** @type {boolean} */
     this.capturingKeybind = false;
+    /** @type {boolean} */
+    this.editingSlider = false;
     /** @type {Phaser.GameObjects.Text[]} */
     this.categoryTabs = [];
     /** @type {Phaser.GameObjects.Container[]} */
@@ -307,6 +309,7 @@ export default class OptionsState extends BaseMenuState {
     if (this.transitioning || this.capturingKeybind) {
       return;
     }
+    this.editingSlider = false;
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedIndex = (this.selectedIndex - 1 + category.items.length) % category.items.length;
     this.playScrollSound();
@@ -318,6 +321,7 @@ export default class OptionsState extends BaseMenuState {
     if (this.transitioning || this.capturingKeybind) {
       return;
     }
+    this.editingSlider = false;
     const category = this.categories[this.selectedCategoryIndex];
     this.selectedIndex = (this.selectedIndex + 1) % category.items.length;
     this.playScrollSound();
@@ -328,42 +332,50 @@ export default class OptionsState extends BaseMenuState {
     if (this.transitioning || this.capturingKeybind) {
       return;
     }
-    const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
 
-    if (item.type === 'slider') {
-      item.value = Math.max(item.min, item.value - item.step);
+    // When actively editing a slider, left/right adjust the value
+    if (this.editingSlider) {
+      const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
+      item.value = Math.round((item.value - item.step) * 1000) / 1000;
+      item.value = Math.max(item.min, item.value);
       this.saveOptions();
       this.updateDisplay();
-    } else {
-      this.selectedCategoryIndex--;
-      if (this.selectedCategoryIndex < 0) {
-        this.selectedCategoryIndex = this.categories.length - 1;
-      }
-      this.selectedIndex = 0;
-      this.playScrollSound();
-      this.updateDisplay();
+      return;
     }
+
+    // Otherwise, always switch tabs
+    this.selectedCategoryIndex--;
+    if (this.selectedCategoryIndex < 0) {
+      this.selectedCategoryIndex = this.categories.length - 1;
+    }
+    this.selectedIndex = 0;
+    this.playScrollSound();
+    this.updateDisplay();
   }
 
   onNavigateRight() {
     if (this.transitioning || this.capturingKeybind) {
       return;
     }
-    const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
 
-    if (item.type === 'slider') {
-      item.value = Math.min(item.max, item.value + item.step);
+    // When actively editing a slider, left/right adjust the value
+    if (this.editingSlider) {
+      const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
+      item.value = Math.round((item.value + item.step) * 1000) / 1000;
+      item.value = Math.min(item.max, item.value);
       this.saveOptions();
       this.updateDisplay();
-    } else {
-      this.selectedCategoryIndex++;
-      if (this.selectedCategoryIndex >= this.categories.length) {
-        this.selectedCategoryIndex = 0;
-      }
-      this.selectedIndex = 0;
-      this.playScrollSound();
-      this.updateDisplay();
+      return;
     }
+
+    // Otherwise, always switch tabs
+    this.selectedCategoryIndex++;
+    if (this.selectedCategoryIndex >= this.categories.length) {
+      this.selectedCategoryIndex = 0;
+    }
+    this.selectedIndex = 0;
+    this.playScrollSound();
+    this.updateDisplay();
   }
 
   /**
@@ -383,6 +395,11 @@ export default class OptionsState extends BaseMenuState {
         this.saveOptions();
         this.updateDisplay();
         break;
+      case 'slider':
+        // Toggle slider editing mode
+        this.editingSlider = !this.editingSlider;
+        this.updateDisplay();
+        break;
       case 'keybind':
         this.startKeybindCapture(item);
         break;
@@ -399,6 +416,11 @@ export default class OptionsState extends BaseMenuState {
   onBack() {
     if (this.capturingKeybind) {
       this.cancelKeybindCapture();
+      return;
+    }
+    if (this.editingSlider) {
+      this.editingSlider = false;
+      this.updateDisplay();
       return;
     }
     if (this.transitioning) {
@@ -421,6 +443,7 @@ export default class OptionsState extends BaseMenuState {
   create() {
     this.transitioning = false;
     this.capturingKeybind = false;
+    this.editingSlider = false;
     this.selectedCategoryIndex = 0;
     this.selectedIndex = 0;
     this.saveManager.init();
@@ -538,7 +561,7 @@ export default class OptionsState extends BaseMenuState {
   createInstructions() {
     const { width, height } = this.cameras.main;
     this.add
-      .text(width / 2, height - 40, 'Arrow Keys: Navigate | Enter: Select/Change | ESC: Back', {
+      .text(width / 2, height - 40, 'Left/Right: Switch Tab | Up/Down: Navigate | Enter: Select/Edit | ESC: Back', {
         fontFamily: 'Arial',
         fontSize: '18px',
         color: '#888888'
@@ -643,11 +666,16 @@ export default class OptionsState extends BaseMenuState {
           break;
         case 'slider':
           valueText.setText(`${item.value}`);
-          valueText.setColor('#ffffff');
+          valueText.setColor(
+            index === this.selectedIndex && this.editingSlider ? '#00ff00' : '#ffffff'
+          );
           sliderBg.setVisible(true);
           sliderFill.setVisible(true);
           sliderFill.clear();
-          sliderFill.fillStyle(0x00ff00, 1);
+          sliderFill.fillStyle(
+            index === this.selectedIndex && this.editingSlider ? 0x00ffff : 0x00ff00,
+            1
+          );
           sliderFill.fillRect(
             width - 500,
             5,

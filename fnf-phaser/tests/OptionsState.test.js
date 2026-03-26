@@ -197,6 +197,9 @@ describe('OptionsState', () => {
       scene.selectedItemIndex = sliderIndex;
 
       const initialValue = slider.value;
+      // Enter slider edit mode first, then adjust
+      scene.onSelect();
+      expect(scene.editingSlider).toBe(true);
       scene.onNavigateRight();
       expect(slider.value).toBe(Math.min(slider.max, initialValue + slider.step));
     });
