@@ -247,19 +247,17 @@ class Character extends FunkinSprite {
    */
   sing(direction, miss = false) {
     const animName = CharacterRegistry.getSingAnimationName(direction, miss);
+    const namespacedKey = this._textureKey ? `${this._textureKey}-${animName}` : animName;
 
-    // Check if animation exists
-    if (!this.hasAnimation(animName)) {
-      // Try without miss suffix
+    if (!this.scene?.anims?.exists(namespacedKey)) {
       if (miss) {
         this.sing(direction, false);
         return;
       }
-      console.warn(`[Character] Sing animation not found: ${animName}`);
       return;
     }
 
-    this.playAnimation(animName, true);
+    this.play({ key: namespacedKey }, true);
     this.isSinging = true;
     this.singDirection = direction;
     this.singTimer = this.singTime;
@@ -319,6 +317,39 @@ class Character extends FunkinSprite {
     }
 
     super.dance(forceRestart);
+  }
+
+  /**
+   * Override playAnimation to use namespaced keys when _textureKey is set.
+   * @param {string} animName
+   * @param {boolean} [restart=false]
+   * @param {boolean} [ignoreOther=false]
+   * @returns {this}
+   */
+  playAnimation(animName, restart = false, ignoreOther = false) {
+    if (this._textureKey && this.scene?.anims) {
+      const namespacedKey = `${this._textureKey}-${animName}`;
+      if (this.scene.anims.exists(namespacedKey)) {
+        this.play({ key: namespacedKey, repeat: animName.startsWith('dance') || animName === 'idle' ? -1 : 0 }, !restart);
+        return this;
+      }
+    }
+    return super.playAnimation(animName, restart, ignoreOther);
+  }
+
+  /**
+   * Override hasAnimation to check namespaced keys too.
+   * @param {string} animName
+   * @returns {boolean}
+   */
+  hasAnimation(animName) {
+    if (this._textureKey && this.scene?.anims) {
+      const namespacedKey = `${this._textureKey}-${animName}`;
+      if (this.scene.anims.exists(namespacedKey)) {
+        return true;
+      }
+    }
+    return super.hasAnimation(animName);
   }
 
   /**

@@ -53,7 +53,13 @@ export function createCameraController(context) {
 
       controller.camGame = scene.cameras.main;
 
-      // Create HUD camera
+      // Set default game camera zoom and center on the stage world
+      // The FNF world space centers around ~640x450 with characters at y~885
+      const stageZoom = playState.stage?.cameraZoom ?? 0.9;
+      controller.camGame.setZoom(stageZoom);
+      controller.camGame.centerOn(640, 400);
+
+      // Create HUD camera (unzoomed, fixed to screen)
       controller.camHUD = scene.cameras.add(
         0,
         0,

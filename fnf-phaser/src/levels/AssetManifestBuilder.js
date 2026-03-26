@@ -35,6 +35,34 @@ function prefixPath(resolvedPath) {
 }
 
 /**
+ * Resolve a stage prop asset path, honoring the stage-level directory when
+ * props use bare relative paths like `smokeRight` or `christmas/bgWalls`.
+ * Week 1 keeps its legacy shared-image props in `shared/images/`.
+ * @param {string} assetPath
+ * @param {string|null} stageDirectory
+ * @returns {string|null}
+ */
+function resolveStageAssetPath(assetPath, stageDirectory) {
+  if (!assetPath) {
+    return null;
+  }
+
+  if (assetPath.startsWith(ASSET_PREFIX) || assetPath.includes(':')) {
+    return resolveAssetPath(assetPath);
+  }
+
+  if (stageDirectory === 'week1' && !assetPath.includes('/')) {
+    return resolveAssetPath(assetPath);
+  }
+
+  if (stageDirectory) {
+    return `${stageDirectory}/images/${assetPath}`;
+  }
+
+  return resolveAssetPath(assetPath);
+}
+
+/**
  * Build character atlas entries for a set of character IDs.
  * @param {string[]} characterIds
  * @param {Object} characterRegistry
@@ -86,6 +114,7 @@ export function buildStageEntries(stageId, stageRegistry) {
     return [];
   }
 
+  const stageDirectory = stageRegistry.getDirectory?.(stageId) ?? null;
   const entries = [];
 
   for (const prop of props) {
@@ -93,7 +122,7 @@ export function buildStageEntries(stageId, stageRegistry) {
       continue;
     }
 
-    const resolved = resolveAssetPath(prop.assetPath);
+    const resolved = resolveStageAssetPath(prop.assetPath, stageDirectory);
     if (!resolved) {
       continue;
     }

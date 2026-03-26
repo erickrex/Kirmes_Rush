@@ -215,6 +215,10 @@ describe('Character', () => {
       },
       tweens: {
         killTweensOf: vi.fn()
+      },
+      anims: {
+        exists: vi.fn().mockReturnValue(true),
+        get: vi.fn().mockReturnValue(null)
       }
     };
 

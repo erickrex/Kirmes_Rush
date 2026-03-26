@@ -276,7 +276,8 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
     // Check if we can play this animation
     if (!this.canPlayOtherAnims) {
       const currentAnim = this.getCurrentAnimation();
-      if (currentAnim === animName && restart) {
+      const resolvedAnimKey = this._resolveAnimationKey(animName);
+      if ((currentAnim === animName || currentAnim === resolvedAnimKey) && restart) {
         // Allow restart of same animation
       } else if (this.ignoreExclusionPref.length > 0) {
         // Check if this animation is in the exclusion list
@@ -295,17 +296,21 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
       return this;
     }
 
-    // Check if animation exists
-    if (!this.anims || !this.anims.animationManager.exists(correctedName)) {
-      // Try playing as a key on this sprite's animation
-      if (this.anims.exists(correctedName)) {
-        this.play({ key: correctedName, repeat: -1 }, !restart);
+    const animationKey = this._resolveAnimationKey(correctedName);
+    if (!animationKey) {
+      console.warn(`[FunkinSprite] Animation not found: ${correctedName}`);
+      return this;
+    }
+
+    if (!this.anims || !this.anims.animationManager.exists(animationKey)) {
+      if (this.anims.exists(animationKey)) {
+        this.play({ key: animationKey, repeat: -1 }, !restart);
       } else {
-        console.warn(`[FunkinSprite] Animation not found: ${correctedName}`);
+        console.warn(`[FunkinSprite] Animation not found: ${animationKey}`);
         return this;
       }
     } else {
-      this.play({ key: correctedName }, !restart);
+      this.play({ key: animationKey }, !restart);
     }
 
     if (ignoreOther) {
@@ -356,13 +361,37 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
       return false;
     }
 
-    // Check sprite-specific animations first
-    if (this.anims.exists(animName)) {
-      return true;
+    return this._resolveAnimationKey(animName) !== null;
+  }
+
+  /**
+   * Resolve an animation name to the concrete Phaser animation key.
+   * Prefers texture-scoped registrations when `_textureKey` is present.
+   * @param {string} animName
+   * @returns {string | null}
+   * @private
+   */
+  _resolveAnimationKey(animName) {
+    if (!this.anims) {
+      return null;
     }
 
-    // Check global animation manager
-    return this.anims.animationManager?.exists(animName) ?? false;
+    if (this._textureKey) {
+      const namespacedKey = `${this._textureKey}-${animName}`;
+      const hasNamespacedAnimation =
+        this.scene?.anims?.exists?.(namespacedKey) ||
+        this.anims.exists(namespacedKey) ||
+        this.anims.animationManager?.exists(namespacedKey);
+      if (hasNamespacedAnimation) {
+        return namespacedKey;
+      }
+    }
+
+    if (this.anims.exists(animName) || this.anims.animationManager?.exists(animName)) {
+      return animName;
+    }
+
+    return null;
   }
 
   /**

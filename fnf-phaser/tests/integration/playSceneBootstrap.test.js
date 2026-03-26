@@ -43,6 +43,7 @@ vi.mock('phaser', () => ({
         this.add = {
           graphics: vi.fn(() => ({
             setDepth: vi.fn().mockReturnThis(),
+            setScrollFactor: vi.fn().mockReturnThis(),
             fillGradientStyle: vi.fn().mockReturnThis(),
             fillRect: vi.fn().mockReturnThis(),
             fillStyle: vi.fn().mockReturnThis(),
@@ -55,6 +56,14 @@ vi.mock('phaser', () => ({
         };
         this.load = {
           on: vi.fn()
+        };
+        this.sound = {
+          stopAll: vi.fn()
+        };
+        this.input = {
+          keyboard: {
+            on: vi.fn()
+          }
         };
         this.scene = {
           start: vi.fn()

@@ -146,8 +146,8 @@ const Constants = await import('../src/core/Constants.js');
 // Mock scene
 const createMockScene = () => ({
   cameras: {
-    main: { setScroll: vi.fn() },
-    add: vi.fn(() => ({ setScroll: vi.fn() }))
+    main: { setScroll: vi.fn(), setZoom: vi.fn(), centerOn: vi.fn(), ignore: vi.fn() },
+    add: vi.fn(() => ({ setScroll: vi.fn(), ignore: vi.fn() }))
   },
   scale: { width: 1280, height: 720 },
   time: {
@@ -1798,6 +1798,7 @@ describe('PlayState', () => {
           characterData: { startingAnimation: 'idle' },
           setTexture: vi.fn(),
           playAnimation: vi.fn(),
+          play: vi.fn(),
           destroy: vi.fn()
         };
         playState.opponent = {
@@ -1805,6 +1806,7 @@ describe('PlayState', () => {
           characterData: { startingAnimation: 'idle' },
           setTexture: vi.fn(),
           playAnimation: vi.fn(),
+          play: vi.fn(),
           destroy: vi.fn()
         };
         playState.girlfriend = {
@@ -1812,6 +1814,7 @@ describe('PlayState', () => {
           characterData: { startingAnimation: 'danceLeft' },
           setTexture: vi.fn(),
           playAnimation: vi.fn(),
+          play: vi.fn(),
           destroy: vi.fn()
         };
 
@@ -1854,9 +1857,15 @@ describe('PlayState', () => {
       it('should play starting animation on each character', () => {
         playState.wireCharacterAssets(mockCharacterRegistry);
 
-        expect(playState.player.playAnimation).toHaveBeenCalledWith('idle');
-        expect(playState.opponent.playAnimation).toHaveBeenCalledWith('idle');
-        expect(playState.girlfriend.playAnimation).toHaveBeenCalledWith('danceLeft');
+        expect(playState.player.play).toHaveBeenCalledWith(
+          { key: 'char-bf-idle', repeat: -1 }, true
+        );
+        expect(playState.opponent.play).toHaveBeenCalledWith(
+          { key: 'char-dad-idle', repeat: -1 }, true
+        );
+        expect(playState.girlfriend.play).toHaveBeenCalledWith(
+          { key: 'char-gf-danceLeft', repeat: -1 }, true
+        );
       });
 
       it('should default to idle when no startingAnimation', () => {
@@ -1864,7 +1873,9 @@ describe('PlayState', () => {
 
         playState.wireCharacterAssets(mockCharacterRegistry);
 
-        expect(playState.player.playAnimation).toHaveBeenCalledWith('idle');
+        expect(playState.player.play).toHaveBeenCalledWith(
+          { key: 'char-bf-idle', repeat: -1 }, true
+        );
       });
 
       it('should skip null characters', () => {
@@ -1941,6 +1952,16 @@ describe('PlayState', () => {
 
         const curtainProp = playState.stage.getProp('stagecurtains');
         expect(curtainProp.playAnimation).toHaveBeenCalledWith('idle');
+      });
+
+      it('should skip props whose textures were not loaded', () => {
+        mockScene.textures.exists.mockImplementation((key) => key !== 'stage-mainStage-stagecurtains');
+
+        playState.wireStageAssets('mainStage', mockStageRegistry);
+
+        const curtainProp = playState.stage.getProp('stagecurtains');
+        expect(curtainProp.setTexture).not.toHaveBeenCalled();
+        expect(curtainProp.playAnimation).not.toHaveBeenCalled();
       });
 
       it('should not register animations for static props', () => {

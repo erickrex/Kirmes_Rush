@@ -139,6 +139,59 @@ describe('AssetManifestBuilder — Property-Based Tests', () => {
         { numRuns: 100 }
       );
     });
+
+    it('resolves bare stage asset paths under the stage directory when present', () => {
+      const entries = buildStageEntries('tankmanBattlefield', {
+        getDirectory: () => 'week7',
+        getStageProps: () => [
+          {
+            name: 'smokeRight',
+            assetPath: 'smokeRight',
+            animations: [{ name: 'smokeRight', prefix: 'SmokeRight', looped: true }]
+          },
+          {
+            name: 'tankGround',
+            assetPath: 'tankGround',
+            animations: []
+          }
+        ]
+      });
+
+      expect(entries).toEqual([
+        {
+          type: 'atlas',
+          key: 'stage-tankmanBattlefield-smokeRight',
+          path: 'assets/funkin.assets/week7/images/smokeRight.png',
+          atlasURL: 'assets/funkin.assets/week7/images/smokeRight.xml'
+        },
+        {
+          type: 'image',
+          key: 'stage-tankmanBattlefield-tankGround',
+          path: 'assets/funkin.assets/week7/images/tankGround.png'
+        }
+      ]);
+    });
+
+    it('keeps legacy week1 stage props in shared/images', () => {
+      const entries = buildStageEntries('mainStage', {
+        getDirectory: () => 'week1',
+        getStageProps: () => [
+          {
+            name: 'stageBack',
+            assetPath: 'stageback',
+            animations: []
+          }
+        ]
+      });
+
+      expect(entries).toEqual([
+        {
+          type: 'image',
+          key: 'stage-mainStage-stageBack',
+          path: 'assets/funkin.assets/shared/images/stageback.png'
+        }
+      ]);
+    });
   });
 
   /**

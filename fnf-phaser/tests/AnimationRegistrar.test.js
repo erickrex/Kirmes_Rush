@@ -13,13 +13,21 @@ import { registerCharacterAnimations, registerPropAnimations } from '../src/grap
  * - scene.anims.generateFrameNames(key, opts) returns [{ key, frame: opts.prefix }]
  */
 function createMockScene() {
+  const registered = new Set();
   return {
     anims: {
       create(config) {
+        registered.add(config.key);
         return config;
       },
       generateFrameNames(key, opts) {
         return [{ key, frame: opts.prefix }];
+      },
+      exists(key) {
+        return registered.has(key);
+      },
+      get(key) {
+        return null;
       }
     }
   };
@@ -86,7 +94,7 @@ describe('AnimationRegistrar — Property-Based Tests', () => {
               const anim = uniqueAnims[i];
               const config = results[i];
 
-              expect(config.key).toBe(anim.name);
+              expect(config.key).toBe(`${textureKey}-${anim.name}`);
               expect(config.frameRate).toBe(anim.frameRate);
               expect(config.repeat).toBe(anim.looped ? -1 : 0);
             }
@@ -118,7 +126,7 @@ describe('AnimationRegistrar — Property-Based Tests', () => {
               const anim = uniqueAnims[i];
               const config = results[i];
 
-              expect(config.key).toBe(anim.name);
+              expect(config.key).toBe(`${textureKey}-${anim.name}`);
               expect(config.frameRate).toBe(anim.frameRate);
               expect(config.repeat).toBe(anim.looped ? -1 : 0);
             }

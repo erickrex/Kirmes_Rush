@@ -307,14 +307,16 @@ class PlayState {
         continue;
       }
       ref.setTexture(textureKey);
+      ref._textureKey = textureKey;
       registerCharacterAnimations(
         this.scene,
         textureKey,
         characterRegistry.getCharacterAnimations(id)
       );
       const startAnim = ref.characterData?.startingAnimation || 'idle';
-      if (this.scene.anims.exists(startAnim)) {
-        ref.playAnimation(startAnim);
+      const namespacedKey = `${textureKey}-${startAnim}`;
+      if (this.scene.anims.exists(namespacedKey)) {
+        ref.play({ key: namespacedKey, repeat: -1 }, true);
       }
     }
   }
@@ -327,10 +329,17 @@ class PlayState {
         continue;
       }
       const textureKey = `stage-${stageId}-${prop.name}`;
+      if (!this.scene.textures.exists(textureKey)) {
+        console.warn(`[PlayState] Missing stage texture: ${textureKey}`);
+        continue;
+      }
+
       sprite.setTexture(textureKey);
+      sprite._textureKey = textureKey;
       if (prop.animations && prop.animations.length > 0) {
         registerPropAnimations(this.scene, textureKey, prop.animations);
-        if (prop.startingAnimation) {
+        const startAnimKey = `${textureKey}-${prop.startingAnimation}`;
+        if (prop.startingAnimation && this.scene.anims.exists(startAnimKey)) {
           sprite.playAnimation(prop.startingAnimation);
         }
       }

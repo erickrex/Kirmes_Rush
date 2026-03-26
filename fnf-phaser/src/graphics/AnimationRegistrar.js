@@ -26,8 +26,17 @@ export function registerCharacterAnimations(scene, textureKey, animations) {
       continue;
     }
 
+    // Namespace animation key by texture to avoid collisions between characters
+    const animKey = `${textureKey}-${anim.name}`;
+
+    // Don't re-create if already registered
+    if (scene.anims.exists(animKey)) {
+      results.push(scene.anims.get(animKey));
+      continue;
+    }
+
     const config = {
-      key: anim.name,
+      key: animKey,
       frames,
       frameRate: anim.frameRate,
       repeat: anim.looped ? -1 : 0
@@ -55,9 +64,20 @@ export function registerPropAnimations(scene, textureKey, animations) {
   const results = [];
 
   for (const anim of animations) {
+    const frames = scene.anims.generateFrameNames(textureKey, { prefix: anim.prefix });
+    if (!frames || frames.length === 0) {
+      continue;
+    }
+
+    const animKey = `${textureKey}-${anim.name}`;
+    if (scene.anims.exists(animKey)) {
+      results.push(scene.anims.get(animKey));
+      continue;
+    }
+
     const config = {
-      key: anim.name,
-      frames: scene.anims.generateFrameNames(textureKey, { prefix: anim.prefix }),
+      key: animKey,
+      frames,
       frameRate: anim.frameRate,
       repeat: anim.looped ? -1 : 0
     };

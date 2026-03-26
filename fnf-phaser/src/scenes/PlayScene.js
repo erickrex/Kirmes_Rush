@@ -140,6 +140,7 @@ export default class PlayScene extends Phaser.Scene {
     this.gameplaySkin.attachStrumline(this.playState.opponentStrumline, { alpha: 0.65 });
     this.gameplaySkin.attachStrumline(this.playState.playerStrumline);
     this.createHud();
+    this.setupCameraLayers();
     this.registerGameplayFlow();
     this.playState.generateNotes();
     this.playState.startCountdown();
@@ -232,6 +233,7 @@ export default class PlayScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     this.backgroundGraphics = this.add.graphics();
     this.backgroundGraphics.setDepth(-10000);
+    this.backgroundGraphics.setScrollFactor(0);
     this.backgroundGraphics.fillGradientStyle(0x08111f, 0x08111f, 0x15253d, 0x15253d, 1);
     this.backgroundGraphics.fillRect(0, 0, width, height);
 
@@ -366,6 +368,54 @@ export default class PlayScene extends Phaser.Scene {
       this.healthBar.centerX(this.scale.width);
       this.healthBar.setPosition(this.healthBar.x, this.scale.height - 56);
       this.healthBar.setHealthImmediate(this.playState.health);
+    }
+  }
+
+  setupCameraLayers() {
+    const camHUD = this.playState.camHUD;
+    const camGame = this.playState.camGame;
+    if (!camHUD || !camGame) {
+      return;
+    }
+
+    // Collect HUD objects that should NOT be affected by game camera zoom/scroll
+    const hudObjects = [];
+    if (this.backgroundGraphics) hudObjects.push(this.backgroundGraphics);
+    if (this.countdownText) hudObjects.push(this.countdownText);
+    if (this.scoreDisplay) hudObjects.push(this.scoreDisplay);
+    if (this.healthBar) {
+      if (this.healthBar.container) hudObjects.push(this.healthBar.container);
+      if (this.healthBar.graphics) hudObjects.push(this.healthBar.graphics);
+    }
+
+    // Note sprites and receptor sprites are added dynamically, so we collect
+    // all strumline-related sprites from the skin attachments
+    if (this.gameplaySkin?.attachments) {
+      this.gameplaySkin.attachments.forEach((attachment) => {
+        attachment.receptorSprites.forEach((s) => hudObjects.push(s));
+        if (attachment.holdGraphics) hudObjects.push(attachment.holdGraphics);
+      });
+    }
+
+    // Collect stage/character objects that should NOT appear on HUD camera
+    const worldObjects = [];
+    if (this.playState.stage) {
+      for (const prop of this.playState.stage.propSprites) {
+        worldObjects.push(prop);
+      }
+    }
+    if (this.playState.player) worldObjects.push(this.playState.player);
+    if (this.playState.opponent) worldObjects.push(this.playState.opponent);
+    if (this.playState.girlfriend) worldObjects.push(this.playState.girlfriend);
+
+    // Game camera ignores HUD objects
+    for (const obj of hudObjects) {
+      try { camGame.ignore(obj); } catch { /* skip */ }
+    }
+
+    // HUD camera ignores world objects
+    for (const obj of worldObjects) {
+      try { camHUD.ignore(obj); } catch { /* skip */ }
     }
   }
 

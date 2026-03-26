@@ -345,6 +345,18 @@ describe('FunkinSprite', () => {
       const result = sprite.playAnimation('idle');
       expect(result).toBe(sprite);
     });
+
+    it('should prefer texture-scoped animation keys when present', () => {
+      sprite._textureKey = 'stage-mainStage-stagecurtains';
+      sprite.anims.exists = vi.fn((key) => key === 'stage-mainStage-stagecurtains-idle');
+      sprite.anims.animationManager.exists = vi.fn(
+        (key) => key === 'stage-mainStage-stagecurtains-idle'
+      );
+
+      sprite.playAnimation('idle');
+
+      expect(sprite.anims.currentAnim.key).toBe('stage-mainStage-stagecurtains-idle');
+    });
   });
 
   describe('Animation Queries', () => {
@@ -359,6 +371,16 @@ describe('FunkinSprite', () => {
       sprite.anims.animationManager.exists = vi.fn().mockReturnValue(false);
 
       expect(sprite.hasAnimation('nonexistent')).toBe(false);
+    });
+
+    it('should resolve texture-scoped animations from the plain animation name', () => {
+      sprite._textureKey = 'stage-mainStage-stagecurtains';
+      sprite.anims.exists = vi.fn((key) => key === 'stage-mainStage-stagecurtains-idle');
+      sprite.anims.animationManager.exists = vi.fn(
+        (key) => key === 'stage-mainStage-stagecurtains-idle'
+      );
+
+      expect(sprite.hasAnimation('idle')).toBe(true);
     });
 
     it('should get current animation name', () => {
