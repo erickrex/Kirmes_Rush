@@ -432,24 +432,90 @@ export default class PlayScene extends Phaser.Scene {
 
     // The note style registry should have been populated by the
     // LoadingState prepareCallback. If it's empty (e.g. the async load
-    // was skipped or failed), try a synchronous fallback from the JSON
-    // cache so the atlas-based note arrows render instead of circles.
-    const noteStyleId = this.session?.songData?.noteStyle;
+    // hung or failed), load the JSON synchronously via fetch so the
+    // atlas-based note arrows render instead of placeholder shapes.
+    const noteStyleId = this.session?.songData?.noteStyle ?? 'funkin';
     if (
-      noteStyleId &&
       typeof this.noteStyleRegistry.hasEntry === 'function' &&
       !this.noteStyleRegistry.hasEntry(noteStyleId)
     ) {
-      const jsonKey = `${this.noteStyleRegistry.dataFilePath}/${noteStyleId}.json`;
-      const cached = this.cache?.json?.get?.(jsonKey);
-      if (cached && typeof this.noteStyleRegistry.parseEntryDataRaw === 'function') {
-        const cleaned = this.noteStyleRegistry.parseEntryDataRaw(cached, jsonKey);
-        if (cleaned && typeof this.noteStyleRegistry.createEntry === 'function') {
-          const entry = this.noteStyleRegistry.createEntry(noteStyleId, cleaned);
-          if (entry) {
-            this.noteStyleRegistry.entries.set(entry.id, entry);
-            this.noteStyleRegistry.loaded = true;
+      this._loadNoteStyleSync(noteStyleId);
+    }
+  }
+
+  /**
+   * Synchronous-ish fallback: fetch the note style JSON from the Phaser
+   * JSON cache (populated by LoadingState) or from the scene's own cache,
+   * then manually inject it into the registry.
+   * @param {string} noteStyleId
+   * @private
+   */
+  _loadNoteStyleSync(noteStyleId) {
+    const reg = this.noteStyleRegistry;
+    const jsonKey = `${reg.dataFilePath}/${noteStyleId}.json`;
+
+    // Try the shared Phaser JSON cache first
+    const cached = this.cache?.json?.get?.(jsonKey);
+    if (cached && typeof reg.parseEntryDataRaw === 'function') {
+      const cleaned = reg.parseEntryDataRaw(cached, jsonKey);
+      if (cleaned && typeof reg.createEntry === 'function') {
+        const entry = reg.createEntry(noteStyleId, cleaned);
+        if (entry) {
+          reg.entries.set(entry.id, entry);
+          reg.loaded = true;
+          return;
+        }
+      }
+    }
+
+    // Last resort: build a minimal hardcoded entry for the default "funkin"
+    // style so frame-prefix lookups work even without the JSON.
+    if (noteStyleId === 'funkin') {
+      const fallbackData = {
+        version: '1.1.0',
+        name: 'Funkin\'',
+        author: 'PhantomArcade',
+        fallback: null,
+        assets: {
+          note: {
+            assetPath: 'shared:notes', scale: 0.7, isPixel: false,
+            offsets: [0, 0], alpha: 1,
+            data: {
+              left: { prefix: 'noteLeft' },
+              down: { prefix: 'noteDown' },
+              up: { prefix: 'noteUp' },
+              right: { prefix: 'noteRight' }
+            }
+          },
+          noteStrumline: {
+            assetPath: 'shared:noteStrumline', scale: 0.7, isPixel: false,
+            offsets: [0, 0], alpha: 1,
+            data: {
+              leftStatic: { prefix: 'staticLeft0' },
+              leftPress: { prefix: 'pressLeft0' },
+              leftConfirm: { prefix: 'confirmLeft0' },
+              leftConfirmHold: { prefix: 'confirmLeft0' },
+              downStatic: { prefix: 'staticDown0' },
+              downPress: { prefix: 'pressDown0' },
+              downConfirm: { prefix: 'confirmDown0' },
+              downConfirmHold: { prefix: 'confirmDown0' },
+              upStatic: { prefix: 'staticUp0' },
+              upPress: { prefix: 'pressUp0' },
+              upConfirm: { prefix: 'confirmUp0' },
+              upConfirmHold: { prefix: 'confirmUp0' },
+              rightStatic: { prefix: 'staticRight0' },
+              rightPress: { prefix: 'pressRight0' },
+              rightConfirm: { prefix: 'confirmRight0' },
+              rightConfirmHold: { prefix: 'confirmRight0' }
+            }
           }
+        }
+      };
+      if (typeof reg.createEntry === 'function') {
+        const entry = reg.createEntry(noteStyleId, fallbackData);
+        if (entry) {
+          reg.entries.set(entry.id, entry);
+          reg.loaded = true;
         }
       }
     }

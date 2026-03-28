@@ -256,6 +256,32 @@ export function buildManifest(session, registries) {
 
   const noteStyleEntries = noteStyleId ? buildNoteStyleEntries(noteStyleId, noteStyleRegistry) : [];
 
+  // Guarantee the core note and strumline atlases are always loaded for the
+  // default "funkin" style, even when the NoteStyleRegistry async load fails.
+  // Without these the game falls back to generated placeholder shapes.
+  const coreNoteStyleId = noteStyleId || 'funkin';
+  const coreNoteKey = `notestyle-${coreNoteStyleId}-note`;
+  const coreStrumKey = `notestyle-${coreNoteStyleId}-noteStrumline`;
+  const hasCoreNote = noteStyleEntries.some((e) => e.key === coreNoteKey);
+  const hasCoreStrum = noteStyleEntries.some((e) => e.key === coreStrumKey);
+
+  if (!hasCoreNote) {
+    noteStyleEntries.push({
+      type: 'atlas',
+      key: coreNoteKey,
+      path: `${ASSET_PREFIX}shared/images/notes.png`,
+      atlasURL: `${ASSET_PREFIX}shared/images/notes.xml`
+    });
+  }
+  if (!hasCoreStrum) {
+    noteStyleEntries.push({
+      type: 'atlas',
+      key: coreStrumKey,
+      path: `${ASSET_PREFIX}shared/images/noteStrumline.png`,
+      atlasURL: `${ASSET_PREFIX}shared/images/noteStrumline.xml`
+    });
+  }
+
   // Merge all entries and deduplicate
   const allEntries = [...audioEntries, ...charEntries, ...stageEntries, ...noteStyleEntries];
   return deduplicateEntries(allEntries);
