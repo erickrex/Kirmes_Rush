@@ -148,6 +148,14 @@ class AudioManager {
     }
 
     try {
+      // Guard: if the Phaser audio cache is available, verify the key exists
+      // before calling sound.add (which throws on missing keys in some builds).
+      const audioCache = this.scene.cache?.audio;
+      if (audioCache && typeof audioCache.exists === 'function' && !audioCache.exists(key)) {
+        console.warn(`[AudioManager] Audio key not in cache: ${key}`);
+        return null;
+      }
+
       this.instrumental = this.scene.sound.add(key, {
         volume: this.instrumentalVolume * this.masterVolume
       });
@@ -198,12 +206,26 @@ class AudioManager {
    */
   play(startTime = 0) {
     if (!this.instrumental) {
+      // No instrumental loaded — mark as playing anyway so the game loop
+      // can fall back to delta-based timing instead of freezing.
+      this.isPlaying = false;
       return;
     }
 
     const seekTime = startTime / Constants.MS_PER_SEC;
 
     try {
+      // Resume the Web Audio context if suspended (required on mobile browsers).
+      // ctx.resume() is async but we fire-and-forget; Phaser will queue the
+      // play call until the context is running.
+      const ctx = this.scene?.sound?.context;
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {
+          // Swallow — the delta-based fallback in PlayState.update keeps the
+          // game running even when the audio context stays suspended.
+        });
+      }
+
       this.instrumental.play({ seek: seekTime });
       this.isPlaying = true;
       this.isPaused = false;
@@ -214,6 +236,8 @@ class AudioManager {
       }
     } catch (e) {
       console.error('[AudioManager] Failed to play:', e);
+      // Even on failure, mark as not playing so the delta fallback kicks in
+      this.isPlaying = false;
     }
   }
 
@@ -319,7 +343,7 @@ class AudioManager {
       // Phaser's seek property returns time in seconds
       const seekTime = this.instrumental.seek ?? 0;
       return seekTime * Constants.MS_PER_SEC;
-    } catch (e) {
+    } catch {
       return 0;
     }
   }
@@ -537,7 +561,7 @@ class AudioManager {
     if (sfx) {
       try {
         sfx.stop();
-      } catch (e) {
+      } catch {
         // Ignore stop errors
       }
     }
@@ -550,7 +574,7 @@ class AudioManager {
     for (const sfx of this.sfxCache.values()) {
       try {
         sfx.stop();
-      } catch (e) {
+      } catch {
         // Ignore stop errors
       }
     }
@@ -566,7 +590,7 @@ class AudioManager {
     for (const sfx of this.sfxCache.values()) {
       try {
         sfx.setVolume(this.sfxVolume * this.masterVolume);
-      } catch (e) {
+      } catch {
         // Ignore volume errors
       }
     }
@@ -682,7 +706,7 @@ class AudioManager {
     for (const sfx of this.sfxCache.values()) {
       try {
         sfx.destroy();
-      } catch (e) {
+      } catch {
         // Ignore destroy errors
       }
     }

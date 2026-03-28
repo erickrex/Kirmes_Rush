@@ -11,14 +11,17 @@ import Scoring from './Scoring.js';
 import Strumline from './Strumline.js';
 import Character from './Character.js';
 import Stage from './Stage.js';
-import FunkinCamera from '../graphics/FunkinCamera.js';
 import SaveManager from '../data/SaveManager.js';
 import InputStatistics from '../input/InputStatistics.js';
 import ExpandedStatsDisplay from './ExpandedStatsDisplay.js';
 import ScoreDisplay from './ScoreDisplay.js';
+import OpponentIndicator from './OpponentIndicator.js';
+import { PLAYER_STRUMLINE_X, PLAYER_STRUMLINE_Y } from '../layout/LayoutManager.js';
 import { ReplayRecorder, ReplayPlayer } from '../replay/ReplaySystem.js';
 import { InputBuffer } from '../input/InputSystem.js';
-import LevelSystem from '../levels/LevelSystem.js';
+import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
+import TouchInputController from '../input/TouchInputController.js';
+import PerformanceMonitor from '../core/PerformanceMonitor.js';
 import {
   registerCharacterAnimations,
   registerPropAnimations
@@ -30,16 +33,41 @@ import { createCameraController } from './CameraController.js';
 import { createSongFlowController } from './SongFlowController.js';
 
 /**
+ * @typedef {import('../types.js').SongMetadata} SongMetadata
+ * @typedef {import('../types.js').ChartData} ChartData
+ * @typedef {import('../types.js').Tallies} Tallies
+ * @typedef {import('../types.js').NoteData} NoteData
+ * @typedef {import('../types.js').Judgement} Judgement
+ * @typedef {{ direction: number, timestamp: number }} QueuedInput
+ * @typedef {{
+ *   x?: number,
+ *   y?: number,
+ *   align?: string,
+ *   showCombo?: boolean,
+ *   showAccuracy?: boolean,
+ *   showMisses?: boolean,
+ *   showNPS?: boolean,
+ *   showGrade?: boolean,
+ *   showComboBreaks?: boolean,
+ *   showJudgements?: boolean
+ * }} HUDDisplayConfig
+ */
+
+/**
  * Main gameplay scene for Friday Night Funkin'.
  * Orchestrates focused modules for note processing, input, camera, scoring, and song flow.
  */
 class PlayState {
   // Core references
+  /** @type {(Phaser.Scene & { registerHudObject?: (obj: any) => any }) | null} */
   scene = null;
+  /** @type {SongMetadata | null} */
   songData = null;
   difficulty = Constants.DEFAULT_DIFFICULTY;
   startTimestamp = 0;
+  /** @type {ChartData | null} */
   chart = null;
+  /** @type {Conductor | null} */
   conductor = null;
 
   // Gameplay state (kept on PlayState for backward compatibility)
@@ -47,6 +75,7 @@ class PlayState {
   score = 0;
   combo = 0;
   maxCombo = 0;
+  /** @type {Tallies} */
   tallies = {
     sick: 0,
     good: 0,
@@ -67,28 +96,48 @@ class PlayState {
   countdownStep = 0;
 
   // Strumlines
+  /** @type {Strumline | null} */
   playerStrumline = null;
+  /** @type {Strumline | null} */
   opponentStrumline = null;
 
+  // Opponent indicator (portrait mode)
+  /** @type {OpponentIndicator | null} */
+  opponentIndicator = null;
+
   // Input
+  /** @type {QueuedInput[]} */
   inputPressQueue = [];
+  /** @type {QueuedInput[]} */
   inputReleaseQueue = [];
   preciseInput = null;
+  /** @type {TouchInputController | null} */
+  touchInputController = null;
+
+  // Performance monitoring
+  /** @type {PerformanceMonitor | null} */
+  performanceMonitor = null;
 
   // Competitive stats
+  /** @type {InputStatistics | null} */
   inputStatistics = null;
   competitiveStatsEnabled = false;
+  /** @type {ScoreDisplay | ExpandedStatsDisplay | null} */
   scoreDisplay = null;
 
   // Replay
+  /** @type {ReplayRecorder | null} */
   replayRecorder = null;
   replayRecordingEnabled = false;
+  /** @type {ReplayPlayer | null} */
   replayPlayer = null;
   replayMode = false;
+  /** @type {Phaser.GameObjects.Text | null} */
   replayIndicator = null;
 
   // Systems
   levelSystem = null;
+  /** @type {InputBuffer | null} */
   inputBuffer = null;
   inputBufferEnabled = false;
   audioManager = null;
@@ -101,24 +150,39 @@ class PlayState {
   cameraFocusTarget = 0;
 
   // Characters & Stage
+  /** @type {Character | null} */
   player = null;
+  /** @type {Character | null} */
   opponent = null;
+  /** @type {Character | null} */
   girlfriend = null;
+  /** @type {Stage | null} */
   stage = null;
 
   // Callbacks
+  /** @type {((note: NoteData, judgement: Judgement) => void) | null} */
   onNoteHit = null;
+  /** @type {(() => void) | null} */
   onNoteMiss = null;
   onSongEnd = null;
+  /** @type {((step: number) => void) | null} */
   onCountdownStep = null;
 
   // Modules (private)
+  /** @type {ReturnType<typeof createGameplayState> | null} */
   _gameplayState = null;
+  /** @type {ReturnType<typeof createNoteProcessor> | null} */
   _noteProcessor = null;
+  /** @type {ReturnType<typeof createInputManager> | null} */
   _inputManager = null;
+  /** @type {ReturnType<typeof createCameraController> | null} */
   _cameraController = null;
+  /** @type {ReturnType<typeof createSongFlowController> | null} */
   _songFlowController = null;
 
+  /**
+   * @param {Phaser.Scene & { registerHudObject?: (obj: any) => any }} scene
+   */
   constructor(scene) {
     this.scene = scene;
     this.conductor = Conductor.instance;
@@ -159,6 +223,9 @@ class PlayState {
     EventBus.on(Events.COMBO_BREAK, this._onComboBreakForStats);
   }
 
+  /**
+   * @param {{ song?: SongMetadata | null, difficulty?: string, startTimestamp?: number, chart?: ChartData | null }} config
+   */
   init(config) {
     this.songData = config.song ?? null;
     this.difficulty = config.difficulty ?? Constants.DEFAULT_DIFFICULTY;
@@ -170,6 +237,11 @@ class PlayState {
     this.competitiveStatsEnabled = this.isCompetitiveStatsEnabled();
     if (this.competitiveStatsEnabled) {
       this.inputStatistics = new InputStatistics();
+    }
+
+    // Initialize performance monitor
+    if (this.scene?.game) {
+      this.performanceMonitor = new PerformanceMonitor(this.scene.game);
     }
 
     if (this.chart?.timeChanges) {
@@ -215,13 +287,37 @@ class PlayState {
   }
 
   createStrumlines(noteStyle = null, scrollSpeed = 1.0) {
+    // Player strumline: centered horizontally, forced downscroll, portrait Y position
     this.playerStrumline = new Strumline(this.scene, true, noteStyle, scrollSpeed);
-    this.playerStrumline.setPosition(
-      Constants.STRUMLINE_X_OFFSET + 560,
-      Constants.STRUMLINE_Y_OFFSET
-    );
+    this.playerStrumline.setPosition(PLAYER_STRUMLINE_X, PLAYER_STRUMLINE_Y);
+    this.playerStrumline.isDownscroll = true;
+
+    // Opponent strumline: hidden, used for timing/scoring only
     this.opponentStrumline = new Strumline(this.scene, false, noteStyle, scrollSpeed);
     this.opponentStrumline.setPosition(Constants.STRUMLINE_X_OFFSET, Constants.STRUMLINE_Y_OFFSET);
+    this.opponentStrumline.visible = false;
+    this.opponentStrumline.renderNotes = false;
+
+    // Opponent indicator widget replaces visible opponent strumline
+    this.opponentIndicator = new OpponentIndicator(this.scene);
+    this.opponentIndicator.create();
+
+    // Touch input controller for mobile devices
+    this.createTouchInputController();
+  }
+
+  /**
+   * Create touch input controller if on a touch device.
+   * Passes input queues so touch events feed into the same pipeline as keyboard.
+   */
+  createTouchInputController() {
+    if (TouchDeviceDetector.isTouch()) {
+      this.touchInputController = new TouchInputController(this.scene, {
+        pressQueue: this.inputPressQueue,
+        releaseQueue: this.inputReleaseQueue
+      });
+      this.touchInputController.create();
+    }
   }
 
   setupCameras() {
@@ -410,6 +506,9 @@ class PlayState {
     return this.levelSystem.isFeatureEnabled('expandedStats');
   }
 
+  /**
+   * @param {HUDDisplayConfig} [config={}]
+   */
   createHUDDisplay(config = {}) {
     if (this.competitiveStatsEnabled) {
       const saveManager = SaveManager.getInstance();
@@ -480,7 +579,9 @@ class PlayState {
       stroke: '#000000',
       strokeThickness: 4
     });
-    if (this.camHUD) {
+    if (typeof this.scene.registerHudObject === 'function') {
+      this.scene.registerHudObject(this.replayIndicator);
+    } else if (this.camHUD) {
       this.replayIndicator.setScrollFactor(0);
     }
     if (this.scene.tweens) {
@@ -548,9 +649,20 @@ class PlayState {
     const prevBeat = this.conductor.currentBeat;
 
     if (this.audioManager?.isPlaying) {
-      this.songPosition = this.audioManager.currentTime;
+      const audioTime = this.audioManager.currentTime;
+      // Fallback: if audio reports isPlaying but currentTime isn't advancing
+      // (e.g. suspended audio context on mobile), use delta-based timing
+      if (audioTime > 0) {
+        this.songPosition = audioTime;
+      } else if (this.songStarted) {
+        this.songPosition += delta;
+      }
     } else if (this.countdownActive) {
       // During countdown, advance position by delta time toward song start
+      this.songPosition += delta;
+    } else if (this.songStarted) {
+      // Fallback: audio failed to start or was suspended (common on mobile).
+      // Keep advancing songPosition via delta so gameplay doesn't freeze.
       this.songPosition += delta;
     }
     this.conductor.update(this.songPosition);
@@ -586,7 +698,22 @@ class PlayState {
     if (this.scoreDisplay) {
       this.scoreDisplay.update(delta, this.songPosition);
     }
+    if (this.opponentIndicator) {
+      this.opponentIndicator.update(delta);
+    }
+    if (this.touchInputController) {
+      this.touchInputController.update();
+    }
     this._noteProcessor.checkMissedNotes();
+
+    // Performance monitoring — disable effects when FPS is low
+    if (this.performanceMonitor) {
+      this.performanceMonitor.update(delta);
+      const lowPerf = this.performanceMonitor.isLowPerformance();
+      if (this.funkinCamera) {
+        this.funkinCamera.setBeatZoomEnabled(!lowPerf);
+      }
+    }
 
     if (this.songStarted && this.songPosition >= this.songLength) {
       this.endSong();
@@ -815,6 +942,14 @@ class PlayState {
       this.opponentStrumline.destroy();
       this.opponentStrumline = null;
     }
+    if (this.opponentIndicator) {
+      this.opponentIndicator.destroy();
+      this.opponentIndicator = null;
+    }
+    if (this.touchInputController) {
+      this.touchInputController.destroy();
+      this.touchInputController = null;
+    }
     if (this.player) {
       this.player.destroy();
       this.player = null;
@@ -845,6 +980,7 @@ class PlayState {
     this.songData = null;
     this.camGame = null;
     this.camHUD = null;
+    this.performanceMonitor = null;
 
     if (this.replayRecorder) {
       if (this.replayRecorder.isRecording()) {
