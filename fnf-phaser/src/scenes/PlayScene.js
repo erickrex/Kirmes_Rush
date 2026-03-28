@@ -415,6 +415,13 @@ export default class PlayScene extends Phaser.Scene {
       return;
     }
 
+    const removeListeners = () => {
+      canvas.removeEventListener('touchstart', handler);
+      canvas.removeEventListener('touchend', handler);
+      canvas.removeEventListener('mousedown', handler);
+      canvas.removeEventListener('click', handler);
+    };
+
     const handler = () => {
       const ctx = this.sound?.context;
       if (ctx && ctx.state === 'suspended') {
@@ -422,16 +429,20 @@ export default class PlayScene extends Phaser.Scene {
           if (this.audioManager?.instrumental && !this.audioManager.isPlaying && this.playState?.songStarted) {
             this.audioManager.play(this.playState.songPosition);
           }
+          // Context is now running — safe to remove listeners
+          removeListeners();
         }).catch(() => {});
-      }
-      // Keep listening until audio is actually running
-      if (this.audioManager?.isPlaying || (ctx && ctx.state === 'running')) {
-        canvas.removeEventListener('touchstart', handler);
-        canvas.removeEventListener('mousedown', handler);
+      } else if (ctx && ctx.state === 'running') {
+        // Already running — remove listeners immediately
+        removeListeners();
       }
     };
+    // touchend is more reliable than touchstart for the "user gesture"
+    // requirement on some mobile browsers (notably iOS Safari 17+).
     canvas.addEventListener('touchstart', handler, { passive: true });
+    canvas.addEventListener('touchend', handler, { passive: true });
     canvas.addEventListener('mousedown', handler);
+    canvas.addEventListener('click', handler);
   }
 
   setupRegistries() {

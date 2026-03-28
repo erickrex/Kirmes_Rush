@@ -63,7 +63,7 @@ class BootScene extends Phaser.Scene {
    * Scene to transition to after loading completes.
    * @type {string}
    */
-  nextScene = 'TitleScene';
+  nextScene = 'TitleState';
 
   /**
    * Whether an error occurred during loading.
@@ -215,7 +215,14 @@ class BootScene extends Phaser.Scene {
 
       for (const entry of noteStyleEntries) {
         if (entry.type === 'atlas') {
-          this.load.atlas(entry.key, entry.path, entry.atlasURL);
+          // Use atlasXML for XML-based Sparrow atlases (the format FNF uses).
+          // this.load.atlas() expects a JSON hash; passing an XML file to it
+          // fails silently on mobile browsers, producing no frames.
+          if (entry.atlasURL && entry.atlasURL.endsWith('.xml')) {
+            this.load.atlasXML(entry.key, entry.path, entry.atlasURL);
+          } else {
+            this.load.atlas(entry.key, entry.path, entry.atlasURL);
+          }
         } else if (entry.type === 'image') {
           this.load.image(entry.key, entry.path);
         }

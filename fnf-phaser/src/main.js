@@ -51,6 +51,7 @@ const config = {
     antialiasGL: true
   },
   scene: [
+    BootScene,
     TitleState,
     MainMenuState,
     LevelSelectState,
@@ -62,8 +63,7 @@ const config = {
     GameOverState,
     ResultState,
     LoadingState,
-    ReplayBrowserState,
-    BootScene
+    ReplayBrowserState
   ]
 };
 

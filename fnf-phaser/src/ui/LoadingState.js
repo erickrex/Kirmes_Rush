@@ -160,6 +160,14 @@ export default class LoadingState extends Phaser.Scene {
     this.loadingStarted = false;
 
     /**
+     * Whether the scene is currently waiting for the real gameplay asset load
+     * to complete. Prepare-phase registry JSON loads reuse the same Phaser
+     * loader and must not trigger the scene transition.
+     * @type {boolean}
+     */
+    this.awaitingAssetLoadCompletion = false;
+
+    /**
      * Whether we are still running the async prepare step
      * @type {boolean}
      */
@@ -209,6 +217,7 @@ export default class LoadingState extends Phaser.Scene {
     this.loadingStarted = false;
     this.preparing = false;
     this.transitionStarted = false;
+    this.awaitingAssetLoadCompletion = false;
   }
 
   /**
@@ -318,11 +327,17 @@ export default class LoadingState extends Phaser.Scene {
     this.load.on('fileprogress', this.loadEventHandlers.fileprogress);
 
     this.loadEventHandlers.complete = () => {
+      if (!this.awaitingAssetLoadCompletion) {
+        return;
+      }
       this.onLoadComplete();
     };
     this.load.on('complete', this.loadEventHandlers.complete);
 
     this.loadEventHandlers.loaderror = (file) => {
+      if (!this.awaitingAssetLoadCompletion) {
+        return;
+      }
       console.error(`[LoadingState] Failed to load: ${file.key}`);
       this.hasError = true;
       this.errorMessage = `Failed to load: ${file.key}`;
@@ -506,6 +521,12 @@ export default class LoadingState extends Phaser.Scene {
     }
 
     if (queuedAssets > 0 || (this.load.totalToLoad ?? 0) > 0) {
+      // Reset any stale progress from prepare-phase loader activity before
+      // starting the real gameplay asset load.
+      this.loadingComplete = false;
+      this.progress = 0;
+      this.awaitingAssetLoadCompletion = true;
+      this.updateProgressBar(0);
       this.load.start();
       return;
     }
@@ -544,6 +565,7 @@ export default class LoadingState extends Phaser.Scene {
    * Called when loading is complete
    */
   onLoadComplete() {
+    this.awaitingAssetLoadCompletion = false;
     this.loadingComplete = true;
     this.progress = 1;
     this.updateProgressBar(1);

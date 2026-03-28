@@ -129,7 +129,13 @@ vi.mock('phaser', () => {
           this.input = {
             keyboard: { on: vi.fn(), off: vi.fn() }
           };
-          this.sound = { play: vi.fn() };
+          this.sound = {
+            play: vi.fn(),
+            context: {
+              state: 'suspended',
+              resume: vi.fn(() => Promise.resolve())
+            }
+          };
           this.cache = {
             audio: { exists: vi.fn(() => false) }
           };
@@ -185,7 +191,7 @@ describe('LevelSelectState', () => {
     scene.selectedIndex = 2;
     const transitionSpy = vi.spyOn(scene, 'transitionToScene');
 
-    scene.executeSelection();
+    await scene.executeSelection();
 
     expect(transitionSpy).toHaveBeenCalledWith(
       'LoadingState',
@@ -203,5 +209,6 @@ describe('LevelSelectState', () => {
         level: expect.objectContaining({ id: 'level-3-performance' })
       })
     });
+    expect(scene.sound.context.resume).toHaveBeenCalledTimes(1);
   });
 });

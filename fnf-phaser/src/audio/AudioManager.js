@@ -215,18 +215,35 @@ class AudioManager {
 
     const seekTime = startTime / Constants.MS_PER_SEC;
 
-    try {
-      // Resume the Web Audio context if suspended (required on mobile browsers).
-      // ctx.resume() is async but we fire-and-forget; Phaser will queue the
-      // play call until the context is running.
-      const ctx = this.scene?.sound?.context;
-      if (ctx && ctx.state === 'suspended') {
-        ctx.resume().catch(() => {
-          // Swallow — the delta-based fallback in PlayState.update keeps the
-          // game running even when the audio context stays suspended.
-        });
-      }
+    // Resume the Web Audio context if suspended (required on mobile browsers).
+    // Mobile browsers block audio until a user gesture resumes the context.
+    // We must wait for the context to actually be running before calling
+    // play(), otherwise the play call is silently dropped on iOS/Android.
+    const ctx = this.scene?.sound?.context;
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        this._startPlayback(seekTime, startTime);
+      }).catch(() => {
+        // Context couldn't resume — try playing anyway in case Phaser
+        // queues it, and let the delta-based fallback keep the game going.
+        this._startPlayback(seekTime, startTime);
+      });
+      return;
+    }
 
+    this._startPlayback(seekTime, startTime);
+  }
+
+  /**
+   * Internal helper that actually starts instrumental + voice playback.
+   * Separated from play() so the Web Audio context resume can await before
+   * triggering the underlying Phaser sound calls.
+   * @param {number} seekTime - Seek position in seconds
+   * @param {number} startTime - Start time in milliseconds (for voices)
+   * @private
+   */
+  _startPlayback(seekTime, startTime) {
+    try {
       this.instrumental.play({ seek: seekTime });
       this.isPlaying = true;
       this.isPaused = false;

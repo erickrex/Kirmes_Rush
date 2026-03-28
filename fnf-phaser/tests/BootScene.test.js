@@ -45,6 +45,7 @@ vi.mock('phaser', () => {
             image: vi.fn().mockReturnThis(),
             audio: vi.fn().mockReturnThis(),
             atlas: vi.fn().mockReturnThis(),
+            atlasXML: vi.fn().mockReturnThis(),
             totalToLoad: 0
           };
           this.time = {
@@ -106,7 +107,7 @@ describe('BootScene', () => {
       expect(scene.loadingText).toBeNull();
       expect(scene.percentText).toBeNull();
       expect(scene.assetText).toBeNull();
-      expect(scene.nextScene).toBe('TitleScene');
+      expect(scene.nextScene).toBe('TitleState');
       expect(scene.hasError).toBe(false);
       expect(scene.failedFiles).toEqual([]);
       expect(scene.noteStyleRegistry).toBeNull();
@@ -131,7 +132,7 @@ describe('BootScene', () => {
 
     it('should handle undefined data', () => {
       scene.init(undefined);
-      expect(scene.nextScene).toBe('TitleScene');
+      expect(scene.nextScene).toBe('TitleState');
     });
   });
 
@@ -172,7 +173,7 @@ describe('BootScene', () => {
       expect(scene.time.delayedCall).toHaveBeenCalled();
     });
 
-    it('should call this.load.atlas() for each note style entry when noteStyleRegistry is provided', () => {
+    it('should call this.load.atlasXML() for each XML note style entry when noteStyleRegistry is provided', () => {
       const mockRegistry = {
         getResolvedAsset: vi.fn((styleId, assetKey) => {
           const assets = {
@@ -190,19 +191,19 @@ describe('BootScene', () => {
       scene.setupLoadingEvents();
       scene.loadCoreAssets();
 
-      expect(scene.load.atlas).toHaveBeenCalledTimes(3);
+      expect(scene.load.atlasXML).toHaveBeenCalledTimes(3);
       expect(scene.load.image).toHaveBeenCalledTimes(1);
-      expect(scene.load.atlas).toHaveBeenCalledWith(
+      expect(scene.load.atlasXML).toHaveBeenCalledWith(
         'notestyle-funkin-note',
         'assets/funkin.assets/shared/images/noteSkins/NOTE_assets.png',
         'assets/funkin.assets/shared/images/noteSkins/NOTE_assets.xml'
       );
-      expect(scene.load.atlas).toHaveBeenCalledWith(
+      expect(scene.load.atlasXML).toHaveBeenCalledWith(
         'notestyle-funkin-noteStrumline',
         'assets/funkin.assets/shared/images/noteSkins/NOTE_strumline.png',
         'assets/funkin.assets/shared/images/noteSkins/NOTE_strumline.xml'
       );
-      expect(scene.load.atlas).toHaveBeenCalledWith(
+      expect(scene.load.atlasXML).toHaveBeenCalledWith(
         'notestyle-funkin-noteSplash',
         'assets/funkin.assets/shared/images/noteSkins/noteSplashes.png',
         'assets/funkin.assets/shared/images/noteSkins/noteSplashes.xml'

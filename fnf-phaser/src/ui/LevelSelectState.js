@@ -242,7 +242,7 @@ export default class LevelSelectState extends BaseMenuState {
     }
   }
 
-  executeSelection() {
+  async executeSelection() {
     const level = this.levels[this.selectedIndex];
     if (!level) {
       this.transitioning = false;
@@ -257,7 +257,7 @@ export default class LevelSelectState extends BaseMenuState {
     try {
       const ctx = this.sound?.context;
       if (ctx && ctx.state === 'suspended') {
-        ctx.resume();
+        await ctx.resume();
       }
     } catch { /* swallow */ }
 

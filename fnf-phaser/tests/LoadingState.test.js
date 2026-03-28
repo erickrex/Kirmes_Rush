@@ -235,6 +235,21 @@ describe('LoadingState', () => {
       expect(state.load.on).toHaveBeenCalledWith('complete', expect.any(Function));
       expect(state.load.on).toHaveBeenCalledWith('loaderror', expect.any(Function));
     });
+
+    it('should ignore loader completion before the real asset load starts', () => {
+      state.setupLoadingEvents();
+      const onLoadCompleteSpy = vi.spyOn(state, 'onLoadComplete');
+
+      state.awaitingAssetLoadCompletion = false;
+      state.loadEventHandlers.complete();
+
+      expect(onLoadCompleteSpy).not.toHaveBeenCalled();
+
+      state.awaitingAssetLoadCompletion = true;
+      state.loadEventHandlers.complete();
+
+      expect(onLoadCompleteSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('loadAssets', () => {
@@ -349,6 +364,35 @@ describe('LoadingState', () => {
     it('should clear asset text', () => {
       state.onLoadComplete();
       expect(state.assetText.setText).toHaveBeenCalledWith('');
+    });
+
+    it('should clear the awaiting asset load flag', () => {
+      state.awaitingAssetLoadCompletion = true;
+      state.onLoadComplete();
+
+      expect(state.awaitingAssetLoadCompletion).toBe(false);
+    });
+  });
+
+  describe('queueAndStartLoading', () => {
+    beforeEach(() => {
+      state.init({
+        assets: [{ type: 'image', key: 'test-image', path: 'assets/test.png' }]
+      });
+      state.textures.exists.mockReturnValue(false);
+      state.createLoadingUI();
+    });
+
+    it('should mark the real asset load as pending before starting Phaser loader', () => {
+      state.loadingComplete = true;
+      state.progress = 1;
+
+      state.queueAndStartLoading();
+
+      expect(state.awaitingAssetLoadCompletion).toBe(true);
+      expect(state.loadingComplete).toBe(false);
+      expect(state.progress).toBe(0);
+      expect(state.load.start).toHaveBeenCalled();
     });
   });
 
