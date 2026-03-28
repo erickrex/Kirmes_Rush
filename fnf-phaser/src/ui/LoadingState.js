@@ -7,6 +7,31 @@ import Phaser from 'phaser';
 import EventBus, { Events } from '../core/EventBus.js';
 
 /**
+ * Given a single audio path (e.g. `foo/bar.ogg`), return an array containing
+ * both the original and an alternate format so Phaser can pick whichever the
+ * browser supports.  iOS Safari cannot play OGG; most desktop browsers prefer
+ * OGG over MP3.  If the path is already an array it is returned as-is.
+ * @param {string|string[]} audioPath
+ * @returns {string[]}
+ */
+function audioPathsWithFallback(audioPath) {
+  if (Array.isArray(audioPath)) {
+    return audioPath;
+  }
+  if (typeof audioPath !== 'string') {
+    return [audioPath];
+  }
+  const base = audioPath.replace(/\.[^/.]+$/, '');
+  if (audioPath.endsWith('.ogg')) {
+    return [audioPath, `${base}.mp3`];
+  }
+  if (audioPath.endsWith('.mp3')) {
+    return [audioPath, `${base}.ogg`];
+  }
+  return [audioPath];
+}
+
+/**
  * Loading configuration
  * @typedef {Object} LoadingConfig
  * @property {string} nextScene - Scene to transition to after loading
@@ -331,7 +356,7 @@ export default class LoadingState extends Phaser.Scene {
           case 'ogg':
           case 'wav':
             if (!this.isAssetLoaded('audio', key)) {
-              this.load.audio(key, asset);
+              this.load.audio(key, audioPathsWithFallback(asset));
               queuedAssets++;
             }
             break;
@@ -361,7 +386,9 @@ export default class LoadingState extends Phaser.Scene {
             queuedAssets++;
             break;
           case 'audio':
-            this.load.audio(key, path);
+            // Provide both OGG and MP3 so Phaser picks the format the
+            // browser supports (iOS Safari doesn't play OGG).
+            this.load.audio(key, audioPathsWithFallback(path));
             queuedAssets++;
             break;
           case 'spritesheet':

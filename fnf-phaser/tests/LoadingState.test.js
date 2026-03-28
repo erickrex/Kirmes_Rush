@@ -289,7 +289,7 @@ describe('LoadingState', () => {
 
       expect(state.load.audio).toHaveBeenCalledWith(
         'song-inst',
-        'assets/funkin.assets/songs/tutorial/Inst.ogg'
+        ['assets/funkin.assets/songs/tutorial/Inst.ogg', 'assets/funkin.assets/songs/tutorial/Inst.mp3']
       );
     });
   });
@@ -311,7 +311,7 @@ describe('LoadingState', () => {
       expect(state.nextSceneData).toEqual({ levelId: 'level-1-basics' });
       expect(state.load.audio).toHaveBeenCalledWith(
         'song-inst',
-        'assets/funkin.assets/songs/tutorial/Inst.ogg'
+        ['assets/funkin.assets/songs/tutorial/Inst.ogg', 'assets/funkin.assets/songs/tutorial/Inst.mp3']
       );
       expect(state.load.start).toHaveBeenCalled();
     });

@@ -581,17 +581,17 @@ export default class PlayScene extends Phaser.Scene {
     this.scoreDisplay = this.playState.scoreDisplay;
     this.registerHudObject(this.scoreDisplay?.text ?? null);
 
-    // Task 9.1: Position health bar using LayoutManager constants
-    if (level?.features?.healthBar !== false) {
-      this.healthBar = new HealthBar(this, {
-        width: HEALTH_BAR_WIDTH,
-        height: 18
-      });
-      this.healthBar.setPosition(HEALTH_BAR_X, HEALTH_BAR_Y);
-      this.healthBar.setHealthImmediate(this.playState.health);
-      this.registerHudObject(this.healthBar.backgroundGraphics);
-      this.registerHudObject(this.healthBar.barGraphics);
-    }
+    // Health bar — always shown so the player can track performance.
+    // Individual level configs may set healthBar:false but the bar is
+    // still useful as visual feedback even when health drain is disabled.
+    this.healthBar = new HealthBar(this, {
+      width: HEALTH_BAR_WIDTH,
+      height: 18
+    });
+    this.healthBar.setPosition(HEALTH_BAR_X, HEALTH_BAR_Y);
+    this.healthBar.setHealthImmediate(this.playState.health);
+    this.registerHudObject(this.healthBar.backgroundGraphics);
+    this.registerHudObject(this.healthBar.barGraphics);
   }
 
   setupCameraLayers() {

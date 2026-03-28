@@ -332,7 +332,7 @@ describe('PlayScene release bootstrap', () => {
     expect(playState.wireCharacterAssets).not.toHaveBeenCalled();
     expect(playState.setReplayRecordingEnabled).not.toHaveBeenCalled();
     expect(playState.setInputBufferEnabled).not.toHaveBeenCalled();
-    expect(scene.healthBar).toBeNull();
+    expect(scene.healthBar).not.toBeNull();
   });
 
   it('bootstraps full presentation and persists results for the highest-feature session', () => {
