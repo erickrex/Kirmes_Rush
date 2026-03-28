@@ -418,8 +418,11 @@ export default class PlayScene extends Phaser.Scene {
           }
         }).catch(() => { /* swallow */ });
       }
-      if (typeof this.input?.off === 'function') {
-        this.input.off('pointerdown', handler);
+      // Only remove the listener once audio is actually running
+      if (this.audioManager?.isPlaying || (ctx && ctx.state === 'running')) {
+        if (typeof this.input?.off === 'function') {
+          this.input.off('pointerdown', handler);
+        }
       }
     };
     this.input.on('pointerdown', handler);

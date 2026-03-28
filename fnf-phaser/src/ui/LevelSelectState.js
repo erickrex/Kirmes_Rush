@@ -249,6 +249,14 @@ export default class LevelSelectState extends BaseMenuState {
       return;
     }
 
+    // Resume the Web Audio context on this user gesture so it's unlocked
+    // by the time PlayScene tries to play audio. Mobile browsers (Android
+    // Chrome, iOS Safari) require a gesture before audio can start.
+    const ctx = this.sound?.context;
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     this.transitionToScene('LoadingState', {
       nextScene: 'PlayState',
       message: `Loading ${level.name}...`,
