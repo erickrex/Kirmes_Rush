@@ -215,6 +215,25 @@ export default class BaseMenuState extends Phaser.Scene {
       this.input.keyboard.on(key, handler, this);
     }
 
+    // Unlock the Web Audio context on the first touch/click in any menu.
+    // Mobile browsers suspend audio until a user gesture; tapping through
+    // menus counts as a gesture and unlocks it before gameplay starts.
+    const canvas = this.game?.canvas;
+    if (canvas) {
+      const unlock = () => {
+        try {
+          const ctx = this.sound?.context;
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume();
+          }
+        } catch { /* swallow */ }
+        canvas.removeEventListener('touchstart', unlock);
+        canvas.removeEventListener('mousedown', unlock);
+      };
+      canvas.addEventListener('touchstart', unlock, { once: true, passive: true });
+      canvas.addEventListener('mousedown', unlock, { once: true });
+    }
+
     // Wire shutdown into Phaser's scene lifecycle so cleanup is deterministic
     this.events?.on('shutdown', this.shutdown, this);
   }

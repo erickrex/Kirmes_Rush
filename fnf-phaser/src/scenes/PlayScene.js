@@ -187,6 +187,9 @@ export default class PlayScene extends Phaser.Scene {
     // Wire audio before presentation — must not be swallowed by the
     // try/catch below so the game always has audio even when stage or
     // character loading fails.
+    if (!this.session.audio?.instrumental) {
+      console.warn('[PlayScene] session.audio missing instrumental:', this.session.audio);
+    }
     this.playState.wireAudio(this.session.audio ?? {});
 
     try {
@@ -404,7 +407,11 @@ export default class PlayScene extends Phaser.Scene {
    * @private
    */
   _unlockAudioOnTouch() {
-    if (!this.input || typeof this.input.on !== 'function') {
+    // Use a raw DOM listener on the game canvas — Phaser's input abstraction
+    // can delay the callback enough that Android Chrome no longer considers
+    // it a "user gesture", preventing ctx.resume() from working.
+    const canvas = this.game?.canvas;
+    if (!canvas) {
       return;
     }
 
@@ -412,20 +419,19 @@ export default class PlayScene extends Phaser.Scene {
       const ctx = this.sound?.context;
       if (ctx && ctx.state === 'suspended') {
         ctx.resume().then(() => {
-          // If the song already started but audio wasn't playing, retry
           if (this.audioManager?.instrumental && !this.audioManager.isPlaying && this.playState?.songStarted) {
             this.audioManager.play(this.playState.songPosition);
           }
-        }).catch(() => { /* swallow */ });
+        }).catch(() => {});
       }
-      // Only remove the listener once audio is actually running
+      // Keep listening until audio is actually running
       if (this.audioManager?.isPlaying || (ctx && ctx.state === 'running')) {
-        if (typeof this.input?.off === 'function') {
-          this.input.off('pointerdown', handler);
-        }
+        canvas.removeEventListener('touchstart', handler);
+        canvas.removeEventListener('mousedown', handler);
       }
     };
-    this.input.on('pointerdown', handler);
+    canvas.addEventListener('touchstart', handler, { passive: true });
+    canvas.addEventListener('mousedown', handler);
   }
 
   setupRegistries() {

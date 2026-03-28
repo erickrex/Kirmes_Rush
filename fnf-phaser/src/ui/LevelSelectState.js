@@ -250,12 +250,16 @@ export default class LevelSelectState extends BaseMenuState {
     }
 
     // Resume the Web Audio context on this user gesture so it's unlocked
-    // by the time PlayScene tries to play audio. Mobile browsers (Android
-    // Chrome, iOS Safari) require a gesture before audio can start.
-    const ctx = this.sound?.context;
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    // by the time PlayScene tries to play audio. Use the raw DOM event
+    // (we're inside a pointerdown handler) to call resume() synchronously
+    // within the gesture — Phaser's abstraction can delay it past the
+    // browser's gesture window.
+    try {
+      const ctx = this.sound?.context;
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    } catch { /* swallow */ }
 
     this.transitionToScene('LoadingState', {
       nextScene: 'PlayState',

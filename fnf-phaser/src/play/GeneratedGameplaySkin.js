@@ -58,32 +58,8 @@ export default class GeneratedGameplaySkin {
     graphics.clear();
     graphics.fillStyle(fillColor, 1);
     graphics.lineStyle(lineWidth, strokeColor, 1);
-
-    const cx = size / 2;
-    const cy = size / 2;
-    const half = radius * 0.85;
-
-    // Draw a diamond / arrow-like shape so fallback notes look directional
-    // rather than plain circles.
-    graphics.fillPoints(
-      [
-        { x: cx, y: cy - half },
-        { x: cx + half, y: cy },
-        { x: cx, y: cy + half },
-        { x: cx - half, y: cy }
-      ],
-      true
-    );
-    graphics.strokePoints(
-      [
-        { x: cx, y: cy - half },
-        { x: cx + half, y: cy },
-        { x: cx, y: cy + half },
-        { x: cx - half, y: cy }
-      ],
-      true
-    );
-
+    graphics.fillCircle(size / 2, size / 2, radius);
+    graphics.strokeCircle(size / 2, size / 2, radius);
     graphics.generateTexture(key, size, size);
     graphics.destroy();
   }

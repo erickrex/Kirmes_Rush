@@ -151,7 +151,8 @@ class AudioManager {
       // Guard: if the Phaser audio cache is available, verify the key exists
       // before calling sound.add (which throws on missing keys in some builds).
       const audioCache = this.scene.cache?.audio;
-      if (audioCache && typeof audioCache.exists === 'function' && !audioCache.exists(key)) {
+      const cacheAvailable = audioCache && typeof audioCache.exists === 'function';
+      if (cacheAvailable && !audioCache.exists(key)) {
         console.warn(`[AudioManager] Audio key not in cache: ${key}`);
         return null;
       }
