@@ -4,6 +4,8 @@
 
 A Phaser 3 rebuild of Friday Night Funkin' focused on a stable 5-level browser release.
 
+Portrait-first (720×1280, 9:16) layout designed for mobile and desktop. On mobile, touch controls appear at the bottom of the screen. On desktop, the portrait canvas is centered with black letterboxing and keyboard input works as usual.
+
 </div>
 
 ## Quick Start
@@ -48,6 +50,10 @@ The playable progression is a curated 5-level path:
 
 ## What Is Included
 
+- Universal portrait (720×1280) layout — single layout for all platforms, no landscape mode
+- Touch controls with four directional zones for mobile play
+- Automatic touch device detection with orientation prompt for landscape visitors
+- Performance monitor that reduces visual effects on lower-end devices
 - Five playable levels backed by real song charts and shared Funkin asset data
 - Progressive feature unlocks across those five levels
 - Local persistence through `SaveManager` for options, controls, scores, and progress
@@ -81,9 +87,9 @@ Current status:
 
 - `npm test` passes
 - `npm run test:integration` passes
-- `npm run lint` passes with warnings
+- `npm run lint` has outstanding warnings and errors (not yet green)
 - `npm run build` passes
-- `npm run typecheck` still reports outstanding legacy JSDoc/type issues and is not yet green
+- `npm run typecheck` has outstanding legacy JSDoc/type issues (not yet green)
 
 ## Project Structure
 
@@ -91,14 +97,15 @@ Current status:
 fnf-phaser/
 ├── src/
 │   ├── audio/
-│   ├── core/
+│   ├── core/           # Conductor, EventBus, PerformanceMonitor
 │   ├── data/
 │   ├── graphics/
-│   ├── input/
+│   ├── input/          # TouchDeviceDetector, TouchInputController
+│   ├── layout/         # LayoutManager (portrait constants)
 │   ├── levels/
-│   ├── play/
+│   ├── play/           # PlayState, OpponentIndicator, Strumline, HUD
 │   ├── scenes/
-│   └── ui/
+│   └── ui/             # Menus, overlays, and UI scenes
 ├── assets/data/          # App-owned 5-level manifests and manifest indexes
 ├── tests/                # Unit tests
 ├── tests/integration/    # Release-path smoke tests
@@ -110,9 +117,12 @@ Shared Funkin content remains sourced from `assets/funkin.assets/` at the reposi
 ## Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md)
-- [Browser Testing](fnf-phaser/docs/BROWSER_TESTING.md)
-- [Audio Sync Testing](fnf-phaser/docs/AUDIO_SYNC_TESTING.md)
-- [Performance Optimization](fnf-phaser/docs/PERFORMANCE_OPTIMIZATION.md)
+
+<!-- The following docs are planned but not yet written:
+- Browser Testing
+- Audio Sync Testing
+- Performance Optimization
+-->
 
 ## Tech Stack
 

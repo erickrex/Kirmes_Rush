@@ -84,7 +84,6 @@ class Transitions {
    */
   async transitionOut(config = {}) {
     const type = config.type || TransitionType.FADE;
-    const duration = config.duration ?? 500;
 
     return new Promise((resolve) => {
       config.onComplete = resolve;
@@ -571,7 +570,7 @@ class Transitions {
    * @param {TransitionConfig} config - Configuration
    */
   wipeTransition(config) {
-    const { width, height } = this.scene.cameras.main;
+    const { width } = this.scene.cameras.main;
     const duration = config.duration ?? 500;
     const direction = config.direction || 'out';
     const color = config.color ?? 0x000000;

@@ -26,7 +26,10 @@ vi.mock('phaser', () => {
     setAlpha: vi.fn().mockReturnThis(),
     visible: true,
     alpha: 1,
-    destroy: vi.fn()
+    destroy: vi.fn(),
+    setInteractive: vi.fn(function() { this.input = { hitArea: { width: 200, height: 30 } }; return this; }),
+    on: vi.fn().mockReturnThis(),
+    input: null
   };
 
   const mockSprite = {
@@ -98,6 +101,15 @@ vi.mock('phaser', () => {
     }
   };
 });
+
+// Mock TouchDeviceDetector
+vi.mock('../src/input/TouchDeviceDetector.js', () => ({
+  default: {
+    isTouch: vi.fn(() => false),
+    detect: vi.fn(),
+    reset: vi.fn()
+  }
+}));
 
 import MainMenuState from '../src/ui/MainMenuState.js';
 

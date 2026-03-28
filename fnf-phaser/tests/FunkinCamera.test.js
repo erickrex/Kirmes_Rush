@@ -101,6 +101,14 @@ describe('FunkinCamera', () => {
       expect(cam.scene).toBeNull();
       expect(cam.camera).toBeNull();
     });
+
+    it('should default to portrait zoom (1.4) when no camera is provided', () => {
+      const cam = new FunkinCamera(null);
+
+      expect(cam.defaultZoom).toBe(1.4);
+      expect(cam.currentZoom).toBe(1.4);
+      expect(cam.targetZoom).toBe(1.4);
+    });
   });
 
   describe('follow system', () => {

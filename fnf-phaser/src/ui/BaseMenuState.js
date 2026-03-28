@@ -5,7 +5,6 @@
  */
 
 import Phaser from 'phaser';
-
 /**
  * Base class for menu scenes. Handles common input binding,
  * sound effects, background rendering, scene transitions,
@@ -215,6 +214,9 @@ export default class BaseMenuState extends Phaser.Scene {
     for (const { key, handler } of this.getInputBindings()) {
       this.input.keyboard.on(key, handler, this);
     }
+
+    // Wire shutdown into Phaser's scene lifecycle so cleanup is deterministic
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -227,11 +229,46 @@ export default class BaseMenuState extends Phaser.Scene {
     }
   }
 
+  // ========================================
+  // TOUCH INTERACTIVITY
+  // ========================================
+
+  /** Minimum touch target size in pixels (Requirement 10.2) */
+  static MIN_TOUCH_TARGET = 48;
+
+  /**
+   * Make an array of text/game objects tappable with minimum 48×48px hit areas.
+   * Each item gets `setInteractive()` and a `pointerdown` handler that sets
+   * `selectedIndex` to the item's index and calls `onSelect()`.
+   *
+   * @param {Phaser.GameObjects.Text[]} items - The text objects to make interactive
+   */
+  enableTouchOnItems(items) {
+    const minSize = BaseMenuState.MIN_TOUCH_TARGET;
+    items.forEach((item, index) => {
+      item.setInteractive({ useHandCursor: true });
+      // Ensure minimum 48×48 hit area
+      if (item.input && item.input.hitArea) {
+        item.input.hitArea.width = Math.max(item.input.hitArea.width, minSize);
+        item.input.hitArea.height = Math.max(item.input.hitArea.height, minSize);
+      }
+      item.on('pointerdown', () => {
+        if (this.transitioning) {
+          return;
+        }
+        this.selectedIndex = index;
+        this.updateSelection();
+        this.onSelect();
+      });
+    });
+  }
+
   /**
    * Default shutdown cleans up input bindings.
    * Subclasses should call `super.shutdown()` if they override.
    */
   shutdown() {
+    this.events?.off('shutdown', this.shutdown, this);
     this.teardownInput();
   }
 

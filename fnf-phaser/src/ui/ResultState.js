@@ -7,6 +7,25 @@ import Phaser from 'phaser';
 import Scoring from '../play/Scoring.js';
 
 /**
+ * @typedef {import('../types.js').Tallies} Tallies
+ * @typedef {{
+ *   songName?: string,
+ *   difficulty?: string,
+ *   returnScene?: string,
+ *   returnSceneData?: object
+ * }} ResultSongData
+ *
+ * @typedef {{
+ *   score?: number,
+ *   tallies?: Tallies,
+ *   rank?: string,
+ *   songData?: ResultSongData | null,
+ *   timingStats?: object | null,
+ *   newHighScore?: boolean
+ * }} ResultStateData
+ */
+
+/**
  * ResultState - Displays final score and rank after completing a song
  * @extends Phaser.Scene
  */
@@ -22,7 +41,7 @@ export default class ResultState extends Phaser.Scene {
 
     /**
      * Score tallies
-     * @type {Object}
+     * @type {Tallies}
      */
     this.tallies = {
       sick: 0,
@@ -44,7 +63,7 @@ export default class ResultState extends Phaser.Scene {
 
     /**
      * Song data
-     * @type {Object | null}
+     * @type {ResultSongData | null}
      */
     this.songData = null;
 
@@ -99,7 +118,7 @@ export default class ResultState extends Phaser.Scene {
 
   /**
    * Initialize with data from play state
-   * @param {Object} data - Result data
+   * @param {ResultStateData} data - Result data
    */
   init(data) {
     this.score = data?.score || 0;
@@ -118,17 +137,24 @@ export default class ResultState extends Phaser.Scene {
    */
   preload() {
     // Result music (rank-specific) — no rank images; text fallback handles display
-    this.load.audio('result-music-perfect', 'assets/funkin.assets/shared/music/resultsPERFECT/resultsPERFECT.mp3');
-    this.load.audio('result-music-excellent', 'assets/funkin.assets/shared/music/resultsEXCELLENT/resultsEXCELLENT.mp3');
-    this.load.audio('result-music-normal', 'assets/funkin.assets/shared/music/resultsNORMAL/resultsNORMAL.mp3');
+    this.load.audio(
+      'result-music-perfect',
+      'assets/funkin.assets/shared/music/resultsPERFECT/resultsPERFECT.mp3'
+    );
+    this.load.audio(
+      'result-music-excellent',
+      'assets/funkin.assets/shared/music/resultsEXCELLENT/resultsEXCELLENT.mp3'
+    );
+    this.load.audio(
+      'result-music-normal',
+      'assets/funkin.assets/shared/music/resultsNORMAL/resultsNORMAL.mp3'
+    );
   }
 
   /**
    * Create the results screen
    */
   create() {
-    const { width, height } = this.cameras.main;
-
     // Background
     this.createBackground();
 
@@ -167,6 +193,8 @@ export default class ResultState extends Phaser.Scene {
 
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -286,7 +314,7 @@ export default class ResultState extends Phaser.Scene {
    * Create tallies breakdown display
    */
   createTalliesDisplay() {
-    const { width, height } = this.cameras.main;
+    const { height } = this.cameras.main;
     const startX = 100;
     const startY = height / 2 + 100;
     const spacing = 120;
@@ -453,19 +481,29 @@ export default class ResultState extends Phaser.Scene {
     const { width, height } = this.cameras.main;
 
     this.continueText = this.add
-      .text(width / 2, height - 50, 'Press ENTER to continue', {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#ffffff'
+      .text(width / 2, height - 80, 'Tap to continue', {
+        fontFamily: 'Arial Black',
+        fontSize: '36px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
       })
       .setOrigin(0.5, 0.5);
     this.continueText.setAlpha(0);
+    if (this.continueText.setInteractive) {
+      this.continueText.setInteractive({ useHandCursor: true });
+      this.continueText.on('pointerdown', () => this.onContinue());
+    }
   }
 
   /**
    * Setup input
    */
   setupInput() {
+    if (!this.input.keyboard) {
+      return;
+    }
+
     this.input.keyboard.on('keydown-ENTER', this.onContinue, this);
     this.input.keyboard.on('keydown-SPACE', this.onContinue, this);
     this.input.keyboard.on('keydown-ESC', this.onContinue, this);
@@ -655,9 +693,9 @@ export default class ResultState extends Phaser.Scene {
   /**
    * Update loop
    * @param {number} time - Time
-   * @param {number} delta - Delta
+   * @param {number} _delta - Delta
    */
-  update(time, delta) {
+  update(time, _delta) {
     // Pulse continue text
     if (this.continueText && this.continueText.alpha > 0) {
       const pulse = 1 + Math.sin(time / 200) * 0.1;
@@ -669,9 +707,10 @@ export default class ResultState extends Phaser.Scene {
    * Cleanup
    */
   shutdown() {
-    this.input.keyboard.off('keydown-ENTER', this.onContinue, this);
-    this.input.keyboard.off('keydown-SPACE', this.onContinue, this);
-    this.input.keyboard.off('keydown-ESC', this.onContinue, this);
+    this.events?.off('shutdown', this.shutdown, this);
+    this.input.keyboard?.off('keydown-ENTER', this.onContinue, this);
+    this.input.keyboard?.off('keydown-SPACE', this.onContinue, this);
+    this.input.keyboard?.off('keydown-ESC', this.onContinue, this);
 
     if (this.resultMusic) {
       this.resultMusic.stop();

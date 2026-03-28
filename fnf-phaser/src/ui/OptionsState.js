@@ -3,8 +3,10 @@
  * Implements FR-6.5: Options menu with keybinds, calibration, preferences
  */
 
+import Phaser from 'phaser';
 import BaseMenuState from './BaseMenuState.js';
 import SaveManager from '../data/SaveManager.js';
+import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
 import { codeToStoredKey } from '../input/KeybindStorage.js';
 
 /**
@@ -447,50 +449,79 @@ export default class OptionsState extends BaseMenuState {
     this.selectedCategoryIndex = 0;
     this.selectedIndex = 0;
     this.saveManager.init();
+    this._draggingSliderIndex = -1;
 
     this.loadOptions();
 
-    const { width, height } = this.cameras.main;
+    const { width } = this.cameras.main;
+    const pad = 36;
 
     this.createBackground(null);
 
+    // ── Header row: ← Back ... OPTIONS ──
+    this.backButton = this.add
+      .text(pad, 50, '← Back', {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#94a3b8'
+      })
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    this.backButton.on('pointerdown', () => this.onBack());
+
     this.add
-      .text(width / 2, 40, 'OPTIONS', {
+      .text(width / 2, 50, 'OPTIONS', {
         fontFamily: 'Arial Black',
-        fontSize: '48px',
+        fontSize: '42px',
         color: '#ffffff',
         stroke: '#000000',
         strokeThickness: 4
       })
       .setOrigin(0.5, 0.5);
 
-    this.createCategoryTabs();
+    // ── Category selector row: ◀  Category Name  ▶ ──
+    this.prevCatButton = this.add
+      .text(pad, 130, '◀', { fontFamily: 'Arial', fontSize: '44px', color: '#7dd3fc' })
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    this.prevCatButton.on('pointerdown', () => this.onNavigateLeft());
+
+    this.categoryLabel = this.add
+      .text(width / 2, 130, '', {
+        fontFamily: 'Arial Black',
+        fontSize: '36px',
+        color: '#facc15'
+      })
+      .setOrigin(0.5, 0.5);
+
+    this.nextCatButton = this.add
+      .text(width - pad, 130, '▶', { fontFamily: 'Arial', fontSize: '44px', color: '#7dd3fc' })
+      .setOrigin(1, 0.5)
+      .setInteractive({ useHandCursor: true });
+    this.nextCatButton.on('pointerdown', () => this.onNavigateRight());
+
+    // ── Option items ──
     this.createOptionItems();
     this.createKeybindCaptureOverlay();
-    this.createInstructions();
     this.setupInput();
     this.updateDisplay();
     this.fadeIn();
+    this.enableTouchOnOptionItems();
   }
 
   createCategoryTabs() {
+    // Category tabs replaced by ◀ / ▶ navigation — no tab objects needed
     this.categoryTabs = [];
-    this.categories.forEach((category, index) => {
-      const text = this.add
-        .text(100 + index * 150, 100, category.name, {
-          fontFamily: 'Arial',
-          fontSize: '24px',
-          color: '#ffffff'
-        })
-        .setOrigin(0.5, 0.5);
-      this.categoryTabs.push(text);
-    });
   }
 
   createOptionItems() {
     this.optionDisplays = [];
+    const pad = 36;
+    const startY = 200;
+    const rowHeight = 130;
+
     for (let i = 0; i < 10; i++) {
-      const container = this.createOptionDisplay(100, 160 + i * 50);
+      const container = this.createOptionDisplay(pad, startY + i * rowHeight);
       this.optionDisplays.push(container);
     }
   }
@@ -498,32 +529,46 @@ export default class OptionsState extends BaseMenuState {
   createOptionDisplay(x, y) {
     const { width } = this.cameras.main;
     const container = this.add.container(x, y);
+    const usableWidth = width - 72;
 
     const nameText = this.add.text(0, 0, '', {
       fontFamily: 'Arial',
-      fontSize: '24px',
+      fontSize: '30px',
       color: '#ffffff'
     });
     container.add(nameText);
     container.setData('nameText', nameText);
 
-    const valueText = this.add.text(width - 300, 0, '', {
+    const valueText = this.add.text(usableWidth, 0, '', {
       fontFamily: 'Arial',
-      fontSize: '24px',
+      fontSize: '30px',
       color: '#00ff00'
-    });
+    }).setOrigin(1, 0);
     container.add(valueText);
     container.setData('valueText', valueText);
 
+    // Slider track — full width, tall for easy finger dragging
+    const sliderTrackWidth = usableWidth;
     const sliderBg = this.add.graphics();
     sliderBg.fillStyle(0x333333, 1);
-    sliderBg.fillRect(width - 500, 5, 200, 20);
+    sliderBg.fillRect(0, 48, sliderTrackWidth, 24);
     container.add(sliderBg);
     container.setData('sliderBg', sliderBg);
+    container.setData('sliderTrackWidth', sliderTrackWidth);
 
     const sliderFill = this.add.graphics();
     container.add(sliderFill);
     container.setData('sliderFill', sliderFill);
+
+    // Separator line
+    const sep = this.add.graphics();
+    if (typeof sep.lineStyle === 'function') {
+      sep.lineStyle(1, 0x334155, 0.5);
+    }
+    if (typeof sep.lineBetween === 'function') {
+      sep.lineBetween(0, 110, usableWidth, 110);
+    }
+    container.add(sep);
 
     return container;
   }
@@ -558,15 +603,87 @@ export default class OptionsState extends BaseMenuState {
     this.keybindOverlay.add(cancelText);
   }
 
-  createInstructions() {
-    const { width, height } = this.cameras.main;
-    this.add
-      .text(width / 2, height - 40, 'Left/Right: Switch Tab | Up/Down: Navigate | Enter: Select/Edit | ESC: Back', {
-        fontFamily: 'Arial',
-        fontSize: '18px',
-        color: '#888888'
-      })
-      .setOrigin(0.5, 0.5);
+  // (instructions removed — navigation is self-evident with ◀ ▶ and back button)
+
+  // ========================================
+  // TOUCH INTERACTIVITY
+  // ========================================
+
+  /**
+   * Enable touch on option item displays — tapping toggles/selects,
+   * dragging on slider tracks adjusts the value.
+   */
+  enableTouchOnOptionItems() {
+    const minSize = BaseMenuState.MIN_TOUCH_TARGET;
+    this.optionDisplays.forEach((display, index) => {
+      const { width } = this.cameras.main;
+      const hitHeight = 120;
+      display.setInteractive(
+        new Phaser.Geom.Rectangle(0, 0, width - 80, hitHeight),
+        Phaser.Geom.Rectangle.Contains
+      );
+
+      display.on('pointerdown', (pointer) => {
+        if (this.transitioning || this.capturingKeybind) return;
+        const category = this.categories[this.selectedCategoryIndex];
+        if (index >= category.items.length) return;
+
+        this.selectedIndex = index;
+        const item = category.items[index];
+
+        if (item.type === 'slider') {
+          // Start drag — compute value from pointer X relative to container
+          this._draggingSliderIndex = index;
+          this._applySliderPointer(item, display, pointer);
+        } else {
+          this.onSelect();
+        }
+      });
+
+      display.on('pointermove', (pointer) => {
+        if (this._draggingSliderIndex !== index) return;
+        const category = this.categories[this.selectedCategoryIndex];
+        const item = category.items[index];
+        if (item?.type === 'slider') {
+          this._applySliderPointer(item, display, pointer);
+        }
+      });
+
+      display.on('pointerup', () => {
+        if (this._draggingSliderIndex === index) {
+          this._draggingSliderIndex = -1;
+          this.saveOptions();
+        }
+      });
+
+      display.on('pointerout', () => {
+        if (this._draggingSliderIndex === index) {
+          this._draggingSliderIndex = -1;
+          this.saveOptions();
+        }
+      });
+    });
+
+    this._draggingSliderIndex = -1;
+  }
+
+  /**
+   * Map a pointer position to a slider value and update display.
+   * @param {OptionItem} item
+   * @param {Phaser.GameObjects.Container} display
+   * @param {Phaser.Input.Pointer} pointer
+   * @private
+   */
+  _applySliderPointer(item, display, pointer) {
+    const trackWidth = display.getData('sliderTrackWidth') || 640;
+    // pointer.x is in scene coords; display.x is the container's left edge
+    const localX = pointer.x - display.x;
+    const ratio = Math.max(0, Math.min(1, localX / trackWidth));
+    const raw = item.min + ratio * (item.max - item.min);
+    // Snap to step
+    item.value = Math.round(raw / item.step) * item.step;
+    item.value = Math.max(item.min, Math.min(item.max, Math.round(item.value * 1000) / 1000));
+    this.updateDisplay();
   }
 
   // ========================================
@@ -607,7 +724,7 @@ export default class OptionsState extends BaseMenuState {
   executeAction(action) {
     switch (action) {
       case 'calibrate':
-        console.log('Starting offset calibration...');
+        console.warn('Starting offset calibration...');
         break;
       case 'reset':
         this.resetToDefaults();
@@ -633,13 +750,13 @@ export default class OptionsState extends BaseMenuState {
   // ========================================
 
   updateDisplay() {
-    this.categoryTabs.forEach((tab, index) => {
-      tab.setColor(index === this.selectedCategoryIndex ? '#ffff00' : '#ffffff');
-      tab.setScale(index === this.selectedCategoryIndex ? 1.1 : 1.0);
-    });
+    // Update category label
+    if (this.categoryLabel) {
+      const cat = this.categories[this.selectedCategoryIndex];
+      this.categoryLabel.setText(cat ? cat.name : '');
+    }
 
     const category = this.categories[this.selectedCategoryIndex];
-    const { width } = this.cameras.main;
 
     this.optionDisplays.forEach((display, index) => {
       const item = category.items[index];
@@ -653,6 +770,7 @@ export default class OptionsState extends BaseMenuState {
       const valueText = display.getData('valueText');
       const sliderBg = display.getData('sliderBg');
       const sliderFill = display.getData('sliderFill');
+      const trackWidth = display.getData('sliderTrackWidth') || 640;
 
       nameText.setText(item.name);
       nameText.setColor(index === this.selectedIndex ? '#ffff00' : '#ffffff');
@@ -677,10 +795,10 @@ export default class OptionsState extends BaseMenuState {
             1
           );
           sliderFill.fillRect(
-            width - 500,
-            5,
-            ((item.value - item.min) / (item.max - item.min)) * 200,
-            20
+            0,
+            48,
+            ((item.value - item.min) / (item.max - item.min)) * trackWidth,
+            24
           );
           break;
         case 'keybind':
@@ -728,5 +846,10 @@ export default class OptionsState extends BaseMenuState {
     super.shutdown();
     this.categoryTabs = [];
     this.optionDisplays = [];
+    this.backButton = null;
+    this.categoryLabel = null;
+    this.prevCatButton = null;
+    this.nextCatButton = null;
+    this._draggingSliderIndex = -1;
   }
 }

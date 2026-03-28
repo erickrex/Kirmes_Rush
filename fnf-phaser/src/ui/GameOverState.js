@@ -7,6 +7,18 @@ import Phaser from 'phaser';
 import EventBus, { Events } from '../core/EventBus.js';
 
 /**
+ * @typedef {{
+ *   returnScene?: string,
+ *   returnSceneData?: object
+ * }} GameOverSongData
+ *
+ * @typedef {{
+ *   songData?: GameOverSongData | null,
+ *   position?: { x: number, y: number }
+ * }} GameOverStateData
+ */
+
+/**
  * GameOverState - Displayed when player loses
  * @extends Phaser.Scene
  */
@@ -16,7 +28,7 @@ export default class GameOverState extends Phaser.Scene {
 
     /**
      * BF death sprite
-     * @type {Phaser.GameObjects.Sprite | null}
+     * @type {Phaser.GameObjects.Sprite | Phaser.GameObjects.Text | null}
      */
     this.bfDead = null;
 
@@ -40,7 +52,7 @@ export default class GameOverState extends Phaser.Scene {
 
     /**
      * Song data from play state
-     * @type {Object | null}
+     * @type {GameOverSongData | null}
      */
     this.songData = null;
 
@@ -83,7 +95,7 @@ export default class GameOverState extends Phaser.Scene {
 
   /**
    * Initialize with data from play state
-   * @param {Object} data - Initialization data
+   * @param {GameOverStateData} data - Initialization data
    */
   init(data) {
     this.songData = data?.songData || null;
@@ -98,11 +110,20 @@ export default class GameOverState extends Phaser.Scene {
    */
   preload() {
     // Game over music
-    this.load.audio('game-over-music', 'assets/funkin.assets/shared/music/gameplay/gameover/gameOver.mp3');
-    this.load.audio('game-over-end', 'assets/funkin.assets/shared/music/gameplay/gameover/gameOverEnd.mp3');
+    this.load.audio(
+      'game-over-music',
+      'assets/funkin.assets/shared/music/gameplay/gameover/gameOver.mp3'
+    );
+    this.load.audio(
+      'game-over-end',
+      'assets/funkin.assets/shared/music/gameplay/gameover/gameOverEnd.mp3'
+    );
 
     // Death sound
-    this.load.audio('death-sound', 'assets/funkin.assets/shared/sounds/gameplay/gameover/fnf_loss_sfx.mp3');
+    this.load.audio(
+      'death-sound',
+      'assets/funkin.assets/shared/sounds/gameplay/gameover/fnf_loss_sfx.mp3'
+    );
 
     // Retry confirm sound
     this.load.audio('retry-confirm', 'assets/funkin.assets/preload/sounds/confirmMenu.mp3');
@@ -112,8 +133,6 @@ export default class GameOverState extends Phaser.Scene {
    * Create the game over screen
    */
   create() {
-    const { width, height } = this.cameras.main;
-
     // Dark background
     this.cameras.main.setBackgroundColor(0x000000);
 
@@ -131,6 +150,8 @@ export default class GameOverState extends Phaser.Scene {
 
     // Start death animation sequence
     this.startDeathSequence();
+
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -212,31 +233,45 @@ export default class GameOverState extends Phaser.Scene {
       .setOrigin(0.5, 0.5);
     this.gameOverText.setAlpha(0);
 
-    // Retry prompt
+    // Retry prompt — tappable
     this.retryText = this.add
-      .text(width / 2, height - 120, 'Press ENTER to Retry', {
-        fontFamily: 'Arial',
-        fontSize: '32px',
-        color: '#ffffff'
+      .text(width / 2, height - 200, 'Tap to Retry', {
+        fontFamily: 'Arial Black',
+        fontSize: '40px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
       })
       .setOrigin(0.5, 0.5);
     this.retryText.setAlpha(0);
+    if (this.retryText.setInteractive) {
+      this.retryText.setInteractive({ useHandCursor: true });
+      this.retryText.on('pointerdown', () => this.onRetry());
+    }
 
-    // Exit prompt
+    // Exit prompt — tappable
     this.exitText = this.add
-      .text(width / 2, height - 70, 'Press ESC to Exit', {
+      .text(width / 2, height - 120, 'Exit to Menu', {
         fontFamily: 'Arial',
-        fontSize: '24px',
+        fontSize: '30px',
         color: '#888888'
       })
       .setOrigin(0.5, 0.5);
     this.exitText.setAlpha(0);
+    if (this.exitText.setInteractive) {
+      this.exitText.setInteractive({ useHandCursor: true });
+      this.exitText.on('pointerdown', () => this.onExit());
+    }
   }
 
   /**
    * Setup input handlers
    */
   setupInput() {
+    if (!this.input.keyboard) {
+      return;
+    }
+
     // Retry
     this.input.keyboard.on('keydown-ENTER', this.onRetry, this);
     this.input.keyboard.on('keydown-SPACE', this.onRetry, this);
@@ -403,16 +438,16 @@ export default class GameOverState extends Phaser.Scene {
 
     this.cameras.main.fadeOut(500, 255, 255, 255);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('PlayState', this.songData);
+      this.scene.start('PlayState', this.songData ?? undefined);
     });
   }
 
   /**
    * Update loop
    * @param {number} time - Time
-   * @param {number} delta - Delta
+   * @param {number} _delta - Delta
    */
-  update(time, delta) {
+  update(time, _delta) {
     // Pulse retry text
     if (this.retryText && this.retryText.alpha > 0 && !this.confirmed) {
       const pulse = 1 + Math.sin(time / 200) * 0.1;
@@ -424,10 +459,11 @@ export default class GameOverState extends Phaser.Scene {
    * Cleanup
    */
   shutdown() {
-    this.input.keyboard.off('keydown-ENTER', this.onRetry, this);
-    this.input.keyboard.off('keydown-SPACE', this.onRetry, this);
-    this.input.keyboard.off('keydown-ESC', this.onExit, this);
-    this.input.keyboard.off('keydown-BACKSPACE', this.onExit, this);
+    this.events?.off('shutdown', this.shutdown, this);
+    this.input.keyboard?.off('keydown-ENTER', this.onRetry, this);
+    this.input.keyboard?.off('keydown-SPACE', this.onRetry, this);
+    this.input.keyboard?.off('keydown-ESC', this.onExit, this);
+    this.input.keyboard?.off('keydown-BACKSPACE', this.onExit, this);
 
     // Stop music
     if (this.gameOverMusic) {

@@ -137,11 +137,22 @@ vi.mock('../src/graphics/AnimationRegistrar.js', () => ({
   registerPropAnimations: (...args) => mockRegisterPropAnimations(...args)
 }));
 
+// Mock TouchDeviceDetector
+const mockIsTouch = vi.fn(() => false);
+vi.mock('../src/input/TouchDeviceDetector.js', () => ({
+  default: {
+    isTouch: (...args) => mockIsTouch(...args),
+    detect: vi.fn(),
+    reset: vi.fn()
+  }
+}));
+
 // Now import after mocks are set up
 const { default: PlayState } = await import('../src/play/PlayState.js');
 const { default: Conductor } = await import('../src/core/Conductor.js');
 const { default: EventBus, Events } = await import('../src/core/EventBus.js');
 const Constants = await import('../src/core/Constants.js');
+const { default: TouchDeviceDetector } = await import('../src/input/TouchDeviceDetector.js');
 
 // Mock scene
 const createMockScene = () => ({
@@ -161,6 +172,38 @@ const createMockScene = () => ({
   },
   anims: {
     exists: vi.fn(() => true)
+  },
+  add: {
+    rectangle: vi.fn(() => ({
+      setOrigin: vi.fn().mockReturnThis(),
+      setInteractive: vi.fn().mockReturnThis(),
+      setDepth: vi.fn().mockReturnThis(),
+      setAlpha: vi.fn().mockReturnThis(),
+      setVisible: vi.fn().mockReturnThis(),
+      destroy: vi.fn()
+    })),
+    graphics: vi.fn(() => ({
+      fillStyle: vi.fn().mockReturnThis(),
+      fillTriangle: vi.fn().mockReturnThis(),
+      setDepth: vi.fn().mockReturnThis(),
+      setVisible: vi.fn().mockReturnThis(),
+      setAlpha: vi.fn().mockReturnThis(),
+      clear: vi.fn().mockReturnThis(),
+      destroy: vi.fn()
+    })),
+    text: vi.fn(() => ({
+      setScrollFactor: vi.fn().mockReturnThis(),
+      destroy: vi.fn(),
+      alpha: 1
+    })),
+    existing: vi.fn()
+  },
+  input: {
+    on: vi.fn(),
+    off: vi.fn()
+  },
+  tweens: {
+    add: vi.fn()
   }
 });
 
@@ -314,6 +357,163 @@ describe('PlayState', () => {
       expect(playState.camGame).toBe(mockScene.cameras.main);
       expect(playState.camHUD).toBeDefined();
       expect(mockScene.cameras.add).toHaveBeenCalled();
+    });
+  });
+
+  // ========================================
+  // PORTRAIT STRUMLINE LAYOUT TESTS (Task 8.1)
+  // ========================================
+
+  describe('portrait strumline layout', () => {
+    it('should center player strumline using LayoutManager.PLAYER_STRUMLINE_X', () => {
+      playState.createStrumlines();
+
+      expect(playState.playerStrumline.x).toBe(136); // PLAYER_STRUMLINE_X
+    });
+
+    it('should position player strumline at LayoutManager.PLAYER_STRUMLINE_Y', () => {
+      playState.createStrumlines();
+
+      expect(playState.playerStrumline.y).toBe(900); // PLAYER_STRUMLINE_Y
+    });
+
+    it('should force downscroll on player strumline', () => {
+      playState.createStrumlines();
+
+      expect(playState.playerStrumline.isDownscroll).toBe(true);
+    });
+
+    it('should create opponent strumline hidden', () => {
+      playState.createStrumlines();
+
+      expect(playState.opponentStrumline).toBeDefined();
+      expect(playState.opponentStrumline.visible).toBe(false);
+    });
+
+    it('should create opponent indicator widget', () => {
+      playState.createStrumlines();
+
+      expect(playState.opponentIndicator).toBeDefined();
+      expect(playState.opponentIndicator.arrows.length).toBe(4);
+    });
+
+    it('should update opponent indicator in update loop', () => {
+      playState.createStrumlines();
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+      const updateSpy = vi.spyOn(playState.opponentIndicator, 'update');
+
+      playState.update(0, 16);
+
+      expect(updateSpy).toHaveBeenCalledWith(16);
+    });
+
+    it('should flash opponent indicator when opponent hits note', () => {
+      playState.createStrumlines();
+      const flashSpy = vi.spyOn(playState.opponentIndicator, 'flash');
+      playState.opponentStrumline = createMockStrumline();
+
+      const note = {
+        strumTime: 100,
+        direction: 2,
+        alive: true,
+        hasBeenHit: false
+      };
+      playState.opponentStrumline.notes = [note];
+      playState.songPosition = 200;
+
+      playState.processOpponentNotes();
+
+      expect(flashSpy).toHaveBeenCalledWith(2);
+    });
+
+    it('should clean up opponent indicator on destroy', () => {
+      playState.createStrumlines();
+      const destroySpy = vi.spyOn(playState.opponentIndicator, 'destroy');
+
+      playState.destroy();
+
+      expect(destroySpy).toHaveBeenCalled();
+      expect(playState.opponentIndicator).toBeNull();
+    });
+  });
+
+  // ========================================
+  // TOUCH INPUT CONTROLLER INTEGRATION (Task 8.2)
+  // ========================================
+
+  describe('touch input controller integration', () => {
+    afterEach(() => {
+      mockIsTouch.mockReturnValue(false);
+    });
+
+    it('should create TouchInputController when touch device detected', () => {
+      mockIsTouch.mockReturnValue(true);
+
+      playState.createStrumlines();
+
+      expect(playState.touchInputController).not.toBeNull();
+      expect(playState.touchInputController.zones.length).toBe(4);
+    });
+
+    it('should not create TouchInputController on non-touch devices', () => {
+      mockIsTouch.mockReturnValue(false);
+
+      playState.createStrumlines();
+
+      expect(playState.touchInputController).toBeNull();
+    });
+
+    it('should pass input queues to TouchInputController', () => {
+      mockIsTouch.mockReturnValue(true);
+
+      playState.createStrumlines();
+
+      expect(playState.touchInputController.inputQueue.pressQueue).toBe(playState.inputPressQueue);
+      expect(playState.touchInputController.inputQueue.releaseQueue).toBe(playState.inputReleaseQueue);
+    });
+
+    it('should call touchInputController.update() in update loop', () => {
+      mockIsTouch.mockReturnValue(true);
+      playState.createStrumlines();
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+      const updateSpy = vi.spyOn(playState.touchInputController, 'update');
+
+      playState.update(0, 16);
+
+      expect(updateSpy).toHaveBeenCalled();
+    });
+
+    it('should not error in update loop when touchInputController is null', () => {
+      mockIsTouch.mockReturnValue(false);
+      playState.createStrumlines();
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+
+      expect(() => playState.update(0, 16)).not.toThrow();
+    });
+
+    it('should clean up touchInputController on destroy', () => {
+      mockIsTouch.mockReturnValue(true);
+      playState.createStrumlines();
+      const destroySpy = vi.spyOn(playState.touchInputController, 'destroy');
+
+      playState.destroy();
+
+      expect(destroySpy).toHaveBeenCalled();
+      expect(playState.touchInputController).toBeNull();
+    });
+
+    it('should feed touch events into the same input queues as keyboard', () => {
+      mockIsTouch.mockReturnValue(true);
+      playState.createStrumlines();
+
+      // Simulate a touch press via the controller
+      playState.touchInputController.onPointerDown({ x: 90, y: 1150, id: 1 });
+
+      expect(playState.inputPressQueue.length).toBe(1);
+      expect(playState.inputPressQueue[0].direction).toBe(0); // left zone
     });
   });
 
@@ -2057,6 +2257,120 @@ describe('PlayState', () => {
 
         expect(playState.voices.loadSplit).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  // ========================================
+  // PERFORMANCE MONITOR INTEGRATION TESTS (Task 8.3)
+  // ========================================
+
+  describe('performance monitor integration', () => {
+    it('should create PerformanceMonitor in init when scene.game exists', () => {
+      mockScene.game = { loop: { actualFps: 60 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+
+      expect(playState.performanceMonitor).not.toBeNull();
+    });
+
+    it('should not create PerformanceMonitor when scene.game is missing', () => {
+      playState.init({ song: {} });
+
+      expect(playState.performanceMonitor).toBeNull();
+    });
+
+    it('should update PerformanceMonitor each frame', () => {
+      mockScene.game = { loop: { actualFps: 60 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+
+      const updateSpy = vi.spyOn(playState.performanceMonitor, 'update');
+
+      playState.update(0, 16);
+
+      expect(updateSpy).toHaveBeenCalledWith(16);
+    });
+
+    it('should disable camera beat zoom when low performance detected', () => {
+      mockScene.game = { loop: { actualFps: 15 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+      playState.funkinCamera = {
+        setBeatZoomEnabled: vi.fn(),
+        onBeatHit: vi.fn(),
+        update: vi.fn(),
+        destroy: vi.fn()
+      };
+
+      // Simulate enough frames to complete a sample window at 15fps
+      for (let i = 0; i < 15; i++) {
+        playState.update(0, 66.67);
+      }
+
+      expect(playState.funkinCamera.setBeatZoomEnabled).toHaveBeenCalledWith(false);
+    });
+
+    it('should disable note splashes when low performance detected', () => {
+      // Note splash gating is now handled by PlayScene.spawnNoteSplash()
+      // which checks performanceMonitor.isLowPerformance() directly.
+      // PlayState no longer holds a noteSplash field.
+      mockScene.game = { loop: { actualFps: 15 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+
+      // Simulate enough frames to complete a sample window at 15fps
+      for (let i = 0; i < 15; i++) {
+        playState.update(0, 66.67);
+      }
+
+      // Verify the performance monitor detects low performance
+      expect(playState.performanceMonitor.isLowPerformance()).toBe(true);
+    });
+
+    it('should re-enable effects when performance recovers', () => {
+      mockScene.game = { loop: { actualFps: 15 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+      playState.playerStrumline = createMockStrumline();
+      playState.opponentStrumline = createMockStrumline();
+      playState.funkinCamera = {
+        setBeatZoomEnabled: vi.fn(),
+        onBeatHit: vi.fn(),
+        update: vi.fn(),
+        destroy: vi.fn()
+      };
+
+      // Low FPS window
+      for (let i = 0; i < 15; i++) {
+        playState.update(0, 66.67);
+      }
+      expect(playState.funkinCamera.setBeatZoomEnabled).toHaveBeenCalledWith(false);
+      expect(playState.performanceMonitor.isLowPerformance()).toBe(true);
+
+      // Recover to high FPS
+      mockScene.game.loop.actualFps = 60;
+      for (let i = 0; i < 60; i++) {
+        playState.update(0, 16.67);
+      }
+
+      expect(playState.funkinCamera.setBeatZoomEnabled).toHaveBeenCalledWith(true);
+      expect(playState.performanceMonitor.isLowPerformance()).toBe(false);
+    });
+
+    it('should clean up performanceMonitor on destroy', () => {
+      mockScene.game = { loop: { actualFps: 60 } };
+      playState = new PlayState(mockScene);
+      playState.init({ song: {} });
+
+      playState.destroy();
+
+      expect(playState.performanceMonitor).toBeNull();
     });
   });
 });

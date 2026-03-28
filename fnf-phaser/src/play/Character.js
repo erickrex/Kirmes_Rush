@@ -330,7 +330,13 @@ class Character extends FunkinSprite {
     if (this._textureKey && this.scene?.anims) {
       const namespacedKey = `${this._textureKey}-${animName}`;
       if (this.scene.anims.exists(namespacedKey)) {
-        this.play({ key: namespacedKey, repeat: animName.startsWith('dance') || animName === 'idle' ? -1 : 0 }, !restart);
+        this.play(
+          {
+            key: namespacedKey,
+            repeat: animName.startsWith('dance') || animName === 'idle' ? -1 : 0
+          },
+          !restart
+        );
         return this;
       }
     }

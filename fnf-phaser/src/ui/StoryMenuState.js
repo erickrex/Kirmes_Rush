@@ -158,7 +158,7 @@ export default class StoryMenuState extends BaseMenuState {
     this.selectedIndex = 0;
     this.selectedDifficultyIndex = 1;
 
-    const { width, height } = this.cameras.main;
+    const { width } = this.cameras.main;
 
     this.createBackground('story-bg', 0x2e1a2e, 0x3e1a3e);
 
@@ -179,6 +179,9 @@ export default class StoryMenuState extends BaseMenuState {
     this.setupInput();
     this.updateDisplay();
     this.fadeIn();
+
+    // Enable touch on week list items
+    this.enableTouchOnItems(this.weekTexts);
   }
 
   createWeekList() {

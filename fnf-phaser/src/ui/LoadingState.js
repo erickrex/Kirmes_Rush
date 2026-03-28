@@ -145,6 +145,22 @@ export default class LoadingState extends Phaser.Scene {
      * @type {boolean}
      */
     this.transitionStarted = false;
+
+    /**
+     * Bound load event handlers for deterministic cleanup.
+     * @type {{
+     *   progress: ((value: number) => void) | null,
+     *   fileprogress: ((file: { key: string }) => void) | null,
+     *   complete: (() => void) | null,
+     *   loaderror: ((file: { key: string }) => void) | null
+     * }}
+     */
+    this.loadEventHandlers = {
+      progress: null,
+      fileprogress: null,
+      complete: null,
+      loaderror: null
+    };
   }
 
   /**
@@ -263,30 +279,30 @@ export default class LoadingState extends Phaser.Scene {
    * Setup loading event listeners
    */
   setupLoadingEvents() {
-    // Progress event
-    this.load.on('progress', (value) => {
+    this.loadEventHandlers.progress = (value) => {
       this.progress = value;
       this.updateProgressBar(value);
-    });
+    };
+    this.load.on('progress', this.loadEventHandlers.progress);
 
-    // File progress event
-    this.load.on('fileprogress', (file) => {
+    this.loadEventHandlers.fileprogress = (file) => {
       if (this.assetText) {
         this.assetText.setText(`Loading: ${file.key}`);
       }
-    });
+    };
+    this.load.on('fileprogress', this.loadEventHandlers.fileprogress);
 
-    // Complete event
-    this.load.on('complete', () => {
+    this.loadEventHandlers.complete = () => {
       this.onLoadComplete();
-    });
+    };
+    this.load.on('complete', this.loadEventHandlers.complete);
 
-    // Error event
-    this.load.on('loaderror', (file) => {
+    this.loadEventHandlers.loaderror = (file) => {
       console.error(`[LoadingState] Failed to load: ${file.key}`);
       this.hasError = true;
       this.errorMessage = `Failed to load: ${file.key}`;
-    });
+    };
+    this.load.on('loaderror', this.loadEventHandlers.loaderror);
   }
 
   /**
@@ -521,6 +537,7 @@ export default class LoadingState extends Phaser.Scene {
    */
   create() {
     this.beginLoading();
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -623,11 +640,20 @@ export default class LoadingState extends Phaser.Scene {
    * Cleanup
    */
   shutdown() {
-    // Remove load event listeners
-    this.load.off('progress');
-    this.load.off('fileprogress');
-    this.load.off('complete');
-    this.load.off('loaderror');
+    this.events?.off('shutdown', this.shutdown, this);
+
+    if (this.loadEventHandlers.progress) {
+      this.load.off('progress', this.loadEventHandlers.progress);
+    }
+    if (this.loadEventHandlers.fileprogress) {
+      this.load.off('fileprogress', this.loadEventHandlers.fileprogress);
+    }
+    if (this.loadEventHandlers.complete) {
+      this.load.off('complete', this.loadEventHandlers.complete);
+    }
+    if (this.loadEventHandlers.loaderror) {
+      this.load.off('loaderror', this.loadEventHandlers.loaderror);
+    }
 
     // Clean up references
     this.progressBar = null;
@@ -639,5 +665,11 @@ export default class LoadingState extends Phaser.Scene {
     this.loadCallback = null;
     this.prepareCallback = null;
     this.nextSceneData = null;
+    this.loadEventHandlers = {
+      progress: null,
+      fileprogress: null,
+      complete: null,
+      loaderror: null
+    };
   }
 }

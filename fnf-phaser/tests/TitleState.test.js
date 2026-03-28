@@ -19,8 +19,11 @@ vi.mock('phaser', () => {
     y: 0,
     originX: 0.5,
     originY: 0.5,
-    text: 'Press ENTER to start',
-    destroy: vi.fn()
+    text: 'Tap or Press Enter to start',
+    destroy: vi.fn(),
+    setInteractive: vi.fn(function() { this.input = { hitArea: { width: 200, height: 30 } }; return this; }),
+    on: vi.fn().mockReturnThis(),
+    input: null
   };
 
   const mockSprite = {
@@ -171,6 +174,15 @@ vi.mock('../src/core/EventBus.js', () => {
     }
   };
 });
+
+// Mock TouchDeviceDetector
+vi.mock('../src/input/TouchDeviceDetector.js', () => ({
+  default: {
+    isTouch: vi.fn(() => false),
+    detect: vi.fn(),
+    reset: vi.fn()
+  }
+}));
 
 import TitleState from '../src/ui/TitleState.js';
 import EventBus, { Events } from '../src/core/EventBus.js';

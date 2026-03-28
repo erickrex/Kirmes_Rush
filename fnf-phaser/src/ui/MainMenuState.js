@@ -100,6 +100,9 @@ export default class MainMenuState extends BaseMenuState {
     this.playMenuMusic();
     this.fadeIn();
     this.updateSelection();
+
+    // Enable touch on menu items
+    this.enableTouchOnItems(this.menuTexts);
   }
 
   createMenuItems() {
@@ -139,7 +142,7 @@ export default class MainMenuState extends BaseMenuState {
     }
   }
 
-  update(time, delta) {
+  update(time, _delta) {
     if (!this.transitioning && this.menuTexts[this.selectedIndex]) {
       const pulse = 1.1 + Math.sin(time / 200) * 0.05;
       this.menuTexts[this.selectedIndex].setScale(pulse);

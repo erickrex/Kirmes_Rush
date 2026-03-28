@@ -17,6 +17,7 @@ import ResultState from './ui/ResultState.js';
 import LoadingState from './ui/LoadingState.js';
 import ReplayBrowserState from './ui/ReplayBrowserState.js';
 import SaveManager from './data/SaveManager.js';
+import OrientationOverlay from './ui/OrientationOverlay.js';
 
 /**
  * Game configuration
@@ -24,8 +25,8 @@ import SaveManager from './data/SaveManager.js';
  */
 const config = {
   type: Phaser.AUTO,
-  width: 1280,
-  height: 720,
+  width: 720,
+  height: 1280,
   parent: 'game-container',
   backgroundColor: '#000000',
   scale: {
@@ -40,6 +41,9 @@ const config = {
   },
   audio: {
     disableWebAudio: false
+  },
+  input: {
+    activePointers: 4
   },
   render: {
     pixelArt: false,
@@ -70,5 +74,9 @@ const config = {
 SaveManager.getInstance().init();
 
 const game = new Phaser.Game(config);
+
+game.events.once(Phaser.Core.Events.DESTROY, () => {
+  OrientationOverlay.destroy();
+});
 
 export default game;

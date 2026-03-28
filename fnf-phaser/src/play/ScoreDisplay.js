@@ -155,7 +155,7 @@ class ScoreDisplay {
     this.x = config.x ?? 0;
     this.y = config.y ?? 0;
     this.fontFamily = config.fontFamily ?? 'vcr';
-    this.fontSize = config.fontSize ?? 20;
+    this.fontSize = Math.max(16, config.fontSize ?? 20);
     this.color = config.color ?? 0xffffff;
     this.showCombo = config.showCombo ?? true;
     this.showAccuracy = config.showAccuracy ?? true;
@@ -184,7 +184,7 @@ class ScoreDisplay {
 
     if (this.text) {
       this.text.setScrollFactor(0);
-      this.text.setOrigin(this.align === 'right' ? 1 : 0, 0);
+      this.text.setOrigin(this.align === 'right' ? 1 : this.align === 'center' ? 0.5 : 0, 0);
     }
 
     this.dirty = true;

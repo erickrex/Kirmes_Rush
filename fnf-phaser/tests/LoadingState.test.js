@@ -453,12 +453,14 @@ describe('LoadingState', () => {
 
   describe('shutdown', () => {
     it('should remove load event listeners', () => {
+      state.setupLoadingEvents();
+      const { progress, fileprogress, complete, loaderror } = state.loadEventHandlers;
       state.shutdown();
 
-      expect(state.load.off).toHaveBeenCalledWith('progress');
-      expect(state.load.off).toHaveBeenCalledWith('fileprogress');
-      expect(state.load.off).toHaveBeenCalledWith('complete');
-      expect(state.load.off).toHaveBeenCalledWith('loaderror');
+      expect(state.load.off).toHaveBeenCalledWith('progress', progress);
+      expect(state.load.off).toHaveBeenCalledWith('fileprogress', fileprogress);
+      expect(state.load.off).toHaveBeenCalledWith('complete', complete);
+      expect(state.load.off).toHaveBeenCalledWith('loaderror', loaderror);
     });
 
     it('should clean up references', () => {

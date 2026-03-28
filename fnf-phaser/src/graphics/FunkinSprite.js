@@ -436,10 +436,10 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
 
   /**
    * Animation complete callback.
-   * @param {Phaser.Animations.Animation} animation - The animation that completed
+   * @param {Phaser.Animations.Animation} _animation - The animation that completed
    * @private
    */
-  _onAnimationComplete(animation) {
+  _onAnimationComplete(_animation) {
     if (!this.canPlayOtherAnims) {
       this.canPlayOtherAnims = true;
     }
@@ -491,9 +491,9 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
 
   /**
    * Called on beat hit.
-   * @param {number} beat - Current beat number
+   * @param {number} _beat - Current beat number
    */
-  onBeatHit(beat) {
+  onBeatHit(_beat) {
     // Override in subclasses if needed
   }
 

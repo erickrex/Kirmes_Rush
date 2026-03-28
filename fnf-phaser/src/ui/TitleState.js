@@ -17,7 +17,7 @@ export default class TitleState extends Phaser.Scene {
 
     /**
      * The title logo sprite
-     * @type {Phaser.GameObjects.Sprite | null}
+     * @type {Phaser.GameObjects.Sprite | Phaser.GameObjects.Text | null}
      */
     this.logo = null;
 
@@ -134,6 +134,9 @@ export default class TitleState extends Phaser.Scene {
 
     // Listen for beat events for logo bump
     EventBus.on(Events.BEAT_HIT, this.onBeatHit, this);
+
+    // Wire shutdown into Phaser's scene lifecycle
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -181,9 +184,7 @@ export default class TitleState extends Phaser.Scene {
 
     // Build frame list from the Sparrow atlas (gfDance0000..gfDance0029)
     const frames = this.textures.get('gf-dance-title').getFrameNames();
-    const sortedFrames = frames
-      .filter((name) => name.startsWith('gfDance'))
-      .sort();
+    const sortedFrames = frames.filter((name) => name.startsWith('gfDance')).sort();
 
     if (sortedFrames.length === 0) {
       return;
@@ -209,7 +210,7 @@ export default class TitleState extends Phaser.Scene {
     const centerY = this.cameras.main.height / 2;
 
     // Create the prompt text
-    this.pressEnterText = this.add.text(centerX, centerY + 200, 'Press ENTER to start', {
+    this.pressEnterText = this.add.text(centerX, centerY + 200, 'Tap or Press Enter to start', {
       fontFamily: 'Arial',
       fontSize: '32px',
       color: '#ffffff',
@@ -218,12 +219,30 @@ export default class TitleState extends Phaser.Scene {
 
     // Center the text origin
     this.pressEnterText.setOrigin(0.5, 0.5);
+
+    // Add touch interactivity — ensure minimum 48×48 hit area
+    this.pressEnterText.setInteractive({ useHandCursor: true });
+    if (this.pressEnterText.input?.hitArea) {
+      this.pressEnterText.input.hitArea.width = Math.max(
+        this.pressEnterText.input.hitArea.width,
+        48
+      );
+      this.pressEnterText.input.hitArea.height = Math.max(
+        this.pressEnterText.input.hitArea.height,
+        48
+      );
+    }
+    this.pressEnterText.on('pointerdown', this.onEnterPressed, this);
   }
 
   /**
    * Setup keyboard input handling
    */
   setupInput() {
+    if (!this.input.keyboard) {
+      return;
+    }
+
     // Listen for ENTER key
     this.input.keyboard.on('keydown-ENTER', this.onEnterPressed, this);
 
@@ -377,9 +396,9 @@ export default class TitleState extends Phaser.Scene {
 
   /**
    * Handle beat hit for logo bump
-   * @param {Object} data - Beat data
+   * @param {Object} _data - Beat data
    */
-  onBeatHit(data) {
+  onBeatHit(_data) {
     if (!this.logo) {
       return;
     }
@@ -403,10 +422,10 @@ export default class TitleState extends Phaser.Scene {
 
   /**
    * Update loop - handles blinking animation
-   * @param {number} time - Total elapsed time in milliseconds
+   * @param {number} _time - Total elapsed time in milliseconds
    * @param {number} delta - Time elapsed since last frame in milliseconds
    */
-  update(time, delta) {
+  update(_time, delta) {
     // Update blink timer
     this.blinkTimer += delta;
 
@@ -425,9 +444,11 @@ export default class TitleState extends Phaser.Scene {
    * Cleanup when scene is shut down
    */
   shutdown() {
+    this.events?.off('shutdown', this.shutdown, this);
+
     // Remove input listeners
-    this.input.keyboard.off('keydown-ENTER', this.onEnterPressed, this);
-    this.input.keyboard.off('keydown-SPACE', this.onEnterPressed, this);
+    this.input.keyboard?.off('keydown-ENTER', this.onEnterPressed, this);
+    this.input.keyboard?.off('keydown-SPACE', this.onEnterPressed, this);
 
     // Remove event listeners
     EventBus.off(Events.BEAT_HIT, this.onBeatHit, this);

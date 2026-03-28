@@ -188,9 +188,9 @@ class HealthIcon extends FunkinSprite {
 
   /**
    * Load the icon graphics (legacy 2-3 frame format)
-   * @param {string} [path] - Path to icon image
+   * @param {string} [_path] - Path to icon image
    */
-  loadLegacyIcon(path) {
+  loadLegacyIcon(_path) {
     this.isLegacyStyle = true;
 
     // In a real implementation, this would load the spritesheet
@@ -286,23 +286,6 @@ class HealthIcon extends FunkinSprite {
   playIconAnimation(name, fallback = null) {
     // For legacy icons, map states to frame indices
     if (this.isLegacyStyle) {
-      let frameIndex = 0;
-
-      switch (name) {
-        case HealthIconState.LOSING:
-        case HealthIconState.TO_LOSING:
-        case HealthIconState.FROM_LOSING:
-          frameIndex = 1;
-          break;
-        case HealthIconState.WINNING:
-        case HealthIconState.TO_WINNING:
-        case HealthIconState.FROM_WINNING:
-          frameIndex = 2; // May not exist
-          break;
-        default:
-          frameIndex = 0;
-      }
-
       this.currentState = name;
       // In real implementation: this.animation.play(name) or set frame
       return;
@@ -362,9 +345,9 @@ class HealthIcon extends FunkinSprite {
 
   /**
    * Called on beat hit
-   * @param {number} curBeat - Current beat number
+   * @param {number} _curBeat - Current beat number
    */
-  onBeatHit(curBeat) {
+  onBeatHit(_curBeat) {
     // Default bop is on steps, but can override for beat-based
   }
 

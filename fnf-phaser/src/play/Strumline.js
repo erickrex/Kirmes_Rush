@@ -149,6 +149,13 @@ class Strumline {
   onNoteSpawn = null;
 
   /**
+   * Whether to render note sprites visually. When false, notes are still
+   * tracked for timing/scoring but their sprites are hidden.
+   * @type {boolean}
+   */
+  renderNotes = true;
+
+  /**
    * Create a new Strumline
    * @param {Phaser.Scene} scene - The scene this strumline belongs to
    * @param {boolean} isPlayer - Whether this is the player's strumline
@@ -427,7 +434,7 @@ class Strumline {
           : this.y - INITIAL_OFFSET + STRUMLINE_SIZE / 2;
       } else {
         // Not yet hit - render normally
-        holdNote.visible = true;
+        holdNote.visible = this.renderNotes;
         const yPos = this.getNoteY(holdNote.strumTime, songPosition);
 
         holdNote.y = this.isDownscroll
@@ -479,6 +486,11 @@ class Strumline {
     noteSprite.strumline = this;
     noteSprite.setDepth?.(30);
 
+    // Hide sprite when this strumline doesn't render notes (e.g. opponent)
+    if (!this.renderNotes && noteSprite.setVisible) {
+      noteSprite.setVisible(false);
+    }
+
     // Position
     noteSprite.x = this.x + this.getXPos(noteData.direction);
     noteSprite.y = -9999;
@@ -506,6 +518,11 @@ class Strumline {
     holdNote.setup(noteData, this.noteStyle);
     holdNote.parentStrumline = this;
     holdNote.flipY = this.isDownscroll;
+
+    // Hide sprite when this strumline doesn't render notes (e.g. opponent)
+    if (!this.renderNotes) {
+      holdNote.visible = false;
+    }
 
     // Position
     holdNote.x =
@@ -851,9 +868,9 @@ class Strumline {
 
   /**
    * Called on beat hit
-   * @param {number} beat - Current beat number
+   * @param {number} _beat - Current beat number
    */
-  onBeatHit(beat) {
+  onBeatHit(_beat) {
     // Sort notes by time for efficiency
     if (this.notes.length > 1) {
       this.notes.sort((a, b) => (a?.strumTime ?? 0) - (b?.strumTime ?? 0));

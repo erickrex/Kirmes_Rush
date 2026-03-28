@@ -267,7 +267,12 @@ export function createNoteProcessor(context) {
         playState.opponent.sing(note.direction);
       }
 
-      // Hit the note on strumline (visual feedback)
+      // Flash the opponent indicator instead of updating visible strumline
+      if (playState.opponentIndicator) {
+        playState.opponentIndicator.flash(note.direction);
+      }
+
+      // Hit the note on strumline (timing/scoring only, strumline is hidden)
       playState.opponentStrumline.hitNote(note);
 
       // Reset receptor back to static after a brief flash

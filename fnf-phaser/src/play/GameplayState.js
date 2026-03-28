@@ -19,10 +19,10 @@ import Scoring from './Scoring.js';
 
 /**
  * Create a GameplayState module that tracks health, score, combo, and tallies.
- * @param {GameplayStateContext} context - Shared context object
+ * @param {GameplayStateContext} _context - Shared context object
  * @returns {Object} GameplayState module instance
  */
-export function createGameplayState(context) {
+export function createGameplayState(_context) {
   let destroyed = false;
 
   const state = {

@@ -5,8 +5,6 @@
  * Ported from source/funkin/play/components/PopUpScore.hx
  */
 
-import * as Constants from '../core/Constants.js';
-
 /**
  * Judgement types
  * @enum {string}

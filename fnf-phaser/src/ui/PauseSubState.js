@@ -165,6 +165,8 @@ export default class PauseSubState extends Phaser.Scene {
 
     // Emit pause event
     EventBus.emit(Events.PAUSE);
+
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -173,19 +175,28 @@ export default class PauseSubState extends Phaser.Scene {
   createMenuOptions() {
     const { width, height } = this.cameras.main;
     const startY = height / 2 - 50;
-    const spacing = 60;
+    const spacing = 80;
 
     this.optionTexts = [];
 
     this.options.forEach((option, index) => {
       const text = this.add.text(width / 2, startY + index * spacing, option.name, {
         fontFamily: 'Arial',
-        fontSize: '36px',
+        fontSize: '40px',
         color: '#ffffff',
         stroke: '#000000',
         strokeThickness: 3
       });
       text.setOrigin(0.5, 0.5);
+      if (text.setInteractive) {
+        text.setInteractive({ useHandCursor: true });
+        text.on('pointerdown', () => {
+          if (this.transitioning) return;
+          this.selectedIndex = index;
+          this.updateDisplay();
+          this.onSelect();
+        });
+      }
       this.optionTexts.push(text);
     });
   }
@@ -219,12 +230,21 @@ export default class PauseSubState extends Phaser.Scene {
     this.difficultyTexts = [];
     this.difficulties.forEach((diff, index) => {
       const text = this.add
-        .text(0, -20 + index * 40, diff.toUpperCase(), {
+        .text(0, -20 + index * 50, diff.toUpperCase(), {
           fontFamily: 'Arial',
-          fontSize: '24px',
+          fontSize: '30px',
           color: '#ffffff'
         })
         .setOrigin(0.5, 0.5);
+      if (text.setInteractive) {
+        text.setInteractive({ useHandCursor: true });
+        text.on('pointerdown', () => {
+          if (this.transitioning) return;
+          this.selectedDifficultyIndex = index;
+          this.updateDisplay();
+          this.confirmDifficulty();
+        });
+      }
       this.difficultyContainer.add(text);
       this.difficultyTexts.push(text);
     });
@@ -495,9 +515,9 @@ export default class PauseSubState extends Phaser.Scene {
   /**
    * Update loop
    * @param {number} time - Time
-   * @param {number} delta - Delta
+   * @param {number} _delta - Delta
    */
-  update(time, delta) {
+  update(time, _delta) {
     // Pulse selected option
     if (!this.transitioning) {
       const targetTexts = this.difficultyMode ? this.difficultyTexts : this.optionTexts;
@@ -514,6 +534,7 @@ export default class PauseSubState extends Phaser.Scene {
    * Cleanup
    */
   shutdown() {
+    this.events?.off('shutdown', this.shutdown, this);
     this.input.keyboard.off('keydown-UP', this.onNavigateUp, this);
     this.input.keyboard.off('keydown-DOWN', this.onNavigateDown, this);
     this.input.keyboard.off('keydown-W', this.onNavigateUp, this);

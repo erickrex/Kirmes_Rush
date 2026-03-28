@@ -408,7 +408,7 @@ class VoicesGroup {
       } else if (this.combinedVoices) {
         return (this.combinedVoices.seek ?? 0) * Constants.MS_PER_SEC;
       }
-    } catch (e) {
+    } catch {
       // Ignore errors
     }
     return 0;
@@ -428,7 +428,7 @@ class VoicesGroup {
       } else if (this.combinedVoices) {
         return (this.combinedVoices.duration ?? 0) * Constants.MS_PER_SEC;
       }
-    } catch (e) {
+    } catch {
       // Ignore errors
     }
     return 0;

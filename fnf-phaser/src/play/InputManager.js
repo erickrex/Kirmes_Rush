@@ -64,9 +64,9 @@ export function createInputManager(context) {
      * Handle a note press input for a given direction.
      * Finds the closest note in the hit window and delegates hit/miss to NoteProcessor.
      * @param {number} direction - The direction of the input
-     * @param {number} timestamp - The timestamp of the input
+     * @param {number} _timestamp - The timestamp of the input
      */
-    handleNoteInput(direction, timestamp) {
+    handleNoteInput(direction, _timestamp) {
       const { playState, noteProcessor } = context;
       if (!playState.playerStrumline) {
         return;
@@ -114,9 +114,9 @@ export function createInputManager(context) {
     /**
      * Handle a note release input for a given direction.
      * @param {number} direction - The direction of the input
-     * @param {number} timestamp - The timestamp of the input
+     * @param {number} _timestamp - The timestamp of the input
      */
-    handleNoteRelease(direction, timestamp) {
+    handleNoteRelease(direction, _timestamp) {
       const { playState } = context;
       if (!playState.playerStrumline) {
         return;

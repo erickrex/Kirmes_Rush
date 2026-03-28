@@ -207,7 +207,7 @@ class SaveManager {
       localStorage.setItem(test, test);
       localStorage.removeItem(test);
       this.storageAvailable = true;
-    } catch (e) {
+    } catch {
       this.storageAvailable = false;
       console.warn('[SaveManager] localStorage not available, using memory storage');
     }
@@ -272,7 +272,7 @@ class SaveManager {
    * @private
    */
   migrate(fromVersion, toVersion) {
-    console.log(`[SaveManager] Migrating from ${fromVersion} to ${toVersion}`);
+    console.warn(`[SaveManager] Migrating from ${fromVersion} to ${toVersion}`);
 
     // Add migration logic here as versions change
     // Example:

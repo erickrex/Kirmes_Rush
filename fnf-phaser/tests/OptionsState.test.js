@@ -23,7 +23,10 @@ vi.mock('phaser', () => {
     setColor: vi.fn().mockReturnThis(),
     setScale: vi.fn().mockReturnThis(),
     setVisible: vi.fn().mockReturnThis(),
-    destroy: vi.fn()
+    destroy: vi.fn(),
+    setInteractive: vi.fn(function() { this.input = { hitArea: { width: 200, height: 30 } }; return this; }),
+    on: vi.fn().mockReturnThis(),
+    input: null
   };
 
   const mockGraphics = {
@@ -40,7 +43,10 @@ vi.mock('phaser', () => {
     setData: vi.fn().mockReturnThis(),
     getData: vi.fn((key) => key === 'sliderFill' || key === 'sliderBg' ? { ...mockGraphics } : { ...mockText }),
     add: vi.fn().mockReturnThis(),
-    destroy: vi.fn()
+    destroy: vi.fn(),
+    setInteractive: vi.fn(function() { this.input = { hitArea: { width: 200, height: 50 } }; return this; }),
+    on: vi.fn().mockReturnThis(),
+    input: null
   };
 
   return {
@@ -77,10 +83,27 @@ vi.mock('phaser', () => {
             audio: vi.fn()
           };
         }
+      },
+      Geom: {
+        Rectangle: class MockRectangle {
+          constructor(x, y, width, height) {
+            this.x = x; this.y = y; this.width = width; this.height = height;
+          }
+          static Contains(rect, x, y) { return true; }
+        }
       }
     }
   };
 });
+
+// Mock TouchDeviceDetector
+vi.mock('../src/input/TouchDeviceDetector.js', () => ({
+  default: {
+    isTouch: vi.fn(() => false),
+    detect: vi.fn(),
+    reset: vi.fn()
+  }
+}));
 
 import OptionsState from '../src/ui/OptionsState.js';
 

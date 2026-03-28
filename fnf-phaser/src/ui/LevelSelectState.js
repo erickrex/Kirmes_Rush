@@ -58,57 +58,90 @@ export default class LevelSelectState extends BaseMenuState {
 
   createStaticUi() {
     const { width, height } = this.cameras.main;
+    const infoX = 96;
+    const pad = 36;
 
-    this.add.text(96, 72, 'Levels', {
+    // Info panel sits below the level list.
+    // 5 levels starting at y=210 with 82px spacing → last level at ~538.
+    const infoY = 640;
+    const infoWrap = width - infoX * 2;
+
+    // Back button (top-left)
+    this.backButton = this.add.text(pad, 50, '← Back', {
+      fontFamily: 'Arial',
+      fontSize: '30px',
+      color: '#94a3b8'
+    });
+    if (this.backButton.setOrigin) this.backButton.setOrigin(0, 0.5);
+    if (this.backButton.setInteractive) {
+      this.backButton.setInteractive({ useHandCursor: true });
+      this.backButton.on('pointerdown', () => this.onBack());
+    }
+
+    this.add.text(infoX, 90, 'Levels', {
       fontFamily: 'Arial Black',
       fontSize: '54px',
       color: '#ffffff'
     });
 
-    this.add.text(96, 128, 'Five playable levels. Fixed difficulties. Full menu flow goes here.', {
+    this.add.text(infoX, 148, 'Tap a level, then tap Play.', {
       fontFamily: 'Arial',
       fontSize: '18px',
       color: '#8fa3bf'
     });
 
-    this.statusText = this.add.text(96, height - 72, 'Loading levels...', {
+    this.statusText = this.add.text(infoX, height - 72, 'Loading levels...', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#facc15'
     });
 
-    this.songText = this.add.text(width - 420, 180, '', {
+    // Play button — large, centered, below the info panel
+    this.playButton = this.add.text(width / 2, height - 140, '▶  PLAY', {
       fontFamily: 'Arial Black',
-      fontSize: '30px',
+      fontSize: '40px',
+      color: '#000000',
+      backgroundColor: '#facc15',
+      padding: { x: 48, y: 16 }
+    });
+    if (this.playButton.setOrigin) this.playButton.setOrigin(0.5, 0.5);
+    if (this.playButton.setInteractive) {
+      this.playButton.setInteractive({ useHandCursor: true });
+      this.playButton.on('pointerdown', () => this.onSelect());
+    }
+
+    this.songText = this.add.text(infoX, infoY, '', {
+      fontFamily: 'Arial Black',
+      fontSize: '26px',
       color: '#ffffff',
-      wordWrap: { width: 320 }
+      wordWrap: { width: infoWrap }
     });
 
-    this.difficultyText = this.add.text(width - 420, 240, '', {
+    this.difficultyText = this.add.text(infoX, infoY + 42, '', {
       fontFamily: 'Arial',
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#7dd3fc'
     });
 
-    this.bestScoreText = this.add.text(width - 420, 285, '', {
+    this.bestScoreText = this.add.text(infoX, infoY + 76, '', {
       fontFamily: 'Arial',
       fontSize: '18px',
       color: '#facc15',
-      wordWrap: { width: 320 }
+      wordWrap: { width: infoWrap }
     });
 
-    this.progressText = this.add.text(width - 420, 325, '', {
+    this.progressText = this.add.text(infoX, infoY + 106, '', {
       fontFamily: 'Arial',
       fontSize: '18px',
       color: '#86efac',
-      wordWrap: { width: 320 }
+      wordWrap: { width: infoWrap }
     });
 
-    this.descriptionText = this.add.text(width - 420, 370, '', {
+    this.descriptionText = this.add.text(infoX, infoY + 140, '', {
       fontFamily: 'Arial',
       fontSize: '19px',
       color: '#d1d5db',
-      wordWrap: { width: 320 }
+      wordWrap: { width: infoWrap }
     });
   }
 
@@ -133,10 +166,11 @@ export default class LevelSelectState extends BaseMenuState {
     }
 
     this.createLevelTexts();
+    this.enableTouchOnLevelItems();
     this.updateSelection();
 
     if (this.statusText) {
-      this.statusText.setText('ENTER to play. ESC to return.');
+      this.statusText.setText('Select a level and tap Play.');
       this.statusText.setColor('#94a3b8');
     }
   }
@@ -231,6 +265,27 @@ export default class LevelSelectState extends BaseMenuState {
     this.transitionToScene('MainMenuState');
   }
 
+  /**
+   * Make level text items tappable. Tapping selects (highlights) the level
+   * and shows its info. The Play button is used to actually launch.
+   */
+  enableTouchOnLevelItems() {
+    const minSize = 48;
+    this.levelTexts.forEach((text, index) => {
+      if (!text.setInteractive) return;
+      text.setInteractive({ useHandCursor: true });
+      if (text.input && text.input.hitArea) {
+        text.input.hitArea.width = Math.max(text.input.hitArea.width, minSize);
+        text.input.hitArea.height = Math.max(text.input.hitArea.height, minSize);
+      }
+      text.on('pointerdown', () => {
+        if (this.transitioning) return;
+        this.selectedIndex = index;
+        this.updateSelection();
+      });
+    });
+  }
+
   shutdown() {
     super.shutdown();
     this.levelTexts.forEach((text) => text.destroy());
@@ -241,5 +296,7 @@ export default class LevelSelectState extends BaseMenuState {
     this.bestScoreText = null;
     this.progressText = null;
     this.statusText = null;
+    this.backButton = null;
+    this.playButton = null;
   }
 }

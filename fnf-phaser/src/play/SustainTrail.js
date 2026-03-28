@@ -412,7 +412,12 @@ class SustainTrail {
       return;
     }
 
-    this.visible = true;
+    // Respect the parent strumline's renderNotes flag — keep hidden if rendering is suppressed
+    if (this.parentStrumline && !this.parentStrumline.renderNotes) {
+      this.visible = false;
+    } else {
+      this.visible = true;
+    }
 
     // Calculate vertex positions for the hold body and end cap
     const bottomHeight = this.graphicHeight * this.zoom * this.endOffset;

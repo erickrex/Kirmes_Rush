@@ -17,6 +17,17 @@ import Phaser from 'phaser';
 import { ReplayManager } from '../replay/ReplaySystem.js';
 
 /**
+ * @typedef {import('../replay/ReplaySystem.js').ReplayListEntry} ReplayListEntry
+ * @typedef {{
+ *   songText: Phaser.GameObjects.Text | null,
+ *   difficultyText: Phaser.GameObjects.Text | null,
+ *   scoreText: Phaser.GameObjects.Text | null,
+ *   accuracyText: Phaser.GameObjects.Text | null,
+ *   dateText: Phaser.GameObjects.Text | null
+ * }} ReplayInfoPanel
+ */
+
+/**
  * ReplayBrowserState - Browse and manage saved replays
  * @extends Phaser.Scene
  */
@@ -32,13 +43,13 @@ export default class ReplayBrowserState extends Phaser.Scene {
 
     /**
      * All replays from manager
-     * @type {import('../replay/ReplayManager.js').ReplayListEntry[]}
+     * @type {ReplayListEntry[]}
      */
     this.allReplays = [];
 
     /**
      * Filtered replays list
-     * @type {import('../replay/ReplayManager.js').ReplayListEntry[]}
+     * @type {ReplayListEntry[]}
      */
     this.filteredReplays = [];
 
@@ -116,7 +127,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
 
     /**
      * Info panel elements
-     * @type {Object}
+     * @type {ReplayInfoPanel}
      */
     this.infoPanel = {
       songText: null,
@@ -161,7 +172,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
     // Load replays
     this.loadReplays();
 
-    const { width, height } = this.cameras.main;
+    const { width } = this.cameras.main;
 
     // Background
     this.createBackground();
@@ -203,6 +214,8 @@ export default class ReplayBrowserState extends Phaser.Scene {
 
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.events?.on('shutdown', this.shutdown, this);
   }
 
   /**
@@ -330,7 +343,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Create info panel for selected replay
    */
   createInfoPanel() {
-    const { width, height } = this.cameras.main;
+    const { width } = this.cameras.main;
     const panelX = width - 320;
     const panelY = 100;
 
@@ -908,7 +921,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
 
   /**
    * Start replay playback
-   * @param {import('../replay/ReplayManager.js').ReplayListEntry} replay - Replay to play
+   * @param {ReplayListEntry} replay - Replay to play
    */
   startReplayPlayback(replay) {
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -951,10 +964,10 @@ export default class ReplayBrowserState extends Phaser.Scene {
 
   /**
    * Update loop
-   * @param {number} time - Time
-   * @param {number} delta - Delta
+   * @param {number} _time - Time
+   * @param {number} _delta - Delta
    */
-  update(time, delta) {
+  update(_time, _delta) {
     // Could add smooth scrolling animation here
   }
 
@@ -962,6 +975,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Cleanup
    */
   shutdown() {
+    this.events?.off('shutdown', this.shutdown, this);
     this.input.keyboard.off('keydown-UP', this.onNavigateUp, this);
     this.input.keyboard.off('keydown-DOWN', this.onNavigateDown, this);
     this.input.keyboard.off('keydown-W', this.onNavigateUp, this);

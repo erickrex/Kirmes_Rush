@@ -7,6 +7,7 @@
 
 import FunkinSprite from '../graphics/FunkinSprite.js';
 import StageRegistry from '../data/registries/StageRegistry.js';
+import { PORTRAIT_WIDTH, PORTRAIT_HEIGHT, PLAYER_CHAR_Y_RANGE } from '../layout/LayoutManager.js';
 
 /**
  * @typedef {Object} StageConfig
@@ -109,20 +110,41 @@ class Stage {
   }
 
   /**
-   * Apply stage data
+   * Apply stage data, adjusting positions for portrait (720×1280) framing.
+   * - Background props are scaled to cover the portrait canvas.
+   * - Player character is centered in the visible area between HUD and strumline.
+   * - Opponent character is shifted to the side / partially off-screen.
    * @param {Object} data - Stage data
    */
   applyStageData(data) {
     this.cameraZoom = data.cameraZoom || 1.0;
 
-    // Store character positions
+    // Store character positions with portrait adjustments
     if (data.characters) {
       for (const charType of ['bf', 'dad', 'gf']) {
         if (data.characters[charType]) {
           const pos = data.characters[charType];
+          const baseX = pos.position?.[0] || 0;
+          const baseY = pos.position?.[1] || 0;
+
+          let adjustedX = baseX;
+          let adjustedY = baseY;
+
+          if (charType === 'bf') {
+            // Center player character horizontally in the portrait canvas
+            adjustedX = PORTRAIT_WIDTH / 2;
+            // Center vertically between HUD area and strumline (PLAYER_CHAR_Y_RANGE)
+            adjustedY = (PLAYER_CHAR_Y_RANGE[0] + PLAYER_CHAR_Y_RANGE[1]) / 2;
+          } else if (charType === 'dad') {
+            // Shift opponent to the right side, partially off-screen
+            adjustedX = PORTRAIT_WIDTH + 100;
+            adjustedY = baseY;
+          }
+          // gf keeps original position (or could be adjusted later)
+
           this.characterPositions[charType] = {
-            x: pos.position?.[0] || 0,
-            y: pos.position?.[1] || 0,
+            x: adjustedX,
+            y: adjustedY,
             zIndex: pos.zIndex || 0,
             cameraOffsets: pos.cameraOffsets || [0, 0],
             scale: pos.scale || 1
@@ -156,7 +178,8 @@ class Stage {
   }
 
   /**
-   * Create a single prop sprite
+   * Create a single prop sprite.
+   * Background props (negative zIndex) are scaled to cover the 720×1280 portrait canvas.
    * @param {Object} propData - Prop data from stage definition
    * @returns {FunkinSprite | null}
    */
@@ -170,9 +193,28 @@ class Stage {
 
     const prop = new FunkinSprite(this.scene, x, y);
 
-    // Apply scale
+    // Apply scale — for background props, ensure they cover the portrait canvas
     if (propData.scale) {
-      prop.setScale(propData.scale[0] || 1, propData.scale[1] || 1);
+      let scaleX = propData.scale[0] || 1;
+      let scaleY = propData.scale[1] || 1;
+
+      if ((propData.zIndex || 0) < 0 && prop.width > 0 && prop.height > 0) {
+        const coverScaleX = PORTRAIT_WIDTH / (prop.width * scaleX);
+        const coverScaleY = PORTRAIT_HEIGHT / (prop.height * scaleY);
+        const coverScale = Math.max(coverScaleX, coverScaleY);
+        if (coverScale > 1) {
+          scaleX *= coverScale;
+          scaleY *= coverScale;
+        }
+      }
+
+      prop.setScale(scaleX, scaleY);
+    } else if ((propData.zIndex || 0) < 0 && prop.width > 0 && prop.height > 0) {
+      // No explicit scale on a background prop — scale to cover
+      const coverScale = Math.max(PORTRAIT_WIDTH / prop.width, PORTRAIT_HEIGHT / prop.height);
+      if (coverScale > 1) {
+        prop.setScale(coverScale, coverScale);
+      }
     }
 
     // Apply scroll factor (parallax)

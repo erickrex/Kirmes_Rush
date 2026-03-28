@@ -8,6 +8,8 @@
 import Phaser from 'phaser';
 import EventBus, { Events } from '../core/EventBus.js';
 import { buildNoteStyleEntries } from '../levels/AssetManifestBuilder.js';
+import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
+import OrientationOverlay from '../ui/OrientationOverlay.js';
 
 /**
  * @typedef {Object} BootSceneConfig
@@ -320,10 +322,11 @@ class BootScene extends Phaser.Scene {
 
   /**
    * Create method called after preload completes.
+   * Detects touch capability and initializes the orientation overlay.
    */
   create() {
-    // Scene creation logic (if needed)
-    // Most work is done in preload and onLoadComplete
+    TouchDeviceDetector.detect();
+    OrientationOverlay.init();
   }
 }
 

@@ -6,6 +6,7 @@
  */
 
 import * as Constants from '../core/Constants.js';
+import { DEFAULT_PORTRAIT_ZOOM } from '../layout/LayoutManager.js';
 
 /**
  * @typedef {Object} CameraTarget
@@ -47,22 +48,22 @@ class FunkinCamera {
   followRate = Constants.DEFAULT_CAMERA_FOLLOW_RATE;
 
   /**
-   * Default zoom level
+   * Default zoom level (portrait framing)
    * @type {number}
    */
-  defaultZoom = 1.0;
+  defaultZoom = DEFAULT_PORTRAIT_ZOOM;
 
   /**
    * Current zoom level
    * @type {number}
    */
-  currentZoom = 1.0;
+  currentZoom = DEFAULT_PORTRAIT_ZOOM;
 
   /**
    * Target zoom level for lerping
    * @type {number}
    */
-  targetZoom = 1.0;
+  targetZoom = DEFAULT_PORTRAIT_ZOOM;
 
   /**
    * Zoom lerp rate
@@ -116,9 +117,9 @@ class FunkinCamera {
     this.camera = camera || scene?.cameras?.main || null;
 
     if (this.camera) {
-      this.defaultZoom = this.camera.zoom;
-      this.currentZoom = this.camera.zoom;
-      this.targetZoom = this.camera.zoom;
+      this.defaultZoom = this.camera.zoom || DEFAULT_PORTRAIT_ZOOM;
+      this.currentZoom = this.defaultZoom;
+      this.targetZoom = this.defaultZoom;
     }
   }
 
@@ -273,9 +274,9 @@ class FunkinCamera {
 
   /**
    * Update camera position and zoom
-   * @param {number} delta - Delta time in ms
+   * @param {number} _delta - Delta time in ms
    */
-  update(delta) {
+  update(_delta) {
     if (!this.camera) {
       return;
     }

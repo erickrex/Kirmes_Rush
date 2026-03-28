@@ -7,6 +7,7 @@
  * paths when freeplay is productized again.
  */
 
+import Phaser from 'phaser';
 import BaseMenuState from './BaseMenuState.js';
 
 /**
@@ -175,7 +176,7 @@ export default class FreeplayState extends BaseMenuState {
     this.letterFilter = null;
     this.filteredSongs = [...this.songs];
 
-    const { width, height } = this.cameras.main;
+    const { width } = this.cameras.main;
 
     this.createBackground('freeplay-bg', 0x1a3a5c, 0x0a1a2c);
 
@@ -196,6 +197,9 @@ export default class FreeplayState extends BaseMenuState {
     this.setupInput();
     this.updateDisplay();
     this.fadeIn();
+
+    // Enable touch on visible capsules
+    this.enableTouchOnCapsules();
   }
 
   createCapsules() {
@@ -369,6 +373,36 @@ export default class FreeplayState extends BaseMenuState {
     }
   }
 
+  /**
+   * Enable touch interactivity on song capsules.
+   * Each capsule gets a pointerdown handler that selects the corresponding song.
+   */
+  enableTouchOnCapsules() {
+    const { width } = this.cameras.main;
+    const minSize = BaseMenuState.MIN_TOUCH_TARGET;
+    this.capsules.forEach((capsule, i) => {
+      const hitWidth = Math.max(width - 400, minSize);
+      const hitHeight = Math.max(70, minSize);
+      capsule.setInteractive(
+        new Phaser.Geom.Rectangle(50, 0, hitWidth, hitHeight),
+        Phaser.Geom.Rectangle.Contains
+      );
+      capsule.on('pointerdown', () => {
+        if (this.transitioning) {
+          return;
+        }
+        // Compute the actual song index from scroll position
+        const startIndex = Math.max(0, this.selectedIndex - Math.floor(this.visibleCapsules / 2));
+        const songIndex = startIndex + i;
+        if (songIndex < this.filteredSongs.length) {
+          this.selectedIndex = songIndex;
+          this.updateSelection();
+          this.onSelect();
+        }
+      });
+    });
+  }
+
   // ========================================
   // DISPLAY
   // ========================================
@@ -413,7 +447,7 @@ export default class FreeplayState extends BaseMenuState {
     this.transitionToScene('PlayState', { songId: song.id, difficulty });
   }
 
-  update(time, delta) {
+  update(_time, _delta) {
     // Smooth scroll animation could be added here
   }
 

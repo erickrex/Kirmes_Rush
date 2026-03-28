@@ -297,13 +297,23 @@ describe('Stage', () => {
       expect(stage.cameraZoom).toBe(0.9);
     });
 
-    it('should apply character positions', () => {
+    it('should apply character positions for portrait layout', () => {
       const stage = new Stage(mockScene);
       stage.applyStageData(mockStageData);
 
-      expect(stage.characterPositions.bf.x).toBe(770);
-      expect(stage.characterPositions.bf.y).toBe(450);
+      // bf is centered in portrait canvas: x = 720/2 = 360, y = (300+700)/2 = 500
+      expect(stage.characterPositions.bf.x).toBe(360);
+      expect(stage.characterPositions.bf.y).toBe(500);
       expect(stage.characterPositions.bf.zIndex).toBe(10);
+    });
+
+    it('should shift opponent character off-screen for portrait', () => {
+      const stage = new Stage(mockScene);
+      stage.applyStageData(mockStageData);
+
+      // dad is shifted to right side, partially off-screen: x = 720 + 100 = 820
+      expect(stage.characterPositions.dad.x).toBe(820);
+      expect(stage.characterPositions.dad.y).toBe(100);
     });
 
     it('should apply camera offsets', () => {
@@ -359,12 +369,17 @@ describe('Stage', () => {
       expect(prop.y).toBe(-200);
     });
 
-    it('should apply scale to prop', () => {
+    it('should scale background props to cover portrait canvas', () => {
       const stage = new Stage(mockScene, 'mainStage');
+      // Background prop has zIndex -100, width=100, height=100, scale [1.1, 1.1]
+      // Scaled size = 110x110, needs to cover 720x1280
+      // coverScaleX = 720 / 110 ≈ 6.545, coverScaleY = 1280 / 110 ≈ 11.636
+      // coverScale = max(6.545, 11.636) ≈ 11.636
+      // final scale = 1.1 * 11.636 ≈ 12.8
       const prop = stage.createProp(mockStageData.props[0]);
 
-      expect(prop.scaleX).toBe(1.1);
-      expect(prop.scaleY).toBe(1.1);
+      expect(prop.scaleX).toBeCloseTo(12.8, 0);
+      expect(prop.scaleY).toBeCloseTo(12.8, 0);
     });
 
     it('should apply scroll factor to prop', () => {
@@ -471,11 +486,12 @@ describe('Stage', () => {
       stage.loadFromRegistry(mockRegistry);
     });
 
-    it('should get character position', () => {
+    it('should get character position for portrait layout', () => {
       const pos = stage.getCharacterPosition('bf');
 
-      expect(pos.x).toBe(770);
-      expect(pos.y).toBe(450);
+      // bf centered in portrait: x = 360, y = 500
+      expect(pos.x).toBe(360);
+      expect(pos.y).toBe(500);
       expect(pos.zIndex).toBe(10);
     });
 
@@ -486,7 +502,7 @@ describe('Stage', () => {
       expect(pos.y).toBe(0);
     });
 
-    it('should position character on stage', () => {
+    it('should position character on stage with portrait adjustments', () => {
       const mockChar = {
         x: 0,
         y: 0,
@@ -497,7 +513,8 @@ describe('Stage', () => {
 
       stage.positionCharacter(mockChar, 'bf');
 
-      expect(mockChar.setPosition).toHaveBeenCalledWith(770, 450);
+      // bf centered in portrait: x = 360, y = 500
+      expect(mockChar.setPosition).toHaveBeenCalledWith(360, 500);
       expect(mockChar.setZIndex).toHaveBeenCalledWith(10);
     });
 
