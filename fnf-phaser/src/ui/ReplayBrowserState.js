@@ -222,6 +222,12 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Load replays from manager
    */
   loadReplays() {
+    if (!this.replayManager) {
+      this.allReplays = [];
+      this.availableSongs = ['ALL'];
+      this.applyFilter();
+      return;
+    }
     this.allReplays = this.replayManager.getReplayList();
 
     // Extract unique songs for filtering
@@ -238,7 +244,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
     if (this.songFilter === null || this.songFilter === 'ALL') {
       this.filteredReplays = [...this.allReplays];
     } else {
-      this.filteredReplays = this.replayManager.filterBySong(this.songFilter);
+      this.filteredReplays = this.replayManager?.filterBySong(this.songFilter) || [];
     }
 
     // Clamp selected index
@@ -562,28 +568,32 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Setup input handlers
    */
   setupInput() {
+    const kb = this.input.keyboard;
+    if (!kb) {
+      return;
+    }
     // Navigation
-    this.input.keyboard.on('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.on('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.on('keydown-W', this.onNavigateUp, this);
-    this.input.keyboard.on('keydown-S', this.onNavigateDown, this);
+    kb.on('keydown-UP', this.onNavigateUp, this);
+    kb.on('keydown-DOWN', this.onNavigateDown, this);
+    kb.on('keydown-W', this.onNavigateUp, this);
+    kb.on('keydown-S', this.onNavigateDown, this);
 
     // Filter
-    this.input.keyboard.on('keydown-LEFT', this.onFilterLeft, this);
-    this.input.keyboard.on('keydown-RIGHT', this.onFilterRight, this);
-    this.input.keyboard.on('keydown-A', this.onFilterLeft, this);
-    this.input.keyboard.on('keydown-D', this.onFilterRight, this);
+    kb.on('keydown-LEFT', this.onFilterLeft, this);
+    kb.on('keydown-RIGHT', this.onFilterRight, this);
+    kb.on('keydown-A', this.onFilterLeft, this);
+    kb.on('keydown-D', this.onFilterRight, this);
 
     // Selection
-    this.input.keyboard.on('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.on('keydown-SPACE', this.onSelect, this);
+    kb.on('keydown-ENTER', this.onSelect, this);
+    kb.on('keydown-SPACE', this.onSelect, this);
 
     // Delete
-    this.input.keyboard.on('keydown-DELETE', this.onDelete, this);
-    this.input.keyboard.on('keydown-BACKSPACE', this.onDeleteKey, this);
+    kb.on('keydown-DELETE', this.onDelete, this);
+    kb.on('keydown-BACKSPACE', this.onDeleteKey, this);
 
     // Back
-    this.input.keyboard.on('keydown-ESC', this.onBack, this);
+    kb.on('keydown-ESC', this.onBack, this);
   }
 
   /**
@@ -770,7 +780,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
    */
   showDeleteConfirmation() {
     this.showingDeleteConfirm = true;
-    this.deleteConfirmOverlay.setVisible(true);
+    this.deleteConfirmOverlay?.setVisible(true);
   }
 
   /**
@@ -778,7 +788,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
    */
   cancelDelete() {
     this.showingDeleteConfirm = false;
-    this.deleteConfirmOverlay.setVisible(false);
+    this.deleteConfirmOverlay?.setVisible(false);
     this.playCancelSound();
   }
 
@@ -793,14 +803,14 @@ export default class ReplayBrowserState extends Phaser.Scene {
     }
 
     // Delete the replay
-    this.replayManager.deleteReplay(replay.id);
+    this.replayManager?.deleteReplay(replay.id);
 
     // Reload replays
     this.loadReplays();
 
     // Hide confirmation
     this.showingDeleteConfirm = false;
-    this.deleteConfirmOverlay.setVisible(false);
+    this.deleteConfirmOverlay?.setVisible(false);
 
     this.playConfirmSound();
     this.updateDisplay();
@@ -830,7 +840,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
     const hasReplays = this.filteredReplays.length > 0;
 
     // Show/hide empty state
-    this.emptyStateText.setVisible(!hasReplays);
+    this.emptyStateText?.setVisible(!hasReplays);
 
     // Update replay list
     this.replayDisplays.forEach((display, i) => {
@@ -840,11 +850,11 @@ export default class ReplayBrowserState extends Phaser.Scene {
       if (replay) {
         display.setVisible(true);
 
-        const songText = display.getData('songText');
-        const diffText = display.getData('diffText');
-        const scoreText = display.getData('scoreText');
-        const accText = display.getData('accText');
-        const dateText = display.getData('dateText');
+        const songText = /** @type {Phaser.GameObjects.Text} */ (display.getData('songText'));
+        const diffText = /** @type {Phaser.GameObjects.Text} */ (display.getData('diffText'));
+        const scoreText = /** @type {Phaser.GameObjects.Text} */ (display.getData('scoreText'));
+        const accText = /** @type {Phaser.GameObjects.Text} */ (display.getData('accText'));
+        const dateText = /** @type {Phaser.GameObjects.Text} */ (display.getData('dateText'));
 
         songText.setText(replay.songName || replay.songId);
         diffText.setText(replay.difficulty.toUpperCase());
@@ -853,6 +863,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
         dateText.setText(this.formatDate(replay.timestamp));
 
         // Difficulty color
+        /** @type {Record<string, string>} */
         const diffColors = {
           easy: '#00ff00',
           normal: '#ffff00',
@@ -876,25 +887,26 @@ export default class ReplayBrowserState extends Phaser.Scene {
     // Update info panel
     if (hasReplays) {
       const selected = this.filteredReplays[this.selectedIndex];
-      this.infoPanel.songText.setText(selected.songName || selected.songId);
-      this.infoPanel.difficultyText.setText(selected.difficulty.toUpperCase());
-      this.infoPanel.scoreText.setText(selected.score.toLocaleString());
-      this.infoPanel.accuracyText.setText(`${selected.accuracy.toFixed(2)}%`);
-      this.infoPanel.dateText.setText(this.formatDate(selected.timestamp));
+      this.infoPanel.songText?.setText(selected.songName || selected.songId);
+      this.infoPanel.difficultyText?.setText(selected.difficulty.toUpperCase());
+      this.infoPanel.scoreText?.setText(selected.score.toLocaleString());
+      this.infoPanel.accuracyText?.setText(`${selected.accuracy.toFixed(2)}%`);
+      this.infoPanel.dateText?.setText(this.formatDate(selected.timestamp));
 
       // Difficulty color
+      /** @type {Record<string, string>} */
       const diffColors = {
         easy: '#00ff00',
         normal: '#ffff00',
         hard: '#ff0000'
       };
-      this.infoPanel.difficultyText.setColor(diffColors[selected.difficulty] || '#ffffff');
+      this.infoPanel.difficultyText?.setColor(diffColors[selected.difficulty] || '#ffffff');
     } else {
-      this.infoPanel.songText.setText('-');
-      this.infoPanel.difficultyText.setText('-');
-      this.infoPanel.scoreText.setText('-');
-      this.infoPanel.accuracyText.setText('-');
-      this.infoPanel.dateText.setText('-');
+      this.infoPanel.songText?.setText('-');
+      this.infoPanel.difficultyText?.setText('-');
+      this.infoPanel.scoreText?.setText('-');
+      this.infoPanel.accuracyText?.setText('-');
+      this.infoPanel.dateText?.setText('-');
     }
 
     // Update filter text
@@ -976,23 +988,39 @@ export default class ReplayBrowserState extends Phaser.Scene {
    */
   shutdown() {
     this.events?.off('shutdown', this.shutdown, this);
-    this.input.keyboard.off('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.off('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.off('keydown-W', this.onNavigateUp, this);
-    this.input.keyboard.off('keydown-S', this.onNavigateDown, this);
-    this.input.keyboard.off('keydown-LEFT', this.onFilterLeft, this);
-    this.input.keyboard.off('keydown-RIGHT', this.onFilterRight, this);
-    this.input.keyboard.off('keydown-A', this.onFilterLeft, this);
-    this.input.keyboard.off('keydown-D', this.onFilterRight, this);
-    this.input.keyboard.off('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.off('keydown-SPACE', this.onSelect, this);
-    this.input.keyboard.off('keydown-DELETE', this.onDelete, this);
-    this.input.keyboard.off('keydown-BACKSPACE', this.onDeleteKey, this);
-    this.input.keyboard.off('keydown-ESC', this.onBack, this);
+    this.input.keyboard?.off('keydown-UP', this.onNavigateUp, this);
+    this.input.keyboard?.off('keydown-DOWN', this.onNavigateDown, this);
+    this.input.keyboard?.off('keydown-W', this.onNavigateUp, this);
+    this.input.keyboard?.off('keydown-S', this.onNavigateDown, this);
+    this.input.keyboard?.off('keydown-LEFT', this.onFilterLeft, this);
+    this.input.keyboard?.off('keydown-RIGHT', this.onFilterRight, this);
+    this.input.keyboard?.off('keydown-A', this.onFilterLeft, this);
+    this.input.keyboard?.off('keydown-D', this.onFilterRight, this);
+    this.input.keyboard?.off('keydown-ENTER', this.onSelect, this);
+    this.input.keyboard?.off('keydown-SPACE', this.onSelect, this);
+    this.input.keyboard?.off('keydown-DELETE', this.onDelete, this);
+    this.input.keyboard?.off('keydown-BACKSPACE', this.onDeleteKey, this);
+    this.input.keyboard?.off('keydown-ESC', this.onBack, this);
 
+    // Kill all tweens
+    if (this.tweens?.killAll) {
+      this.tweens.killAll();
+    }
+
+    // Null owned game object references
     this.replayDisplays = [];
     this.allReplays = [];
     this.filteredReplays = [];
     this.replayManager = null;
+    this.deleteConfirmOverlay = null;
+    this.filterText = null;
+    this.emptyStateText = null;
+    this.infoPanel = {
+      songText: null,
+      difficultyText: null,
+      scoreText: null,
+      accuracyText: null,
+      dateText: null
+    };
   }
 }

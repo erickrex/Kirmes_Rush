@@ -13,11 +13,56 @@ import SaveManager from '../data/SaveManager.js';
 import { InputBuffer } from '../input/InputSystem.js';
 
 /**
+ * @typedef {import('../types.js').Tallies} SFCTallies
+ */
+
+/**
+ * @typedef {Object} SongFlowPlayState
+ * @property {boolean} countdownActive - Whether countdown is active
+ * @property {number} countdownStep - Current countdown step
+ * @property {boolean} songStarted - Whether the song has started
+ * @property {boolean} replayMode - Whether in replay mode
+ * @property {boolean} replayRecordingEnabled - Whether replay recording is enabled
+ * @property {boolean} inputBufferEnabled - Whether input buffer is enabled
+ * @property {number} score - Current score
+ * @property {SFCTallies} tallies - Score tallies
+ * @property {string} difficulty - Current difficulty
+ * @property {number} startTimestamp - Start timestamp
+ * @property {{ id?: string, name?: string } | null} [songData] - Song data
+ * @property {{ start: (songId: string, difficulty: string) => void, stop: (score: number, tallies: SFCTallies) => any, isRecording: () => boolean, discard: () => void } | null} [replayRecorder] - Replay recorder
+ * @property {{ play: (startTimestamp: number) => void, stop: () => void } | null} [audioManager] - Audio manager
+ * @property {{ setBufferWindow: (window: number) => void } | null} [inputBuffer] - Input buffer
+ * @property {{ getStats: () => any } | null} [inputStatistics] - Input statistics
+ * @property {(featureName: string) => boolean} [isFeatureEnabled] - Feature flag check
+ * @property {() => void} [startReplayPlayback] - Start replay playback
+ * @property {() => void} [stopReplayPlayback] - Stop replay playback
+ * @property {((step: number, name: string) => void) | null} [onCountdownStep] - Countdown step callback
+ * @property {((score: number, tallies: SFCTallies, rank: string | null, replayData: any, timingStats: any) => void) | null} [onSongEnd] - Song end callback
+ */
+
+/**
+ * @typedef {Object} SongFlowConductor
+ * @property {number} songPosition - Current song position in ms
+ * @property {number} currentStep - Current step
+ * @property {number} currentBeat - Current beat
+ * @property {number} currentMeasure - Current measure
+ * @property {number} currentStepTime - Current step time
+ * @property {number} currentBeatTime - Current beat time
+ * @property {number} currentMeasureTime - Current measure time
+ * @property {number} beatLengthMs - Beat length in ms
+ */
+
+/**
+ * @typedef {Object} SongFlowEventBus
+ * @property {(event: string, ...args: any[]) => void} emit - Emit an event
+ */
+
+/**
  * @typedef {Object} SongFlowControllerContext
  * @property {Phaser.Scene} scene - Phaser scene reference
- * @property {Object} playState - PlayState instance (for strumlines, characters, callbacks, replay, etc.)
- * @property {Object} conductor - Conductor instance
- * @property {Object} eventBus - EventBus static class
+ * @property {SongFlowPlayState} playState - PlayState instance (for strumlines, characters, callbacks, replay, etc.)
+ * @property {SongFlowConductor} conductor - Conductor instance
+ * @property {SongFlowEventBus} eventBus - EventBus static class
  * @property {Object} scoring - Scoring static class
  * @property {Object} gameplayState - GameplayState module instance
  */
@@ -25,7 +70,7 @@ import { InputBuffer } from '../input/InputSystem.js';
 /**
  * Create a SongFlowController module that manages countdown, song start/end, and game-over.
  * @param {SongFlowControllerContext} context - Shared context object
- * @returns {Object} SongFlowController module instance
+ * @returns {{ startCountdown: () => void, scheduleCountdownStep: (step: number) => void, executeCountdownStep: (step: number) => void, startSong: () => void, endSong: () => void, gameOver: () => void, destroy: () => void }} SongFlowController module instance
  */
 export function createSongFlowController(context) {
   const { eventBus } = context;
@@ -114,21 +159,28 @@ export function createSongFlowController(context) {
       conductor.songPosition = 0;
 
       // Start replay playback if in replay mode
-      if (playState.replayMode) {
+      if (playState.replayMode && playState.startReplayPlayback) {
         playState.startReplayPlayback();
       }
       // Start replay recording if enabled (not in replay mode) and feature is enabled
       else if (
         playState.replayRecordingEnabled &&
         playState.replayRecorder &&
+        playState.isFeatureEnabled &&
         playState.isFeatureEnabled('replayRecording')
       ) {
-        const songId = playState.songData?.id || playState.songData?.name || 'unknown';
+        const songId = /** @type {string} */ (
+          playState.songData?.id || playState.songData?.name || 'unknown'
+        );
         playState.replayRecorder.start(songId, playState.difficulty);
       }
 
       // Initialize input buffer if enabled and feature is enabled
-      if (playState.inputBufferEnabled && playState.isFeatureEnabled('inputBuffer')) {
+      if (
+        playState.inputBufferEnabled &&
+        playState.isFeatureEnabled &&
+        playState.isFeatureEnabled('inputBuffer')
+      ) {
         const saveManager = SaveManager.getInstance();
         const bufferWindow = saveManager?.loaded
           ? (saveManager.getOption('inputBufferWindow') ?? 50)
@@ -165,7 +217,7 @@ export function createSongFlowController(context) {
       }
 
       // Stop replay playback if in replay mode
-      if (playState.replayMode) {
+      if (playState.replayMode && playState.stopReplayPlayback) {
         playState.stopReplayPlayback();
       }
 
@@ -205,7 +257,7 @@ export function createSongFlowController(context) {
       playState.songStarted = false;
 
       // Stop replay playback if in replay mode
-      if (playState.replayMode) {
+      if (playState.replayMode && playState.stopReplayPlayback) {
         playState.stopReplayPlayback();
       }
 

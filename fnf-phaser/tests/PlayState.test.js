@@ -228,12 +228,15 @@ describe('PlayState', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     mockScene = createMockScene();
     playState = new PlayState(mockScene);
   });
 
   afterEach(() => {
     playState.destroy();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {

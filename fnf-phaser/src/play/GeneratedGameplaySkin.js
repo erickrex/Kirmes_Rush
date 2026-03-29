@@ -15,6 +15,10 @@ const NOTE_TEXTURE_PREFIX = 'generated-note';
 const RECEPTOR_TEXTURE_PREFIX = 'generated-receptor';
 const RECEPTOR_Y_OFFSET = 52;
 
+/**
+ * @param {number} color
+ * @returns {string}
+ */
 function colorToHex(color) {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
@@ -25,6 +29,7 @@ function colorToHex(color) {
 export default class GeneratedGameplaySkin {
   /**
    * @param {Phaser.Scene} scene
+   * @param {{noteStyleId?: string, noteStyleRegistry?: any}} [config={}]
    */
   constructor(scene, config = {}) {
     this.scene = scene;
@@ -53,7 +58,18 @@ export default class GeneratedGameplaySkin {
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {number} fillColor
+   * @param {number} strokeColor
+   * @param {number} radius
+   * @param {number} size
+   * @param {number} [lineWidth=4]
+   */
   generateCircularTexture(key, fillColor, strokeColor, radius, size, lineWidth = 4) {
+    if (!this.scene) {
+      return;
+    }
     const graphics = this.scene.add.graphics();
     graphics.clear();
     graphics.fillStyle(fillColor, 1);
@@ -66,7 +82,7 @@ export default class GeneratedGameplaySkin {
 
   createNoteStyle() {
     return {
-      buildNoteSprite: (noteSprite) => {
+      buildNoteSprite: (/** @type {any} */ noteSprite) => {
         if (this.applyRegistryNoteStyle(noteSprite)) {
           noteSprite.setOrigin(0.5, 0.5);
           noteSprite.setDepth(30);
@@ -88,14 +104,17 @@ export default class GeneratedGameplaySkin {
    */
   attachStrumline(strumline, options = {}) {
     const alpha = options.alpha ?? 1;
-    const receptorSprites = strumline.receptors.map((receptor) => {
+    const receptorSprites = strumline.receptors.map((/** @type {any} */ receptor) => {
       const sprite = this.createReceptorSprite(receptor.direction);
       sprite.setDepth(40);
       sprite.setAlpha(alpha * 0.7);
       return sprite;
     });
 
-    const holdGraphics = this.scene.add.graphics();
+    const holdGraphics = this.scene?.add?.graphics();
+    if (!holdGraphics) {
+      return;
+    }
     holdGraphics.setDepth(20);
 
     this.attachments.set(strumline, {
@@ -114,7 +133,7 @@ export default class GeneratedGameplaySkin {
     this.attachments.forEach((attachment, strumline) => {
       this.syncAttachment(strumline, attachment);
       attachment.holdGraphics.clear();
-      strumline.holdNotes.forEach((holdNote) => {
+      strumline.holdNotes.forEach((/** @type {any} */ holdNote) => {
         if (!holdNote?.alive || !holdNote.visible) {
           return;
         }
@@ -124,6 +143,10 @@ export default class GeneratedGameplaySkin {
     });
   }
 
+  /**
+   * @param {any} strumline
+   * @param {any} [attachment]
+   */
   syncAttachment(strumline, attachment = this.attachments.get(strumline)) {
     if (!attachment) {
       return;
@@ -131,28 +154,31 @@ export default class GeneratedGameplaySkin {
 
     const baseScale = this.getReceptorBaseScale();
 
-    attachment.receptorSprites.forEach((sprite, direction) => {
-      const state = strumline.getReceptorState(direction);
-      const stateScale = state === 'confirm' ? 1.15 : state === 'press' ? 1.05 : 1;
-      const alpha = state === 'confirm' ? 1 : state === 'press' ? 0.9 : 0.65;
+    attachment.receptorSprites.forEach(
+      (/** @type {any} */ sprite, /** @type {number} */ direction) => {
+        const state = strumline.getReceptorState(direction);
+        const stateScale = state === 'confirm' ? 1.15 : state === 'press' ? 1.05 : 1;
+        const alpha = state === 'confirm' ? 1 : state === 'press' ? 0.9 : 0.65;
 
-      this.applyRegistryReceptorState(sprite, direction, state);
+        this.applyRegistryReceptorState(sprite, direction, state);
 
-      sprite.setPosition(
-        strumline.x + strumline.getXPos(direction),
-        strumline.y + RECEPTOR_Y_OFFSET
-      );
-      sprite.setScale(baseScale * stateScale);
-      sprite.setAlpha(alpha * attachment.alpha);
-    });
+        sprite.setPosition(
+          strumline.x + strumline.getXPos(direction),
+          strumline.y + RECEPTOR_Y_OFFSET
+        );
+        sprite.setScale(baseScale * stateScale);
+        sprite.setAlpha(alpha * attachment.alpha);
+      }
+    );
   }
 
   destroy() {
     this.attachments.forEach((attachment) => {
-      attachment.receptorSprites.forEach((sprite) => sprite.destroy());
+      attachment.receptorSprites.forEach((/** @type {any} */ sprite) => sprite.destroy());
       attachment.holdGraphics.destroy();
     });
     this.attachments.clear();
+    /** @type {Phaser.Scene | null} */
     this.scene = null;
   }
 
@@ -161,6 +187,10 @@ export default class GeneratedGameplaySkin {
     return (asset?.scale ?? 0.7) * 0.7;
   }
 
+  /**
+   * @param {string | null} assetKey
+   * @returns {any}
+   */
   getTextureKey(assetKey) {
     if (!this.noteStyleId) {
       return null;
@@ -169,6 +199,10 @@ export default class GeneratedGameplaySkin {
     return `notestyle-${this.noteStyleId}-${assetKey}`;
   }
 
+  /**
+   * @param {string} assetKey
+   * @returns {any}
+   */
   getNoteStyleAsset(assetKey) {
     if (!this.noteStyleRegistry || !this.noteStyleId) {
       return null;
@@ -177,6 +211,11 @@ export default class GeneratedGameplaySkin {
     return this.noteStyleRegistry.getAsset(this.noteStyleId, assetKey);
   }
 
+  /**
+   * @param {string | null} textureKey
+   * @param {string | null | undefined} prefix
+   * @returns {string | null}
+   */
   findAtlasFrame(textureKey, prefix) {
     if (!textureKey || !prefix || !this.scene?.textures?.exists?.(textureKey)) {
       return null;
@@ -186,6 +225,10 @@ export default class GeneratedGameplaySkin {
     return frames.find((frameName) => frameName.startsWith(prefix)) ?? null;
   }
 
+  /**
+   * @param {any} noteSprite
+   * @returns {boolean}
+   */
   applyRegistryNoteStyle(noteSprite) {
     const textureKey = this.getTextureKey('note');
     if (!textureKey || !this.scene?.textures?.exists?.(textureKey)) {
@@ -204,6 +247,10 @@ export default class GeneratedGameplaySkin {
     return true;
   }
 
+  /**
+   * @param {number} direction
+   * @returns {Phaser.GameObjects.Sprite | Phaser.GameObjects.Image}
+   */
   createReceptorSprite(direction) {
     const textureKey = this.getTextureKey('noteStrumline');
     const frame = this.getStrumlineFrame(direction, 'static');
@@ -216,9 +263,16 @@ export default class GeneratedGameplaySkin {
       return sprite;
     }
 
-    return this.scene.add.image(0, 0, `${RECEPTOR_TEXTURE_PREFIX}-${direction}`);
+    return /** @type {Phaser.GameObjects.Image} */ (
+      this.scene?.add?.image(0, 0, `${RECEPTOR_TEXTURE_PREFIX}-${direction}`)
+    );
   }
 
+  /**
+   * @param {number} direction
+   * @param {string} state
+   * @returns {string | null}
+   */
   getStrumlineFrame(direction, state) {
     if (!this.noteStyleRegistry || !this.noteStyleId) {
       return null;
@@ -234,6 +288,11 @@ export default class GeneratedGameplaySkin {
     return this.findAtlasFrame(this.getTextureKey('noteStrumline'), frameData?.prefix);
   }
 
+  /**
+   * @param {any} sprite
+   * @param {number} direction
+   * @param {string} state
+   */
   applyRegistryReceptorState(sprite, direction, state) {
     if (typeof sprite.setFrame !== 'function') {
       return;
@@ -245,6 +304,10 @@ export default class GeneratedGameplaySkin {
     }
   }
 
+  /**
+   * @param {number} direction
+   * @returns {string}
+   */
   static getLaneColor(direction) {
     return colorToHex(NOTE_COLORS[direction] ?? NOTE_COLORS[0]);
   }

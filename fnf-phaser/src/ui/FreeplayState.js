@@ -120,6 +120,8 @@ export default class FreeplayState extends BaseMenuState {
     this.letterFilter = null;
     /** @type {SongCapsule[]} */
     this.filteredSongs = [];
+    /** @type {Phaser.GameObjects.Text | null} */
+    this.letterFilterText = null;
   }
 
   // ========================================
@@ -210,6 +212,11 @@ export default class FreeplayState extends BaseMenuState {
     }
   }
 
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {Phaser.GameObjects.Container}
+   */
   createCapsule(x, y) {
     const { width } = this.cameras.main;
     const container = this.add.container(x, y);
@@ -364,7 +371,7 @@ export default class FreeplayState extends BaseMenuState {
       this.filteredSongs = [...this.songs];
     } else {
       this.filteredSongs = this.songs.filter((song) =>
-        song.name.toUpperCase().startsWith(this.letterFilter)
+        song.name.toUpperCase().startsWith(/** @type {string} */ (this.letterFilter))
       );
     }
     this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredSongs.length - 1));
@@ -437,23 +444,43 @@ export default class FreeplayState extends BaseMenuState {
       if (this.difficultyText) {
         const difficulty = song.difficulties[this.selectedDifficultyIndex];
         this.difficultyText.setText(difficulty.toUpperCase());
+        /** @type {Record<string, string>} */
         const colors = { easy: '#00ff00', normal: '#ffff00', hard: '#ff0000' };
         this.difficultyText.setColor(colors[difficulty] || '#ffffff');
       }
     }
   }
 
+  /**
+   * @param {SongCapsule} song
+   * @param {string} difficulty
+   */
   startSong(song, difficulty) {
     this.transitionToScene('PlayState', { songId: song.id, difficulty });
   }
 
+  /**
+   * @param {number} _time
+   * @param {number} _delta
+   */
   update(_time, _delta) {
     // Smooth scroll animation could be added here
   }
 
   shutdown() {
     super.shutdown();
+
+    // Kill all tweens
+    if (this.tweens?.killAll) {
+      this.tweens.killAll();
+    }
+
+    // Null owned game object references
     this.capsules = [];
     this.filteredSongs = [];
+    this.difficultyText = null;
+    this.scoreText = null;
+    this.bpmText = null;
+    this.letterFilterText = null;
   }
 }

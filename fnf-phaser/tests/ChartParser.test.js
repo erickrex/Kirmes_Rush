@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the ChartParser
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ChartParser from '../src/data/parsers/ChartParser.js';
 
 // Sample test data based on actual FNF chart format
@@ -61,6 +61,15 @@ const sampleChart = {
 };
 
 describe('ChartParser', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('parseMetadata', () => {
     it('should parse valid metadata', () => {
       const result = ChartParser.parseMetadata(sampleMetadata);
@@ -156,7 +165,7 @@ describe('ChartParser', () => {
 
       expect(result.events).toHaveLength(3);
       expect(result.events[0].time).toBe(0);
-      expect(result.events[0].eventKind).toBe('FocusCamera');
+      expect(result.events[0].event).toBe('FocusCamera');
       expect(result.events[0].value).toEqual({ char: 0 });
     });
 

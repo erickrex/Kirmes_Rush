@@ -28,7 +28,7 @@ export default class GameOverState extends Phaser.Scene {
 
     /**
      * BF death sprite
-     * @type {Phaser.GameObjects.Sprite | Phaser.GameObjects.Text | null}
+     * @type {Phaser.GameObjects.Sprite | null}
      */
     this.bfDead = null;
 
@@ -91,6 +91,12 @@ export default class GameOverState extends Phaser.Scene {
      * @type {{x: number, y: number}}
      */
     this.characterPosition = { x: 0, y: 0 };
+
+    /**
+     * Game over text
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.gameOverText = null;
   }
 
   /**
@@ -171,8 +177,8 @@ export default class GameOverState extends Phaser.Scene {
       // Create animations
       this.createDeathAnimations();
     } else {
-      // Fallback: simple text
-      this.bfDead = this.add
+      // Fallback: simple text (not assigned to bfDead since it's a different type)
+      this.add
         .text(x, y, '💀', {
           fontSize: '128px'
         })
@@ -465,13 +471,28 @@ export default class GameOverState extends Phaser.Scene {
     this.input.keyboard?.off('keydown-ESC', this.onExit, this);
     this.input.keyboard?.off('keydown-BACKSPACE', this.onExit, this);
 
-    // Stop music
+    // Kill all tweens and timers
+    if (this.tweens?.killAll) {
+      this.tweens.killAll();
+    }
+    if (this.time?.removeAllEvents) {
+      this.time.removeAllEvents();
+    }
+
+    // Stop music and sounds
     if (this.gameOverMusic) {
       this.gameOverMusic.stop();
       this.gameOverMusic = null;
     }
+    if (this.deathSound) {
+      this.deathSound.stop();
+      this.deathSound = null;
+    }
+    this.confirmSound = null;
 
+    // Null owned game object references
     this.bfDead = null;
+    this.gameOverText = null;
     this.retryText = null;
     this.exitText = null;
     this.songData = null;

@@ -3,7 +3,6 @@
  */
 
 import Phaser from 'phaser';
-import BootScene from './scenes/BootScene.js';
 import TitleState from './ui/TitleState.js';
 import MainMenuState from './ui/MainMenuState.js';
 import StoryMenuState from './ui/StoryMenuState.js';
@@ -17,6 +16,7 @@ import ResultState from './ui/ResultState.js';
 import LoadingState from './ui/LoadingState.js';
 import ReplayBrowserState from './ui/ReplayBrowserState.js';
 import SaveManager from './data/SaveManager.js';
+import TouchDeviceDetector from './input/TouchDeviceDetector.js';
 import OrientationOverlay from './ui/OrientationOverlay.js';
 
 /**
@@ -51,7 +51,6 @@ const config = {
     antialiasGL: true
   },
   scene: [
-    BootScene,
     TitleState,
     MainMenuState,
     LevelSelectState,
@@ -72,6 +71,8 @@ const config = {
  * @type {Phaser.Game}
  */
 SaveManager.getInstance().init();
+TouchDeviceDetector.detect();
+OrientationOverlay.init();
 
 const game = new Phaser.Game(config);
 

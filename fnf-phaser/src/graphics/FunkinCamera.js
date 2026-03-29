@@ -112,7 +112,7 @@ class FunkinCamera {
    * @param {Phaser.Scene} scene - The Phaser scene
    * @param {Phaser.Cameras.Scene2D.Camera} [camera] - Optional camera (defaults to main)
    */
-  constructor(scene, camera = null) {
+  constructor(scene, camera = undefined) {
     this.scene = scene;
     this.camera = camera || scene?.cameras?.main || null;
 
@@ -144,7 +144,7 @@ class FunkinCamera {
 
   /**
    * Follow a game object
-   * @param {Object} target - Object with x, y properties
+   * @param {Record<string, any>} target - Object with x, y properties
    * @param {boolean} [instant=false] - Whether to snap immediately
    */
   followObject(target, instant = false) {
@@ -213,7 +213,7 @@ class FunkinCamera {
    * Apply a zoom bump (for beat effects)
    * @param {number} [intensity] - Zoom intensity multiplier
    */
-  bumpZoom(intensity = null) {
+  bumpZoom(intensity = undefined) {
     const bumpIntensity = intensity ?? this.bopIntensity;
     this.currentZoom = this.defaultZoom * bumpIntensity;
 
@@ -347,7 +347,7 @@ class FunkinCamera {
    * @param {boolean} [fadeIn=false] - Whether to fade in (vs fade out)
    * @param {Function} [callback] - Callback when complete
    */
-  fade(duration = 500, color = 0x000000, fadeIn = false, callback = null) {
+  fade(duration = 500, color = 0x000000, fadeIn = false, callback = undefined) {
     if (!this.camera) {
       return;
     }

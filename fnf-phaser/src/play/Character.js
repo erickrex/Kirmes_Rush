@@ -35,7 +35,7 @@ class Character extends FunkinSprite {
 
   /**
    * Character data from registry
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   characterData = null;
 
@@ -131,7 +131,9 @@ class Character extends FunkinSprite {
    */
   loadFromRegistry(registry) {
     const reg = registry || CharacterRegistry.getInstance();
-    const data = reg.getCharacterData(this.characterId);
+    const data = /** @type {Record<string, any> | null} */ (
+      /** @type {any} */ (reg).getCharacterData?.(this.characterId) || null
+    );
 
     if (!data) {
       console.error(`[Character] Character not found: ${this.characterId}`);
@@ -145,7 +147,7 @@ class Character extends FunkinSprite {
 
   /**
    * Apply character data to this sprite
-   * @param {Object} data - Character data
+   * @param {Record<string, any>} data - Character data
    */
   applyCharacterData(data) {
     // Set basic properties
@@ -196,7 +198,7 @@ class Character extends FunkinSprite {
 
   /**
    * Setup animations from character data
-   * @param {Array} animations - Animation data array
+   * @param {Array<Record<string, any>>} animations - Animation data array
    */
   setupAnimations(animations) {
     if (!animations || !Array.isArray(animations)) {
@@ -217,7 +219,7 @@ class Character extends FunkinSprite {
 
   /**
    * Store animation data for later use
-   * @param {Object} anim - Animation data
+   * @param {Record<string, any>} anim - Animation data
    * @private
    */
   _storeAnimationData(anim) {
@@ -246,8 +248,10 @@ class Character extends FunkinSprite {
    * @param {boolean} [miss=false] - Whether this is a miss animation
    */
   sing(direction, miss = false) {
-    const animName = CharacterRegistry.getSingAnimationName(direction, miss);
-    const namespacedKey = this._textureKey ? `${this._textureKey}-${animName}` : animName;
+    const animName = /** @type {any} */ (CharacterRegistry).getSingAnimationName(direction, miss);
+    const namespacedKey = /** @type {any} */ (this)._textureKey
+      ? `${/** @type {any} */ (this)._textureKey}-${animName}`
+      : animName;
 
     if (!this.scene?.anims?.exists(namespacedKey)) {
       if (miss) {
@@ -276,7 +280,9 @@ class Character extends FunkinSprite {
       return;
     }
 
-    const holdAnimName = CharacterRegistry.getHoldAnimationName(this.singDirection);
+    const holdAnimName = /** @type {any} */ (CharacterRegistry).getHoldAnimationName(
+      this.singDirection
+    );
 
     // Check if hold animation exists
     if (this.hasAnimation(holdAnimName)) {
@@ -327,8 +333,8 @@ class Character extends FunkinSprite {
    * @returns {this}
    */
   playAnimation(animName, restart = false, ignoreOther = false) {
-    if (this._textureKey && this.scene?.anims) {
-      const namespacedKey = `${this._textureKey}-${animName}`;
+    if (/** @type {any} */ (this)._textureKey && this.scene?.anims) {
+      const namespacedKey = `${/** @type {any} */ (this)._textureKey}-${animName}`;
       if (this.scene.anims.exists(namespacedKey)) {
         this.play(
           {
@@ -349,8 +355,8 @@ class Character extends FunkinSprite {
    * @returns {boolean}
    */
   hasAnimation(animName) {
-    if (this._textureKey && this.scene?.anims) {
-      const namespacedKey = `${this._textureKey}-${animName}`;
+    if (/** @type {any} */ (this)._textureKey && this.scene?.anims) {
+      const namespacedKey = `${/** @type {any} */ (this)._textureKey}-${animName}`;
       if (this.scene.anims.exists(namespacedKey)) {
         return true;
       }
@@ -375,10 +381,10 @@ class Character extends FunkinSprite {
 
   /**
    * Update character state
-   * @param {number} elapsed - Elapsed time in ms
+   * @param {number} _elapsed - Elapsed time in ms
    * @param {number} [stepsPassed=0] - Steps passed since last update
    */
-  update(elapsed, stepsPassed = 0) {
+  update(_elapsed, stepsPassed = 0) {
     // Update sing timer
     if (this.isSinging && !this.isHolding) {
       this.singTimer -= stepsPassed;
@@ -496,7 +502,7 @@ class Character extends FunkinSprite {
    * @param {number} [y=0] - Y position
    * @returns {Character | null}
    */
-  static create(scene, characterId, isPlayer = false, x = 0, y = 0) {
+  static createCharacter(scene, characterId, isPlayer = false, x = 0, y = 0) {
     const character = new Character(scene, x, y, characterId, isPlayer);
 
     if (!character.loadFromRegistry()) {

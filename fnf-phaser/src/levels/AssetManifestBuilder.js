@@ -65,10 +65,11 @@ function resolveStageAssetPath(assetPath, stageDirectory) {
 /**
  * Build character atlas entries for a set of character IDs.
  * @param {string[]} characterIds
- * @param {Object} characterRegistry
+ * @param {Record<string, any>} characterRegistry
  * @returns {AssetEntry[]}
  */
 export function buildCharacterEntries(characterIds, characterRegistry) {
+  /** @type {AssetEntry[]} */
   const entries = [];
   const seen = new Set();
 
@@ -104,7 +105,7 @@ export function buildCharacterEntries(characterIds, characterRegistry) {
 /**
  * Build stage prop entries for a stage ID.
  * @param {string} stageId
- * @param {Object} stageRegistry
+ * @param {Record<string, any>} stageRegistry
  * @returns {AssetEntry[]}
  */
 export function buildStageEntries(stageId, stageRegistry) {
@@ -115,6 +116,7 @@ export function buildStageEntries(stageId, stageRegistry) {
   }
 
   const stageDirectory = stageRegistry.getDirectory?.(stageId) ?? null;
+  /** @type {AssetEntry[]} */
   const entries = [];
 
   for (const prop of props) {
@@ -176,10 +178,11 @@ const NOTE_STYLE_ASSET_KEYS = {
 /**
  * Build note style entries for a note style ID.
  * @param {string} noteStyleId
- * @param {Object} noteStyleRegistry
+ * @param {Record<string, any>} noteStyleRegistry
  * @returns {AssetEntry[]}
  */
 export function buildNoteStyleEntries(noteStyleId, noteStyleRegistry) {
+  /** @type {AssetEntry[]} */
   const entries = [];
 
   for (const [assetKey, type] of Object.entries(NOTE_STYLE_ASSET_KEYS)) {
@@ -189,8 +192,9 @@ export function buildNoteStyleEntries(noteStyleId, noteStyleRegistry) {
     }
 
     const prefixed = prefixPath(asset.resolvedPath);
+    /** @type {AssetEntry} */
     const entry = {
-      type,
+      type: /** @type {'atlas'|'image'|'audio'} */ (type),
       key: `notestyle-${noteStyleId}-${assetKey}`,
       path: `${prefixed}.png`
     };
@@ -227,8 +231,8 @@ export function deduplicateEntries(entries) {
 
 /**
  * Build a complete asset manifest from a session object.
- * @param {Object} session - Output of LevelSessionBuilder.build()
- * @param {Object} registries - { characterRegistry, stageRegistry, noteStyleRegistry }
+ * @param {Record<string, any>} session - Output of LevelSessionBuilder.build()
+ * @param {Record<string, any>} registries - { characterRegistry, stageRegistry, noteStyleRegistry }
  * @returns {AssetEntry[]}
  */
 export function buildManifest(session, registries) {
@@ -292,8 +296,8 @@ export function buildManifest(session, registries) {
  * a full asset manifest and session data for PlayState.
  *
  * @param {string|Object} levelInput - Level ID string or level object
- * @param {Object} registries - { characterRegistry, stageRegistry, noteStyleRegistry, levelSessionBuilder? }
- * @returns {(scene: Object) => Promise<{assets: AssetEntry[], nextSceneData: Object, nextScene: string}>}
+ * @param {Record<string, any>} registries - { characterRegistry, stageRegistry, noteStyleRegistry, levelSessionBuilder? }
+ * @returns {(scene: Object) => Promise<{assets: AssetEntry[], nextSceneData: Record<string, any>, nextScene: string}>}
  */
 export function buildPrepareCallback(levelInput, registries) {
   return async (scene) => {
@@ -330,9 +334,9 @@ export function buildPrepareCallback(levelInput, registries) {
     });
 
     return {
-      assets: session.assets,
+      assets: /** @type {AssetEntry[]} */ (session.assets),
       nextSceneData: {
-        levelId: session.level?.id ?? null,
+        levelId: /** @type {any} */ (session.level)?.id ?? null,
         session
       },
       nextScene: 'PlayState'

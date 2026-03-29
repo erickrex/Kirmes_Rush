@@ -85,6 +85,7 @@ class InputStatistics {
     }
 
     // Calculate per-judgement stats
+    /** @type {Record<string, {count: number, avgOffset: number}>} */
     const byJudgementStats = {};
     for (const [judgement, offsets] of Object.entries(this.byJudgement)) {
       if (offsets.length > 0) {
@@ -129,6 +130,7 @@ class InputStatistics {
    * @returns {Object<string, number>}
    */
   getDistribution(bucketSize = 10) {
+    /** @type {Record<string, number>} */
     const distribution = {};
 
     for (const offset of this.offsets) {

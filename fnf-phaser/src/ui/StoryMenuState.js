@@ -326,6 +326,7 @@ export default class StoryMenuState extends BaseMenuState {
     if (this.difficultyText) {
       const difficulty = week.difficulties[this.selectedDifficultyIndex];
       this.difficultyText.setText(difficulty.toUpperCase());
+      /** @type {Record<string, string>} */
       const colors = {
         easy: '#00ff00',
         normal: '#ffff00',
@@ -341,6 +342,9 @@ export default class StoryMenuState extends BaseMenuState {
     }
   }
 
+  /**
+   * @param {WeekData} week
+   */
   startWeek(week) {
     const difficulty = week.difficulties[this.selectedDifficultyIndex];
     this.transitionToScene('PlayState', {
@@ -353,6 +357,13 @@ export default class StoryMenuState extends BaseMenuState {
 
   shutdown() {
     super.shutdown();
+
+    // Kill all tweens
+    if (this.tweens?.killAll) {
+      this.tweens.killAll();
+    }
+
+    // Null owned game object references
     this.weekTexts = [];
     this.trackListText = null;
     this.difficultyText = null;

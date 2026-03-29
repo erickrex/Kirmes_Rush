@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the NoteStyleRegistry
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import NoteStyleRegistry from '../src/data/registries/NoteStyleRegistry.js';
 import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
@@ -135,6 +135,13 @@ describe('NoteStyleRegistry', () => {
   beforeEach(() => {
     NoteStyleRegistry.instance = null;
     registry = NoteStyleRegistry.getInstance();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Singleton', () => {

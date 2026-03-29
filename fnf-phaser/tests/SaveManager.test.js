@@ -26,11 +26,14 @@ describe('SaveManager', () => {
     SaveManager.resetInstance();
     localStorageMock.clear();
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     saveManager = SaveManager.getInstance();
   });
 
   afterEach(() => {
     SaveManager.resetInstance();
+    vi.restoreAllMocks();
   });
 
   describe('Singleton Pattern', () => {

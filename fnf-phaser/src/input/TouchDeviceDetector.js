@@ -7,7 +7,7 @@
 
 /**
  * Detects whether the current device supports touch input.
- * Call `detect()` once at boot (e.g. in BootScene.create()), then query
+ * Call `detect()` once at boot (in `main.js` before game creation), then query
  * with `isTouch()` wherever touch-dependent behaviour is needed.
  *
  * Hybrid devices (laptops with touchscreens) are handled by `onFirstTouch()`,

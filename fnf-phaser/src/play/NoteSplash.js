@@ -17,6 +17,23 @@ import * as Constants from '../core/Constants.js';
  */
 
 /**
+ * @typedef {Object} SplashSprite
+ * @property {number} x - X position
+ * @property {number} y - Y position
+ * @property {number} direction - Note direction
+ * @property {number} alpha - Alpha transparency
+ * @property {boolean} visible - Whether visible
+ * @property {number} lifetime - Current lifetime
+ * @property {number} maxLifetime - Maximum lifetime
+ * @property {number} scale - Scale
+ * @property {number} rotation - Rotation
+ * @property {number} variation - Variation index
+ * @property {number} color - Color tint
+ * @property {number} [frame] - Current frame
+ * @property {Phaser.GameObjects.Sprite | null} [gameObject] - Phaser game object
+ */
+
+/**
  * Note splash effect manager.
  * Handles pooling and display of splash effects on perfect hits.
  */
@@ -65,13 +82,13 @@ class NoteSplash {
 
   /**
    * Active splash sprites
-   * @type {Array<Object>}
+   * @type {Array<SplashSprite>}
    */
   activeSplashes = [];
 
   /**
    * Splash sprite pool
-   * @type {Array<Object>}
+   * @type {Array<SplashSprite>}
    */
   splashPool = [];
 
@@ -114,7 +131,7 @@ class NoteSplash {
    * @param {number} x - X position
    * @param {number} y - Y position
    * @param {number} direction - Note direction (0-3)
-   * @returns {Object | null} The splash sprite
+   * @returns {SplashSprite | null} The splash sprite
    */
   spawn(x, y, direction) {
     if (!this.enabled) {
@@ -170,9 +187,9 @@ class NoteSplash {
 
   /**
    * Spawn a splash at a receptor
-   * @param {Object} receptor - Receptor object with x, y properties
+   * @param {{x: number, y: number}} receptor - Receptor object with x, y properties
    * @param {number} direction - Note direction
-   * @returns {Object | null}
+   * @returns {SplashSprite | null}
    */
   spawnAtReceptor(receptor, direction) {
     if (!receptor) {
@@ -183,7 +200,7 @@ class NoteSplash {
 
   /**
    * Create a new splash object
-   * @returns {Object}
+   * @returns {SplashSprite}
    */
   createSplash() {
     return {
@@ -312,7 +329,7 @@ class NoteSplash {
 
   /**
    * Get all active splashes for rendering
-   * @returns {Array<Object>}
+   * @returns {Array<SplashSprite>}
    */
   getActiveSplashes() {
     return this.activeSplashes;

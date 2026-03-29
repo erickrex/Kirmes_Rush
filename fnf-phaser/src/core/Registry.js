@@ -9,11 +9,7 @@
  * Ported from source/funkin/data/BaseRegistry.hx
  */
 
-/**
- * @typedef {Object} RegistryEntry
- * @property {string} id - Unique identifier for the entry
- * @property {function(): void} [destroy] - Optional cleanup function
- */
+/** @import { RegistryConfig, RegistryEntryBase } from '../types.js' */
 
 /**
  * @typedef {Object} JsonFile
@@ -22,23 +18,13 @@
  */
 
 /**
- * @typedef {Object} RegistryConfig
- * @property {string} registryId - A readable ID for this registry, used when logging
- * @property {string} dataFilePath - The path (relative to assets/data) to search for JSON files
- * @property {string} [versionRule='1.0.x'] - The version rule for data validation
- * @property {function(Object, string=): *} cleanData - Clean/normalize raw JSON data, returns cleaned data or null
- * @property {function(Object, string=): boolean} [validateData] - Optional extra validation before cleaning, return false to reject
- * @property {function(string, *): *} createEntry - Create an entry from id + cleaned data, return entry or null
- */
-
-/**
  * Base class for all data registries.
  * Provides common functionality for loading, caching, and retrieving game data.
  *
  * Can be used directly with a config object (config-driven) or subclassed (legacy).
  *
- * @template T - The entry type (must have an `id` property)
- * @template J - The JSON data type
+ * @template {RegistryEntryBase} T - The entry type (must have an `id` property)
+ * @template {Record<string, any>} J - The JSON data type
  */
 class Registry {
   /** @type {string} */
@@ -80,7 +66,7 @@ class Registry {
     } else {
       // Legacy subclass mode
       this.registryId = registryIdOrConfig;
-      this.dataFilePath = dataFilePath;
+      this.dataFilePath = dataFilePath || '';
       this.versionRule = versionRule;
     }
     this.entries = new Map();
@@ -105,7 +91,7 @@ class Registry {
         const data = this.parseEntryData(entryId);
         if (data !== null) {
           const entry = this.createEntry(entryId, data);
-          if (entry !== null) {
+          if (entry !== null && entry !== undefined && entry.id) {
             this.entries.set(entry.id, entry);
             this._log(`  Loaded entry: ${entry.id}`);
           }
@@ -135,7 +121,7 @@ class Registry {
         const data = await this.loadEntryDataAsync(scene, entryId);
         if (data !== null) {
           const entry = this.createEntry(entryId, data);
-          if (entry !== null) {
+          if (entry !== null && entry !== undefined && entry.id) {
             this.entries.set(entry.id, entry);
             this._log(`  Loaded entry: ${entry.id}`);
           }
@@ -174,7 +160,7 @@ class Registry {
         resolve(this.parseEntryDataRaw(data, filePath));
       });
 
-      scene.load.once('loaderror', (file) => {
+      scene.load.once('loaderror', (/** @type {Phaser.Loader.File} */ file) => {
         if (file.key === filePath) {
           reject(new Error(`Failed to load: ${filePath}`));
         }
@@ -244,7 +230,7 @@ class Registry {
   }
 
   /**
-   * @param {Object} data
+   * @param {Record<string, any>} data
    * @returns {string | null}
    */
   fetchEntryVersion(data) {
@@ -307,7 +293,7 @@ class Registry {
   /**
    * Parse and validate raw JSON data.
    * Config-driven registries use the config's validateData + cleanData functions.
-   * @param {Object} _data
+   * @param {Record<string, any>} _data
    * @param {string} [_fileName]
    * @returns {J | null}
    */
@@ -372,19 +358,23 @@ class Registry {
  * Returns a class with getInstance() and any extra methods/statics attached.
  *
  * @param {RegistryConfig} config - Registry configuration
- * @param {Object} [options] - Additional options
- * @param {Object} [options.statics] - Static properties to attach to the class
- * @param {Object} [options.methods] - Instance methods to attach to the prototype
- * @returns {typeof Registry} A Registry subclass with getInstance()
+ * @param {{ statics?: Record<string, any>, methods?: Record<string, Function> }} [options] - Additional options
+ * @returns {typeof Registry<RegistryEntryBase, Record<string, any>> & { new(): Registry<RegistryEntryBase, Record<string, any>>, getInstance(): Registry<RegistryEntryBase, Record<string, any>> }} A Registry subclass with getInstance()
  */
 export function createRegistry(config, options = {}) {
+  /** @type {ConfigRegistry | null} */
   let instance = null;
 
+  /** @extends {Registry<RegistryEntryBase, Record<string, any>>} */
   class ConfigRegistry extends Registry {
     constructor() {
       super(config);
     }
 
+    /**
+     * Get or create the singleton instance.
+     * @returns {ConfigRegistry}
+     */
     static getInstance() {
       if (!instance) {
         instance = new ConfigRegistry();
@@ -406,10 +396,14 @@ export function createRegistry(config, options = {}) {
 
   // Attach static properties
   if (options.statics) {
+    const /** @type {Record<string, any>} */ staticTarget = /** @type {any} */ (ConfigRegistry);
     for (const [key, value] of Object.entries(options.statics)) {
-      ConfigRegistry[key] = value;
+      staticTarget[key] = value;
     }
   }
+
+  // Use a typed reference for dynamic prototype assignments
+  const /** @type {Record<string, any>} */ proto = /** @type {any} */ (ConfigRegistry.prototype);
 
   // Generate common methods from entityName config (BEFORE custom methods so custom wins)
   if ('entityName' in config) {
@@ -418,39 +412,45 @@ export function createRegistry(config, options = {}) {
       const dataFilePath = config.dataFilePath;
       const displayInfoFields = config.displayInfoFields || [];
 
-      ConfigRegistry.prototype[`get${entityName}Data`] = function (id) {
+      /** @type {function(string): any} */
+      proto[`get${entityName}Data`] = function (/** @type {string} */ id) {
         return this.fetchEntry(id)?.data ?? null;
       };
 
-      ConfigRegistry.prototype[`get${entityName}Name`] = function (id) {
+      /** @type {function(string): string} */
+      proto[`get${entityName}Name`] = function (/** @type {string} */ id) {
         return this.fetchEntry(id)?.name ?? id;
       };
 
-      ConfigRegistry.prototype[`list${entityName}Ids`] = function () {
+      /** @type {function(): string[]} */
+      proto[`list${entityName}Ids`] = function () {
         return this.listEntryIds();
       };
 
-      ConfigRegistry.prototype[`get${entityName}Path`] = function (id) {
+      /** @type {function(string): string} */
+      proto[`get${entityName}Path`] = function (/** @type {string} */ id) {
         return `${dataFilePath}/${id}.json`;
       };
 
-      ConfigRegistry.prototype[`get${entityName}DisplayInfo`] = function (id) {
+      /** @type {function(string): Record<string, any> | null} */
+      proto[`get${entityName}DisplayInfo`] = function (/** @type {string} */ id) {
         const entry = this.fetchEntry(id);
         if (!entry) {
           return null;
         }
+        /** @type {Record<string, any>} */
         const info = { id: entry.id };
         for (const field of displayInfoFields) {
           if (field in entry) {
-            info[field] = entry[field];
+            info[field] = /** @type {Record<string, any>} */ (entry)[field];
           } else if (entry.data && field in entry.data) {
-            info[field] = entry.data[field];
+            info[field] = /** @type {Record<string, any>} */ (entry.data)[field];
           }
         }
         return info;
       };
 
-      ConfigRegistry.prototype.toString = function () {
+      proto.toString = function () {
         return `${config.registryId}Registry(${this.countEntries()} ${entityName}s)`;
       };
     } else {
@@ -463,7 +463,7 @@ export function createRegistry(config, options = {}) {
   // Attach instance methods (custom methods override generated ones)
   if (options.methods) {
     for (const [key, fn] of Object.entries(options.methods)) {
-      ConfigRegistry.prototype[key] = fn;
+      proto[key] = fn;
     }
   }
 

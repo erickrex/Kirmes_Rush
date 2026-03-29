@@ -12,19 +12,80 @@ import * as Constants from '../core/Constants.js';
 import { Events } from '../core/EventBus.js';
 
 /**
+ * @typedef {import('../types.js').Tallies} Tallies
+ */
+
+/**
+ * @typedef {Object} NoteProcessorPlayState
+ * @property {number} songPosition - Current song position in ms
+ * @property {number} score - Current score
+ * @property {number} combo - Current combo
+ * @property {number} maxCombo - Maximum combo achieved
+ * @property {number} health - Current health
+ * @property {Tallies} tallies - Score tallies
+ * @property {{ notes: Array<any>, hitNote: (note: any) => void, playPress: (dir: number) => void, playStatic: (dir: number) => void } | null} playerStrumline - Player strumline
+ * @property {{ notes: Array<any>, hitNote: (note: any) => void, playStatic: (dir: number) => void } | null} opponentStrumline - Opponent strumline
+ * @property {{ flash: (dir: number) => void } | null} [opponentIndicator] - Opponent indicator
+ * @property {{ sing: (dir: number) => void, miss: (dir: number) => void } | null} [player] - Player character
+ * @property {{ sing: (dir: number) => void } | null} [opponent] - Opponent character
+ * @property {{ mutePlayer: () => void, unmutePlayer: () => void } | null} [voices] - Voices group
+ * @property {((note: any, judgement: string, score: number, timing: number) => void) | null} [onNoteHit] - Note hit callback
+ * @property {((note: any) => void) | null} [onNoteMiss] - Note miss callback
+ * @property {((featureName: string) => boolean) | undefined} [isFeatureEnabled] - Feature flag check
+ * @property {((judgement: string) => number) | undefined} [getHealthBonus] - Health bonus getter
+ * @property {() => void} [gameOver] - Game over trigger
+ */
+
+/**
+ * @typedef {Object} NoteProcessorScoring
+ * @property {(timing: number) => string} judgeNote - Judge a note hit
+ * @property {(timing: number) => number} scoreNote - Score a note hit
+ * @property {(judgement: string) => boolean} doesJudgementBreakCombo - Check if judgement breaks combo
+ * @property {(judgement: string) => number} getHealthBonus - Get health bonus for judgement
+ */
+
+/**
+ * @typedef {Object} NoteProcessorEventBus
+ * @property {(event: string, ...args: any[]) => void} emit - Emit an event
+ * @property {(event: string, callback: Function, context?: any) => any} on - Register listener
+ * @property {(event: string, callback: Function, context?: any) => any} off - Remove listener
+ */
+
+/**
+ * @typedef {Object} NoteProcessorGameplayState
+ * @property {number} combo - Current combo
+ * @property {Tallies} tallies - Score tallies
+ * @property {(points: number) => void} updateScore - Update score
+ * @property {(judgement: string) => void} updateCombo - Update combo
+ * @property {(judgement: string, score: number) => void} updateTallies - Update tallies
+ * @property {(delta: number) => void} updateHealth - Update health
+ * @property {(judgement: string) => number} getHealthBonus - Get health bonus
+ */
+
+/**
  * @typedef {Object} NoteProcessorContext
  * @property {Phaser.Scene} scene - Phaser scene reference
- * @property {Object} playState - PlayState instance (for strumlines, characters, etc.)
+ * @property {NoteProcessorPlayState} playState - PlayState instance (for strumlines, characters, etc.)
  * @property {Object} conductor - Conductor instance
- * @property {Object} eventBus - EventBus static class
- * @property {Object} scoring - Scoring static class
- * @property {Object} gameplayState - GameplayState module instance
+ * @property {NoteProcessorEventBus} eventBus - EventBus static class
+ * @property {NoteProcessorScoring} scoring - Scoring static class
+ * @property {NoteProcessorGameplayState | null} gameplayState - GameplayState module instance
+ */
+
+/**
+ * @typedef {Object} NoteProcessorNote
+ * @property {boolean} alive - Whether the note is active
+ * @property {boolean} hasBeenHit - Whether the note has been hit
+ * @property {boolean} hasMissed - Whether the note has been missed
+ * @property {boolean} [handledMiss] - Whether the miss has been handled
+ * @property {number} strumTime - Time the note should be hit
+ * @property {number} direction - Note direction (0-3)
  */
 
 /**
  * Create a NoteProcessor module that handles note hit/miss logic.
  * @param {NoteProcessorContext} context - Shared context object
- * @returns {Object} NoteProcessor module instance
+ * @returns {{ checkMissedNotes: () => void, processOpponentNotes: () => void, hitNote: (note: NoteProcessorNote, timing: number) => void, missNote: (note: NoteProcessorNote) => void, ghostMiss: (direction: number) => void, opponentHitNote: (note: NoteProcessorNote) => void, destroy: () => void }} NoteProcessor module instance
  */
 export function createNoteProcessor(context) {
   const { eventBus, scoring } = context;
@@ -33,7 +94,7 @@ export function createNoteProcessor(context) {
   /**
    * Handle a note hit event from EventBus.
    * Updates GameplayState score, combo, tallies, and health.
-   * @param {Object} data - Event data with judgement, score
+   * @param {{ judgement: string, score: number }} data - Event data with judgement, score
    */
   function onNoteHitEvent(data) {
     const gs = context.gameplayState;
@@ -120,7 +181,7 @@ export function createNoteProcessor(context) {
 
     /**
      * Hit a note with the given timing.
-     * @param {Object} note - The note sprite
+     * @param {NoteProcessorNote} note - The note sprite
      * @param {number} timing - Timing offset in ms
      */
     hitNote(note, timing) {
@@ -144,8 +205,11 @@ export function createNoteProcessor(context) {
 
       // Update tallies
       const tallyKey = judgement === 'killer' ? 'sick' : judgement;
-      if (playState.tallies[tallyKey] !== undefined) {
-        playState.tallies[tallyKey]++;
+      const talliesRecord = /** @type {Record<string, number>} */ (
+        /** @type {unknown} */ (playState.tallies)
+      );
+      if (talliesRecord[tallyKey] !== undefined) {
+        talliesRecord[tallyKey]++;
       }
       playState.tallies.totalNotesHit++;
       playState.tallies.combo = playState.combo;
@@ -163,7 +227,9 @@ export function createNoteProcessor(context) {
       }
 
       // Hit the note on strumline
-      playState.playerStrumline.hitNote(note);
+      if (playState.playerStrumline) {
+        playState.playerStrumline.hitNote(note);
+      }
 
       // Trigger player sing animation
       if (playState.player) {
@@ -192,7 +258,7 @@ export function createNoteProcessor(context) {
 
     /**
      * Miss a note.
-     * @param {Object} note - The note sprite
+     * @param {NoteProcessorNote} note - The note sprite
      */
     missNote(note) {
       const { playState } = context;
@@ -237,7 +303,7 @@ export function createNoteProcessor(context) {
       }
 
       // Check for game over
-      if (healthEnabled && playState.health <= Constants.HEALTH_MIN) {
+      if (healthEnabled && playState.health <= Constants.HEALTH_MIN && playState.gameOver) {
         playState.gameOver();
       }
     },
@@ -254,7 +320,7 @@ export function createNoteProcessor(context) {
 
     /**
      * Opponent hits a note.
-     * @param {Object} note - The note sprite
+     * @param {NoteProcessorNote} note - The note sprite
      */
     opponentHitNote(note) {
       const { playState, scene } = context;
@@ -273,7 +339,9 @@ export function createNoteProcessor(context) {
       }
 
       // Hit the note on strumline (timing/scoring only, strumline is hidden)
-      playState.opponentStrumline.hitNote(note);
+      if (playState.opponentStrumline) {
+        playState.opponentStrumline.hitNote(note);
+      }
 
       // Reset receptor back to static after a brief flash
       if (scene?.time) {

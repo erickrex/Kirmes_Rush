@@ -242,11 +242,7 @@ class ScoreDisplay {
 
   /**
    * Update all stats at once
-   * @param {Object} stats - Stats object
-   * @param {number} [stats.score] - Score
-   * @param {number} [stats.combo] - Combo
-   * @param {number} [stats.accuracy] - Accuracy
-   * @param {number} [stats.misses] - Misses
+   * @param {{score?: number, combo?: number, accuracy?: number, misses?: number}} stats - Stats object
    */
   setStats(stats) {
     if (stats.score !== undefined) {
@@ -292,10 +288,7 @@ class ScoreDisplay {
 
   /**
    * Set visibility options
-   * @param {Object} options - Visibility options
-   * @param {boolean} [options.combo] - Show combo
-   * @param {boolean} [options.accuracy] - Show accuracy
-   * @param {boolean} [options.misses] - Show misses
+   * @param {{combo?: boolean, accuracy?: boolean, misses?: boolean}} options - Visibility options
    * @returns {this}
    */
   setVisibility(options) {
@@ -400,7 +393,7 @@ class ScoreDisplay {
 
   /**
    * Calculate accuracy from tallies
-   * @param {Object} tallies - Tally object
+   * @param {import("../types.js").Tallies} tallies - Tally object
    * @returns {number} Accuracy percentage
    */
   static calculateAccuracy(tallies) {

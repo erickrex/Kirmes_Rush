@@ -29,6 +29,21 @@ export const JudgementType = {
  */
 
 /**
+ * @typedef {Object} PopupSprite
+ * @property {number} x - X position
+ * @property {number} y - Y position
+ * @property {number} alpha - Alpha transparency
+ * @property {number} velocityY - Vertical velocity
+ * @property {number} lifetime - Current lifetime
+ * @property {number} maxLifetime - Maximum lifetime
+ * @property {string} [judgement] - Judgement type
+ * @property {boolean} visible - Whether visible
+ * @property {number} scale - Scale
+ * @property {string | number} [digit] - Digit character
+ * @property {Phaser.GameObjects.Sprite | Phaser.GameObjects.Text | null} [gameObject] - Phaser game object
+ */
+
+/**
  * Popup display for judgements and combo numbers.
  */
 class ComboPopup {
@@ -82,25 +97,25 @@ class ComboPopup {
 
   /**
    * Active judgement sprites
-   * @type {Array<Object>}
+   * @type {Array<PopupSprite>}
    */
   activeJudgements = [];
 
   /**
    * Active combo number sprites
-   * @type {Array<Object>}
+   * @type {Array<PopupSprite>}
    */
   activeNumbers = [];
 
   /**
    * Judgement sprite pool
-   * @type {Array<Object>}
+   * @type {Array<PopupSprite>}
    */
   judgementPool = [];
 
   /**
    * Number sprite pool
-   * @type {Array<Object>}
+   * @type {Array<PopupSprite>}
    */
   numberPool = [];
 
@@ -171,10 +186,11 @@ class ComboPopup {
    * @param {string} judgement - Judgement type
    * @param {number} x - X position
    * @param {number} y - Y position
-   * @returns {Object | null}
+   * @returns {PopupSprite | null}
    */
   createJudgementSprite(judgement, x, y) {
     // Get from pool or create new
+    /** @type {PopupSprite | undefined} */
     let sprite = this.judgementPool.pop();
 
     if (!sprite) {
@@ -224,10 +240,11 @@ class ComboPopup {
    * @param {number} digit - Digit (0-9)
    * @param {number} x - X position
    * @param {number} y - Y position
-   * @returns {Object | null}
+   * @returns {PopupSprite | null}
    */
   createNumberSprite(digit, x, y) {
     // Get from pool or create new
+    /** @type {PopupSprite | undefined} */
     let sprite = this.numberPool.pop();
 
     if (!sprite) {
@@ -254,7 +271,7 @@ class ComboPopup {
 
   /**
    * Create a basic sprite object
-   * @returns {Object}
+   * @returns {PopupSprite}
    */
   createSprite() {
     return {
@@ -266,8 +283,8 @@ class ComboPopup {
       maxLifetime: 500,
       visible: true,
       scale: 1,
-      judgement: null,
-      digit: null
+      judgement: undefined,
+      digit: undefined
     };
   }
 
@@ -285,8 +302,8 @@ class ComboPopup {
 
   /**
    * Update a list of sprites
-   * @param {Array<Object>} active - Active sprites
-   * @param {Array<Object>} pool - Pool to return to
+   * @param {Array<PopupSprite>} active - Active sprites
+   * @param {Array<PopupSprite>} pool - Pool to return to
    * @param {number} delta - Delta time
    */
   updateSprites(active, pool, delta) {
@@ -387,7 +404,7 @@ class ComboPopup {
 
   /**
    * Get all active sprites for rendering
-   * @returns {Array<Object>}
+   * @returns {Array<PopupSprite>}
    */
   getActiveSprites() {
     return [...this.activeJudgements, ...this.activeNumbers];

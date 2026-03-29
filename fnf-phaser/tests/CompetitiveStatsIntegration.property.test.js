@@ -348,12 +348,15 @@ describe('Competitive Stats Integration Property Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     mockScene = createMockScene();
     SaveManager.resetInstance();
   });
 
   afterEach(() => {
     SaveManager.resetInstance();
+    vi.restoreAllMocks();
   });
 
   // ========================================

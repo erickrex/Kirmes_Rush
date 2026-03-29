@@ -205,8 +205,8 @@ describe('ComboPopup', () => {
       expect(sprite.velocityY).toBe(0);
       expect(sprite.lifetime).toBe(0);
       expect(sprite.visible).toBe(true);
-      expect(sprite.judgement).toBeNull();
-      expect(sprite.digit).toBeNull();
+      expect(sprite.judgement).toBeUndefined();
+      expect(sprite.digit).toBeUndefined();
     });
   });
 

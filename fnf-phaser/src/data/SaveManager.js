@@ -37,8 +37,39 @@ const INPUT_DELAY_MIN = -50;
 const INPUT_DELAY_MAX = 50;
 
 /**
+ * Game options shape
+ * @typedef {Object} GameOptions
+ * @property {boolean} downscroll - Whether to use downscroll
+ * @property {boolean} ghostTapping - Whether ghost tapping is enabled
+ * @property {number} scrollSpeed - Scroll speed multiplier
+ * @property {number} noteOffset - Note offset in ms
+ * @property {number} inputDelayCompensation - Input delay compensation in ms (-50 to +50)
+ * @property {number} inputBufferWindow - Input buffer window in ms (0-100)
+ * @property {boolean} showNPS - Whether to show NPS meter
+ * @property {boolean} showGrade - Whether to show grade display
+ * @property {boolean} showComboBreaks - Whether to show combo breaks
+ * @property {boolean} showJudgements - Whether to show judgement counters
+ * @property {number} masterVolume - Master volume (0-100)
+ * @property {number} musicVolume - Music volume (0-100)
+ * @property {number} sfxVolume - SFX volume (0-100)
+ * @property {boolean} hitsounds - Whether hitsounds are enabled
+ * @property {boolean} showFps - Whether to show FPS counter
+ * @property {boolean} flashingLights - Whether flashing lights are enabled
+ * @property {boolean} cameraZoom - Whether camera zoom is enabled
+ * @property {boolean} comboDisplay - Whether combo display is enabled
+ * @property {string} keyLeft - Primary left key
+ * @property {string} keyDown - Primary down key
+ * @property {string} keyUp - Primary up key
+ * @property {string} keyRight - Primary right key
+ * @property {string} keyLeftAlt - Alternate left key
+ * @property {string} keyDownAlt - Alternate down key
+ * @property {string} keyUpAlt - Alternate up key
+ * @property {string} keyRightAlt - Alternate right key
+ */
+
+/**
  * Default options configuration
- * @type {Object}
+ * @type {GameOptions}
  */
 const DEFAULT_OPTIONS = {
   // Gameplay
@@ -81,8 +112,24 @@ const DEFAULT_OPTIONS = {
 };
 
 /**
+ * Game progress shape
+ * @typedef {Object} GameProgress
+ * @property {string[]} unlockedWeeks - List of unlocked week IDs
+ * @property {string[]} completedSongs - List of completed song:difficulty keys
+ * @property {string[]} completedLevels - List of completed level IDs
+ * @property {Object<string, StoryProgressEntry>} storyProgress - Story mode progress per week
+ */
+
+/**
+ * Story progress entry for a single week
+ * @typedef {Object} StoryProgressEntry
+ * @property {number} currentSong - Current song index in the week
+ * @property {boolean} completed - Whether the week is completed
+ */
+
+/**
  * Default progress structure
- * @type {Object}
+ * @type {GameProgress}
  */
 const DEFAULT_PROGRESS = {
   unlockedWeeks: ['tutorial', 'week1'],
@@ -93,7 +140,7 @@ const DEFAULT_PROGRESS = {
 
 /**
  * Get a fresh copy of default progress
- * @returns {Object}
+ * @returns {GameProgress}
  */
 function getDefaultProgress() {
   return {
@@ -104,12 +151,24 @@ function getDefaultProgress() {
   };
 }
 
+/**
+ * Filter and deduplicate a list of values
+ * @param {string[]} values - Values to deduplicate
+ * @returns {string[]}
+ */
 function uniqueList(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+/**
+ * Choose primary and alternate stored keys from a list of key codes
+ * @param {string[]} codes - Key codes to convert
+ * @param {string} fallbackPrimary - Fallback primary key
+ * @param {string} fallbackAlternate - Fallback alternate key
+ * @returns {{ primary: string, alternate: string }}
+ */
 function chooseStoredKeys(codes, fallbackPrimary, fallbackAlternate) {
-  const storedKeys = uniqueList(codes.map((code) => codeToStoredKey(code)));
+  const storedKeys = uniqueList(codes.map((/** @type {string} */ code) => codeToStoredKey(code)));
   const primary =
     storedKeys.find((key) => !ARROW_STORED_KEYS.has(key)) ?? storedKeys[0] ?? fallbackPrimary;
   const alternate = storedKeys.find((key) => key !== primary) ?? fallbackAlternate;
@@ -121,10 +180,22 @@ function chooseStoredKeys(codes, fallbackPrimary, fallbackAlternate) {
  * Score entry structure
  * @typedef {Object} ScoreEntry
  * @property {number} score - The score value
- * @property {string} rank - The rank achieved
- * @property {number} accuracy - Accuracy percentage
- * @property {number} maxCombo - Maximum combo achieved
- * @property {number} timestamp - When the score was achieved
+ * @property {string} [rank] - The rank achieved
+ * @property {number} [accuracy] - Accuracy percentage
+ * @property {number} [maxCombo] - Maximum combo achieved
+ * @property {number} [timestamp] - When the score was achieved (set automatically by setHighScore)
+ */
+
+/**
+ * Song result data passed to recordSongResult
+ * @typedef {Object} SongResultData
+ * @property {string} [levelId] - Level identifier
+ * @property {string} songId - Song identifier
+ * @property {string} difficulty - Difficulty level
+ * @property {number} score - Score achieved
+ * @property {string} [rank] - Rank achieved
+ * @property {number} [accuracy] - Accuracy percentage
+ * @property {number} [maxCombo] - Maximum combo achieved
  */
 
 /**
@@ -140,7 +211,7 @@ class SaveManager {
 
   /**
    * Cached options
-   * @type {Object}
+   * @type {GameOptions}
    */
   options = { ...DEFAULT_OPTIONS };
 
@@ -152,7 +223,7 @@ class SaveManager {
 
   /**
    * Cached progress
-   * @type {Object}
+   * @type {GameProgress}
    */
   progress = getDefaultProgress();
 
@@ -304,6 +375,10 @@ class SaveManager {
     }
   }
 
+  /**
+   * Migrate legacy controls from old save format
+   * @returns {boolean} Whether migration was performed
+   */
   migrateLegacyControls() {
     try {
       const raw = this.getItem(StorageKeys.LEGACY_CONTROLS);
@@ -372,7 +447,10 @@ class SaveManager {
    * @returns {*} Option value
    */
   getOption(key) {
-    return this.options[key] ?? DEFAULT_OPTIONS[key];
+    return (
+      /** @type {Record<string, *>} */ (this.options)[key] ??
+      /** @type {Record<string, *>} */ (DEFAULT_OPTIONS)[key]
+    );
   }
 
   /**
@@ -382,7 +460,7 @@ class SaveManager {
    * @param {boolean} [autoSave=true] - Whether to auto-save
    */
   setOption(key, value, autoSave = true) {
-    this.options[key] = value;
+    /** @type {Record<string, *>} */ (this.options)[key] = value;
     if (autoSave) {
       this.saveOptions();
     }
@@ -390,7 +468,7 @@ class SaveManager {
 
   /**
    * Set multiple options at once
-   * @param {Object} options - Options to set
+   * @param {Partial<GameOptions>} options - Options to set
    * @param {boolean} [autoSave=true] - Whether to auto-save
    */
   setOptions(options, autoSave = true) {
@@ -410,7 +488,7 @@ class SaveManager {
 
   /**
    * Get all options
-   * @returns {Object}
+   * @returns {GameOptions}
    */
   getAllOptions() {
     return { ...this.options };
@@ -670,7 +748,9 @@ class SaveManager {
     if (difficulty) {
       return this.progress.completedSongs.includes(`${songId}:${difficulty}`);
     }
-    return this.progress.completedSongs.some((s) => s.startsWith(`${songId}:`));
+    return this.progress.completedSongs.some((/** @type {string} */ s) =>
+      s.startsWith(`${songId}:`)
+    );
   }
 
   /**
@@ -686,10 +766,19 @@ class SaveManager {
     }
   }
 
+  /**
+   * Check if a level has been completed
+   * @param {string} levelId - Level identifier
+   * @returns {boolean}
+   */
   isLevelCompleted(levelId) {
     return this.progress.completedLevels.includes(levelId);
   }
 
+  /**
+   * Mark a level as completed
+   * @param {string | undefined} levelId - Level identifier
+   */
   completeLevel(levelId) {
     if (!levelId) {
       return;
@@ -701,6 +790,11 @@ class SaveManager {
     }
   }
 
+  /**
+   * Record a song result, updating high score, completed songs, and completed levels
+   * @param {SongResultData} result - Song result data
+   * @returns {boolean} Whether a new high score was set
+   */
   recordSongResult(result) {
     const { levelId, songId, difficulty, score, rank, accuracy, maxCombo } = result;
 
@@ -718,7 +812,7 @@ class SaveManager {
   /**
    * Get story mode progress for a week
    * @param {string} weekId - Week identifier
-   * @returns {Object}
+   * @returns {StoryProgressEntry}
    */
   getStoryProgress(weekId) {
     return this.progress.storyProgress[weekId] || { currentSong: 0, completed: false };
@@ -727,7 +821,7 @@ class SaveManager {
   /**
    * Set story mode progress for a week
    * @param {string} weekId - Week identifier
-   * @param {Object} data - Progress data
+   * @param {StoryProgressEntry} data - Progress data
    */
   setStoryProgress(weekId, data) {
     this.progress.storyProgress[weekId] = data;

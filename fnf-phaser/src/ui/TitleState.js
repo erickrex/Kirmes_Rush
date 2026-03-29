@@ -450,6 +450,9 @@ export default class TitleState extends Phaser.Scene {
     this.input.keyboard?.off('keydown-ENTER', this.onEnterPressed, this);
     this.input.keyboard?.off('keydown-SPACE', this.onEnterPressed, this);
 
+    // Remove pointer listener on prompt text
+    this.pressEnterText?.off('pointerdown', this.onEnterPressed, this);
+
     // Remove event listeners
     EventBus.off(Events.BEAT_HIT, this.onBeatHit, this);
 
@@ -458,6 +461,18 @@ export default class TitleState extends Phaser.Scene {
       this.attractTimer.remove();
       this.attractTimer = null;
     }
+
+    // Stop attract mode tweens and restore camera
+    if (this.pressEnterText) {
+      this.tweens.killTweensOf(this.pressEnterText);
+    }
+    if (this.logo) {
+      this.tweens.killTweensOf(this.logo);
+    }
+    if (this.logoBumpTween) {
+      this.logoBumpTween.stop();
+    }
+    this.attractModeActive = false;
 
     // Stop music
     this.stopTitleMusic();

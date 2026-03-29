@@ -63,7 +63,7 @@ class ExpandedStatsDisplay extends ScoreDisplay {
 
   /**
    * Judgement counts by type
-   * @type {Object}
+   * @type {{sick: number, good: number, bad: number, shit: number}}
    */
   judgements = {
     sick: 0,
@@ -131,7 +131,7 @@ class ExpandedStatsDisplay extends ScoreDisplay {
     // Update judgement counts
     const normalizedJudgement = judgement.toLowerCase();
     if (Object.prototype.hasOwnProperty.call(this.judgements, normalizedJudgement)) {
-      this.judgements[normalizedJudgement]++;
+      /** @type {Record<string, number>} */ (this.judgements)[normalizedJudgement]++;
     }
 
     // Update grade based on new accuracy

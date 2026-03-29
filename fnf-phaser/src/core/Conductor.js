@@ -374,29 +374,32 @@ class Conductor {
     this.timeChanges = [];
 
     // Sort in place just in case it's out of order
-    const sortedChanges = [...songTimeChanges].sort((a, b) => a.timeStamp - b.timeStamp);
+    const sortedChanges = [...songTimeChanges].sort(
+      (a, b) => (a.timeStamp || 0) - (b.timeStamp || 0)
+    );
 
     for (const songTimeChange of sortedChanges) {
       // Clone to avoid mutating the original
       const timeChange = { ...songTimeChange };
 
       // Handle negative timestamps
-      if (timeChange.timeStamp < 0) {
+      if ((timeChange.timeStamp || 0) < 0) {
         timeChange.timeStamp = 0;
       }
 
-      if (timeChange.timeStamp <= 0) {
+      if ((timeChange.timeStamp || 0) <= 0) {
         timeChange.beatTime = 0;
       } else {
         // Calculate the beat time of this timestamp
         timeChange.beatTime = 0;
 
-        if (timeChange.timeStamp > 0 && this.timeChanges.length > 0) {
+        if ((timeChange.timeStamp || 0) > 0 && this.timeChanges.length > 0) {
           const prevTimeChange = this.timeChanges[this.timeChanges.length - 1];
           const prevBeatTime = prevTimeChange.beatTime ?? 0;
           timeChange.beatTime = this._roundDecimal(
             prevBeatTime +
-              ((timeChange.timeStamp - prevTimeChange.timeStamp) * prevTimeChange.bpm) /
+              (((timeChange.timeStamp || 0) - (prevTimeChange.timeStamp || 0)) *
+                prevTimeChange.bpm) /
                 Constants.SECS_PER_MIN /
                 Constants.MS_PER_SEC,
             4
@@ -441,11 +444,11 @@ class Conductor {
     this.currentTimeChange = this.timeChanges[0] ?? null;
     if (this.songPosition > 0) {
       for (let i = 0; i < this.timeChanges.length; i++) {
-        if (this.songPosition >= this.timeChanges[i].timeStamp) {
+        if (this.songPosition >= (this.timeChanges[i].timeStamp || 0)) {
           this.currentTimeChange = this.timeChanges[i];
         }
 
-        if (this.songPosition < this.timeChanges[i].timeStamp) {
+        if (this.songPosition < (this.timeChanges[i].timeStamp || 0)) {
           break;
         }
       }
@@ -464,7 +467,7 @@ class Conductor {
       const currentBeatTime = this.currentTimeChange.beatTime ?? 0;
       this.currentStepTime = this._roundDecimal(
         currentBeatTime * Constants.STEPS_PER_BEAT +
-          (this.songPosition - this.currentTimeChange.timeStamp) / this.stepLengthMs,
+          (this.songPosition - (this.currentTimeChange.timeStamp || 0)) / this.stepLengthMs,
         6
       );
       this.currentBeatTime = this.currentStepTime / Constants.STEPS_PER_BEAT;
@@ -526,7 +529,7 @@ class Conductor {
     let lastTimeChange = this.timeChanges[0];
 
     for (const timeChange of this.timeChanges) {
-      if (ms >= timeChange.timeStamp) {
+      if (ms >= (timeChange.timeStamp || 0)) {
         lastTimeChange = timeChange;
         const beatTime = lastTimeChange.beatTime ?? 0;
         resultStep = beatTime * Constants.STEPS_PER_BEAT;
@@ -538,7 +541,7 @@ class Conductor {
     const lastStepLengthMs =
       ((Constants.SECS_PER_MIN / lastTimeChange.bpm) * Constants.MS_PER_SEC) /
       this.timeSignatureNumerator;
-    const resultFractionalStep = (ms - lastTimeChange.timeStamp) / lastStepLengthMs;
+    const resultFractionalStep = (ms - (lastTimeChange.timeStamp || 0)) / lastStepLengthMs;
     resultStep += resultFractionalStep;
 
     return resultStep;
@@ -562,7 +565,7 @@ class Conductor {
       const tcBeatTime = timeChange.beatTime ?? 0;
       if (stepTime >= tcBeatTime * Constants.STEPS_PER_BEAT) {
         lastTimeChange = timeChange;
-        resultMs = lastTimeChange.timeStamp;
+        resultMs = lastTimeChange.timeStamp || 0;
       } else {
         break;
       }
@@ -595,7 +598,7 @@ class Conductor {
       const tcBeatTime = timeChange.beatTime ?? 0;
       if (beatTime >= tcBeatTime) {
         lastTimeChange = timeChange;
-        resultMs = lastTimeChange.timeStamp;
+        resultMs = lastTimeChange.timeStamp || 0;
       } else {
         break;
       }

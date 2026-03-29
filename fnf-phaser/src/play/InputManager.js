@@ -12,20 +12,36 @@ import * as Constants from '../core/Constants.js';
 import SaveManager from '../data/SaveManager.js';
 
 /**
+ * @typedef {Object} InputManagerPlayState
+ * @property {number} songPosition - Current song position in ms
+ * @property {{ consumePresses: () => Array<{ direction: number, timestamp: number }>, consumeReleases: () => Array<{ direction: number, timestamp: number }> } | null} [preciseInput] - PreciseInput instance
+ * @property {Array<{ direction: number, timestamp: number }>} inputPressQueue - Queued press inputs
+ * @property {Array<{ direction: number, timestamp: number }>} inputReleaseQueue - Queued release inputs
+ * @property {{ pressKey: (dir: number) => void, releaseKey: (dir: number) => void, playStatic: (dir: number) => void, getClosestNote: (dir: number, songPos: number) => any } | null} playerStrumline - Player strumline
+ * @property {{ start: (songId: string, difficulty: string) => void, stop: (score: number, tallies: any) => any, isRecording: () => boolean, recordInput: (type: string, direction: number, keyCode: string, songPosition: number) => void, discard: () => void } | null} [replayRecorder] - Replay recorder
+ */
+
+/**
+ * @typedef {Object} InputManagerNoteProcessor
+ * @property {(note: any, timing: number) => void} hitNote - Hit a note
+ * @property {(direction: number) => void} ghostMiss - Ghost miss
+ */
+
+/**
  * @typedef {Object} InputManagerContext
  * @property {Phaser.Scene} scene - Phaser scene reference
- * @property {Object} playState - PlayState instance (for strumlines, input queues, etc.)
+ * @property {InputManagerPlayState} playState - PlayState instance (for strumlines, input queues, etc.)
  * @property {Object} conductor - Conductor instance
  * @property {Object} eventBus - EventBus static class
  * @property {Object} scoring - Scoring static class
  * @property {Object} gameplayState - GameplayState module instance
- * @property {Object} noteProcessor - NoteProcessor module instance
+ * @property {InputManagerNoteProcessor} noteProcessor - NoteProcessor module instance
  */
 
 /**
  * Create an InputManager module that handles input queue processing and note input.
  * @param {InputManagerContext} context - Shared context object
- * @returns {Object} InputManager module instance
+ * @returns {{ processInputQueue: () => void, handleNoteInput: (direction: number, timestamp: number) => void, handleNoteRelease: (direction: number, timestamp: number) => void, destroy: () => void }} InputManager module instance
  */
 export function createInputManager(context) {
   let destroyed = false;
@@ -50,13 +66,17 @@ export function createInputManager(context) {
       // Process presses
       while (playState.inputPressQueue.length > 0) {
         const input = playState.inputPressQueue.shift();
-        manager.handleNoteInput(input.direction, input.timestamp);
+        if (input) {
+          manager.handleNoteInput(input.direction, input.timestamp);
+        }
       }
 
       // Process releases
       while (playState.inputReleaseQueue.length > 0) {
         const input = playState.inputReleaseQueue.shift();
-        manager.handleNoteRelease(input.direction, input.timestamp);
+        if (input) {
+          manager.handleNoteRelease(input.direction, input.timestamp);
+        }
       }
     },
 

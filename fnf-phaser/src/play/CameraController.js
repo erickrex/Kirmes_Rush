@@ -11,11 +11,34 @@ import FunkinCamera from '../graphics/FunkinCamera.js';
 import { Events } from '../core/EventBus.js';
 
 /**
+ * @typedef {Object} CameraControllerPlayState
+ * @property {{ cameraZoom?: number, getCameraOffset: (charType: string) => { x: number, y: number } } | null} [stage] - Stage instance
+ * @property {{ getCameraFocusPoint: () => { x: number, y: number } } | null} [opponent] - Opponent character
+ * @property {{ getCameraFocusPoint: () => { x: number, y: number } } | null} [player] - Player character
+ * @property {{ getCameraFocusPoint: () => { x: number, y: number } } | null} [girlfriend] - Girlfriend character
+ * @property {((featureName: string) => boolean) | undefined} [isFeatureEnabled] - Feature flag check
+ */
+
+/**
+ * @typedef {Object} CameraEventPayload
+ * @property {number} [char] - Character index
+ * @property {number} [zoom] - Zoom level
+ * @property {boolean} [instant] - Whether to apply instantly
+ * @property {{ char?: number, zoom?: number, instant?: boolean }} [value] - Nested event value
+ */
+
+/**
+ * @typedef {Object} CameraControllerEventBus
+ * @property {(event: string, callback: Function, context?: any) => any} on - Register listener
+ * @property {(event: string, callback: Function, context?: any) => any} off - Remove listener
+ */
+
+/**
  * @typedef {Object} CameraControllerContext
  * @property {Phaser.Scene} scene - Phaser scene reference
- * @property {Object} playState - PlayState instance (for characters, stage, feature flags)
+ * @property {CameraControllerPlayState} playState - PlayState instance (for characters, stage, feature flags)
  * @property {Object} conductor - Conductor instance
- * @property {Object} eventBus - EventBus static class
+ * @property {CameraControllerEventBus} eventBus - EventBus static class
  * @property {Object} scoring - Scoring static class
  * @property {Object} gameplayState - GameplayState module instance
  */
@@ -23,7 +46,7 @@ import { Events } from '../core/EventBus.js';
 /**
  * Create a CameraController module that manages camera focus and zoom.
  * @param {CameraControllerContext} context - Shared context object
- * @returns {Object} CameraController module instance
+ * @returns {{ camGame: Phaser.Cameras.Scene2D.Camera | null, camHUD: Phaser.Cameras.Scene2D.Camera | null, funkinCamera: FunkinCamera | null, cameraFocusTarget: number, setupCameras: () => void, focusCamera: (target: number, instant?: boolean) => void, getCameraFocusCharacter: (target: number) => any, handleFocusCameraEvent: (eventData: CameraEventPayload) => void, handleZoomCameraEvent: (eventData: CameraEventPayload) => void, destroy: () => void }} CameraController module instance
  */
 export function createCameraController(context) {
   const { eventBus } = context;
@@ -108,7 +131,7 @@ export function createCameraController(context) {
     /**
      * Get the character object for a given camera target index.
      * @param {number} target - Character index (0=opponent, 1=player, 2=gf)
-     * @returns {Object|null} The character, or null
+     * @returns {{ getCameraFocusPoint: () => { x: number, y: number } } | null | undefined} The character, or null
      */
     getCameraFocusCharacter(target) {
       const { playState } = context;
@@ -126,7 +149,7 @@ export function createCameraController(context) {
 
     /**
      * Handle a FOCUS_CAMERA event from EventBus.
-     * @param {Object} eventData - Event payload with char index
+     * @param {CameraEventPayload} eventData - Event payload with char index
      */
     handleFocusCameraEvent(eventData) {
       const charIndex = eventData?.char ?? eventData?.value?.char ?? 0;
@@ -135,7 +158,7 @@ export function createCameraController(context) {
 
     /**
      * Handle a ZOOM_CAMERA event from EventBus.
-     * @param {Object} eventData - Event payload with zoom and instant
+     * @param {CameraEventPayload} eventData - Event payload with zoom and instant
      */
     handleZoomCameraEvent(eventData) {
       if (!controller.funkinCamera) {

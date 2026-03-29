@@ -8,6 +8,12 @@
 import * as Constants from '../core/Constants.js';
 
 /**
+ * Phaser sound instance with seek/volume support.
+ * Both WebAudioSound and HTML5AudioSound extend BaseSound with these properties.
+ * @typedef {Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound} PhaserPlayableSound
+ */
+
+/**
  * Manages player and opponent vocal tracks with independent control.
  */
 class VoicesGroup {
@@ -19,19 +25,19 @@ class VoicesGroup {
 
   /**
    * Player vocal track
-   * @type {Phaser.Sound.BaseSound | null}
+   * @type {PhaserPlayableSound | null}
    */
   playerVoice = null;
 
   /**
    * Opponent vocal track
-   * @type {Phaser.Sound.BaseSound | null}
+   * @type {PhaserPlayableSound | null}
    */
   opponentVoice = null;
 
   /**
    * Combined voices track (if not split)
-   * @type {Phaser.Sound.BaseSound | null}
+   * @type {PhaserPlayableSound | null}
    */
   combinedVoices = null;
 
@@ -104,7 +110,7 @@ class VoicesGroup {
   /**
    * Load combined voices (single track)
    * @param {string} key - The audio key
-   * @returns {Phaser.Sound.BaseSound | null}
+   * @returns {PhaserPlayableSound | null}
    */
   loadCombined(key) {
     if (!this.scene?.sound) {
@@ -112,9 +118,11 @@ class VoicesGroup {
     }
 
     try {
-      this.combinedVoices = this.scene.sound.add(key, {
-        volume: this.masterVolume
-      });
+      this.combinedVoices = /** @type {PhaserPlayableSound} */ (
+        this.scene.sound.add(key, {
+          volume: this.masterVolume
+        })
+      );
       this.isSplit = false;
       return this.combinedVoices;
     } catch (e) {
@@ -135,15 +143,19 @@ class VoicesGroup {
 
     try {
       if (playerKey) {
-        this.playerVoice = this.scene.sound.add(playerKey, {
-          volume: this.playerVolume * this.masterVolume
-        });
+        this.playerVoice = /** @type {PhaserPlayableSound} */ (
+          this.scene.sound.add(playerKey, {
+            volume: this.playerVolume * this.masterVolume
+          })
+        );
       }
 
       if (opponentKey) {
-        this.opponentVoice = this.scene.sound.add(opponentKey, {
-          volume: this.opponentVolume * this.masterVolume
-        });
+        this.opponentVoice = /** @type {PhaserPlayableSound} */ (
+          this.scene.sound.add(opponentKey, {
+            volume: this.opponentVolume * this.masterVolume
+          })
+        );
       }
 
       this.isSplit = true;

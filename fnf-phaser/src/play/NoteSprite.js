@@ -7,6 +7,9 @@
 
 import FunkinSprite from '../graphics/FunkinSprite.js';
 
+/** @import { NoteData } from '../types.js' */
+/** @typedef {import('./SustainTrail.js').default} SustainTrail */
+
 /**
  * Direction colors for notes (left, down, up, right)
  * @type {string[]}
@@ -18,15 +21,6 @@ const DIRECTION_COLORS = ['purple', 'blue', 'green', 'red'];
  * @type {string[]}
  */
 const DIRECTION_NAMES = ['left', 'down', 'up', 'right'];
-
-/**
- * @typedef {Object} NoteData
- * @property {number} time - The strum time in milliseconds
- * @property {number} direction - Note direction (0-3: left, down, up, right)
- * @property {number} [length=0] - Hold note length in milliseconds
- * @property {string} [kind=''] - Note kind (normal, mine, etc.)
- * @property {Array<{name: string, value: any}>} [params=[]] - Custom parameters
- */
 
 /**
  * Individual note sprite for gameplay.
@@ -53,7 +47,7 @@ class NoteSprite extends FunkinSprite {
 
   /**
    * Reference to the sustain trail for hold notes
-   * @type {Object | null}
+   * @type {SustainTrail | null}
    */
   sustainTrail = null;
 
@@ -107,7 +101,7 @@ class NoteSprite extends FunkinSprite {
 
   /**
    * The strumline this note belongs to
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   strumline = null;
 
@@ -181,7 +175,7 @@ class NoteSprite extends FunkinSprite {
    */
   set kind(value) {
     if (this.noteData) {
-      this.noteData.kind = value;
+      this.noteData.kind = value ?? undefined;
     }
   }
 
@@ -289,10 +283,10 @@ class NoteSprite extends FunkinSprite {
   /**
    * Setup the note with data and style
    * @param {NoteData} noteData - The note data
-   * @param {Object} [noteStyle] - The note style to use
+   * @param {Record<string, any>} [noteStyle] - The note style to use
    * @returns {this}
    */
-  setup(noteData, noteStyle = null) {
+  setup(noteData, noteStyle = undefined) {
     this.noteData = noteData;
     this._direction = noteData.direction;
     this.alive = true;
@@ -308,7 +302,7 @@ class NoteSprite extends FunkinSprite {
 
   /**
    * Setup the note graphic from a note style
-   * @param {Object} noteStyle - The note style configuration
+   * @param {Record<string, any>} noteStyle - The note style configuration
    */
   setupNoteGraphic(noteStyle) {
     // This will be called by the note style to configure the sprite
@@ -471,10 +465,6 @@ class NoteSprite extends FunkinSprite {
    * @returns {this}
    */
   revive() {
-    if (super.revive) {
-      super.revive();
-    }
-
     this.visible = true;
     this.alpha = 1.0;
     this.active = false; // Will be set by note style if animated
@@ -502,10 +492,6 @@ class NoteSprite extends FunkinSprite {
    * @returns {this}
    */
   kill() {
-    if (super.kill) {
-      super.kill();
-    }
-
     this.visible = false;
     this.active = false;
     this.alive = false;

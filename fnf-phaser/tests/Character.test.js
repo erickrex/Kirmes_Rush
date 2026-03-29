@@ -230,10 +230,13 @@ describe('Character', () => {
 
     // Reset singleton
     CharacterRegistry.instance = null;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
@@ -678,7 +681,7 @@ describe('Character', () => {
 
   describe('static create', () => {
     it('should create and add character to scene', () => {
-      const char = Character.create(mockScene, 'bf', false, 100, 200);
+      const char = Character.createCharacter(mockScene, 'bf', false, 100, 200);
 
       // Will be null because registry returns null by default in this test
       // In real usage, registry would be properly initialized

@@ -5,74 +5,14 @@
  * Ported from source/funkin/data/song/SongData.hx
  */
 
-/**
- * @typedef {Object} SongTimeChange
- * @property {number} t - Timestamp in milliseconds
- * @property {number} bpm - Beats per minute
- * @property {number} [n=4] - Time signature numerator
- * @property {number} [d=4] - Time signature denominator
- * @property {number} [b] - Beat time (calculated)
- * @property {number[]} [bt=[4,4,4,4]] - Beat tuplets
- */
-
-/**
- * @typedef {Object} SongCharacterData
- * @property {string} player - Player character ID
- * @property {string} [opponent] - Opponent character ID
- * @property {string} [girlfriend] - Girlfriend character ID
- * @property {string} [instrumental] - Instrumental variant
- * @property {string[]} [altInstrumentals] - Alternative instrumentals
- */
-
-/**
- * @typedef {Object} SongPlayData
- * @property {string} stage - Stage ID
- * @property {string} noteStyle - Note style ID
- * @property {string[]} difficulties - Available difficulties
- * @property {SongCharacterData} characters - Character data
- * @property {Object<string, number>} [ratings] - Difficulty ratings
- * @property {string} [album] - Album ID for freeplay
- * @property {number} [previewStart=0] - Preview start time in ms
- * @property {number} [previewEnd=15000] - Preview end time in ms
- */
-
-/**
- * @typedef {Object} SongMetadata
- * @property {string} version - Metadata version
- * @property {string} songName - Display name of the song
- * @property {string} artist - Artist name
- * @property {string} [charter] - Charter name
- * @property {string} [timeFormat='ms'] - Time format (ms, ticks, float)
- * @property {number} [divisions] - Divisions per beat
- * @property {boolean} [looped=false] - Whether the song loops
- * @property {SongPlayData} playData - Gameplay data
- * @property {SongTimeChange[]} timeChanges - BPM/time signature changes
- * @property {string} [generatedBy] - Tool that generated the chart
- */
-
-/**
- * @typedef {Object} NoteData
- * @property {number} time - Note timestamp in milliseconds
- * @property {number} data - Note lane/direction (0-7 typically)
- * @property {number} [length=0] - Hold note length in milliseconds
- * @property {string} [kind] - Note kind (normal, mine, etc.)
- * @property {Array<{name: string, value: *}>} [params] - Additional parameters
- */
+/** @import { NoteData, SongMetadata, ChartData, SongCharacterData, SongPlayData, SongTimeChange, SongEventData, RawMetadataJSON, RawChartJSON, ParsedSongMetadata } from '../../types.js' */
 
 /**
  * @typedef {Object} EventData
  * @property {number} time - Event timestamp in milliseconds
- * @property {string} eventKind - Event type identifier
+ * @property {string} event - Event type identifier
  * @property {*} [value] - Event-specific data
- */
-
-/**
- * @typedef {Object} ChartData
- * @property {string} version - Chart version
- * @property {Object<string, number>} scrollSpeed - Scroll speed per difficulty
- * @property {EventData[]} events - Chart events
- * @property {Object<string, NoteData[]>} notes - Notes per difficulty
- * @property {string} [generatedBy] - Tool that generated the chart
+ * @property {boolean} [activated] - Whether event has been triggered
  */
 
 /**
@@ -97,9 +37,9 @@ const STRUMLINE_SIZE = 4;
 class ChartParser {
   /**
    * Parse song metadata from JSON.
-   * @param {Object} json - Raw JSON object
+   * @param {RawMetadataJSON} json - Raw metadata JSON object
    * @param {string} [variation='default'] - Variation ID
-   * @returns {SongMetadata | null} Parsed metadata or null if invalid
+   * @returns {ParsedSongMetadata | null} Parsed metadata or null if invalid
    */
   static parseMetadata(json, variation = 'default') {
     if (!json || typeof json !== 'object') {
@@ -131,9 +71,9 @@ class ChartParser {
       version: version || '2.0.0',
       songName: json.songName || 'Unknown',
       artist: json.artist || 'Unknown',
-      charter: json.charter || null,
+      charter: json.charter || undefined,
       timeFormat: json.timeFormat || 'ms',
-      divisions: json.divisions || null,
+      divisions: json.divisions || undefined,
       looped: json.looped || false,
       playData,
       timeChanges,
@@ -144,7 +84,7 @@ class ChartParser {
 
   /**
    * Parse chart data from JSON.
-   * @param {Object} json - Raw JSON object
+   * @param {RawChartJSON} json - Raw chart JSON object
    * @param {string} [variation='default'] - Variation ID
    * @returns {ChartData | null} Parsed chart data or null if invalid
    */
@@ -181,7 +121,7 @@ class ChartParser {
 
   /**
    * Parse time changes array.
-   * @param {Array} timeChanges - Raw time changes array
+   * @param {Array<Record<string, *>>} timeChanges - Raw time changes array
    * @returns {SongTimeChange[]} Parsed time changes
    */
   static parseTimeChanges(timeChanges) {
@@ -211,7 +151,7 @@ class ChartParser {
 
   /**
    * Parse play data object.
-   * @param {Object} playData - Raw play data
+   * @param {Record<string, *>} playData - Raw play data
    * @returns {SongPlayData | null} Parsed play data or null if invalid
    */
   static parsePlayData(playData) {
@@ -238,7 +178,7 @@ class ChartParser {
 
   /**
    * Parse character data object.
-   * @param {Object} characters - Raw character data
+   * @param {Record<string, *>} characters - Raw character data
    * @returns {SongCharacterData | null} Parsed character data or null if invalid
    */
   static parseCharacterData(characters) {
@@ -259,14 +199,15 @@ class ChartParser {
 
   /**
    * Parse scroll speed map.
-   * @param {Object} scrollSpeed - Raw scroll speed object
-   * @returns {Object<string, number>} Parsed scroll speeds
+   * @param {Record<string, unknown>} scrollSpeed - Raw scroll speed object
+   * @returns {Record<string, number>} Parsed scroll speeds
    */
   static parseScrollSpeed(scrollSpeed) {
     if (!scrollSpeed || typeof scrollSpeed !== 'object') {
       return { default: 1.0 };
     }
 
+    /** @type {Record<string, number>} */
     const result = {};
     for (const [key, value] of Object.entries(scrollSpeed)) {
       result[key] = typeof value === 'number' ? value : 1.0;
@@ -277,8 +218,8 @@ class ChartParser {
 
   /**
    * Parse events array.
-   * @param {Array} events - Raw events array
-   * @returns {EventData[]} Parsed events
+   * @param {Array<Record<string, *>>} events - Raw events array
+   * @returns {SongEventData[]} Parsed events
    */
   static parseEvents(events) {
     if (!Array.isArray(events)) {
@@ -293,7 +234,7 @@ class ChartParser {
 
         return {
           time: event.t ?? 0,
-          eventKind: event.e ?? 'Unknown',
+          event: event.e ?? 'Unknown',
           value: event.v ?? null,
           activated: false
         };
@@ -304,14 +245,15 @@ class ChartParser {
 
   /**
    * Parse notes for all difficulties.
-   * @param {Object} notes - Raw notes object (difficulty -> notes array)
-   * @returns {Object<string, NoteData[]>} Parsed notes per difficulty
+   * @param {Record<string, Array<Record<string, *>>>} notes - Raw notes object (difficulty -> notes array)
+   * @returns {Record<string, NoteData[]>} Parsed notes per difficulty
    */
   static parseNotes(notes) {
     if (!notes || typeof notes !== 'object') {
       return {};
     }
 
+    /** @type {Record<string, NoteData[]>} */
     const result = {};
     for (const [difficulty, noteArray] of Object.entries(notes)) {
       if (Array.isArray(noteArray)) {
@@ -324,7 +266,7 @@ class ChartParser {
 
   /**
    * Parse a single difficulty's note array.
-   * @param {Array} noteArray - Raw note array
+   * @param {Array<Record<string, *>>} noteArray - Raw note array
    * @returns {NoteData[]} Parsed notes
    */
   static parseNoteArray(noteArray) {
@@ -334,9 +276,11 @@ class ChartParser {
           return null;
         }
 
+        const data = note.d ?? 0;
         return {
           time: note.t ?? 0,
-          data: note.d ?? 0,
+          data,
+          direction: data % STRUMLINE_SIZE,
           length: note.l ?? 0,
           kind: note.k || null,
           params: Array.isArray(note.p) ? note.p : []
@@ -352,12 +296,12 @@ class ChartParser {
 
   /**
    * Get the direction index for a note (0-3).
-   * @param {NoteData} note - The note data
+   * @param {NoteData | Record<string, any>} note - The note data
    * @param {number} [strumlineSize=4] - Size of each strumline
    * @returns {number} Direction index (0=left, 1=down, 2=up, 3=right)
    */
   static getNoteDirection(note, strumlineSize = STRUMLINE_SIZE) {
-    return note.data % strumlineSize;
+    return (note.data ?? 0) % strumlineSize;
   }
 
   /**
@@ -378,7 +322,7 @@ class ChartParser {
    * @returns {number} Strumline index
    */
   static getNoteStrumline(note, strumlineSize = STRUMLINE_SIZE) {
-    return Math.floor(note.data / strumlineSize);
+    return Math.floor((note.data ?? 0) / strumlineSize);
   }
 
   /**
@@ -480,7 +424,7 @@ class ChartParser {
    * Get statistics about a chart.
    * @param {ChartData} chart - The chart data
    * @param {string} difficulty - Difficulty to analyze
-   * @returns {Object} Chart statistics
+   * @returns {{totalNotes: number, playerNotes: number, opponentNotes: number, holdNotes: number, totalHoldLength: number, events: number, scrollSpeed: number}} Chart statistics
    */
   static getChartStats(chart, difficulty) {
     const notes = ChartParser.getNotesForDifficulty(chart, difficulty);

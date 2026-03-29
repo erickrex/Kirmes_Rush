@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the Registry base class
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Registry, { createRegistry } from '../src/core/Registry.js';
 
 /**
@@ -45,7 +45,14 @@ describe('Registry', () => {
   let registry;
 
   beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     registry = new TestRegistry();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Constructor', () => {
@@ -308,6 +315,16 @@ describe('Registry', () => {
 });
 
 describe('createRegistry - entityName method generation', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   function makeRegistry(config, options = {}) {
     const Reg = createRegistry({
       registryId: 'TEST',

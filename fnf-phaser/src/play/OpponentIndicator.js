@@ -51,7 +51,7 @@ const FLASH_ALPHA = 1.0;
  * @property {number} direction - Direction index (0=left, 1=down, 2=up, 3=right)
  * @property {number} flashTimer - Countdown from flashDuration to 0
  * @property {boolean} isFlashing - Whether the arrow is currently highlighted
- * @property {Object|null} graphic - The Phaser Graphics object (null in headless/test mode)
+ * @property {Phaser.GameObjects.Graphics|null} graphic - The Phaser Graphics object (null in headless/test mode)
  */
 
 /**
@@ -61,7 +61,7 @@ const FLASH_ALPHA = 1.0;
 class OpponentIndicator {
   /**
    * The Phaser scene
-   * @type {Object|null}
+   * @type {Phaser.Scene|null}
    */
   scene = null;
 
@@ -96,10 +96,11 @@ class OpponentIndicator {
   arrows = [];
 
   /**
-   * @param {Object} scene - The Phaser scene
+   * @param {Phaser.Scene} scene - The Phaser scene
    * @param {OpponentIndicatorConfig} [config={}] - Configuration options
    */
   constructor(scene, config = {}) {
+    /** @type {Phaser.Scene} */
     this.scene = scene;
     this.x = config.x ?? OPPONENT_INDICATOR_X;
     this.y = config.y ?? OPPONENT_INDICATOR_Y;
@@ -140,7 +141,7 @@ class OpponentIndicator {
 
   /**
    * Draw an arrow triangle on a Graphics object.
-   * @param {Object} graphic - Phaser.GameObjects.Graphics
+   * @param {Record<string, any>} graphic - Phaser.GameObjects.Graphics
    * @param {number} x - Center X position
    * @param {number} y - Center Y position
    * @param {number} direction - Direction index (0-3)

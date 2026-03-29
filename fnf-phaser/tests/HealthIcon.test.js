@@ -234,10 +234,10 @@ describe('HealthIcon', () => {
 
     it('should check animation state for animated icons', () => {
       healthIcon.isLegacyStyle = false;
-      healthIcon.anims = { currentAnim: { isComplete: false } };
+      healthIcon.anims = { isPlaying: true };
       expect(healthIcon.isAnimationFinished()).toBe(false);
 
-      healthIcon.anims = { currentAnim: { isComplete: true } };
+      healthIcon.anims = { isPlaying: false };
       expect(healthIcon.isAnimationFinished()).toBe(true);
     });
   });

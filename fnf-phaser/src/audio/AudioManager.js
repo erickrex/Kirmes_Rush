@@ -8,6 +8,16 @@
 import * as Constants from '../core/Constants.js';
 
 /**
+ * Phaser sound instance with seek/volume support.
+ * Both WebAudioSound and HTML5AudioSound extend BaseSound with these properties.
+ * @typedef {Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound} PhaserPlayableSound
+ */
+
+/**
+ * @typedef {import('./VoicesGroup.js').default} VoicesGroup
+ */
+
+/**
  * @typedef {Object} AudioManagerConfig
  * @property {number} [volume=1.0] - Master volume (0-1)
  * @property {boolean} [muted=false] - Whether audio is muted
@@ -54,13 +64,13 @@ class AudioManager {
 
   /**
    * The instrumental track
-   * @type {Phaser.Sound.BaseSound | null}
+   * @type {PhaserPlayableSound | null}
    */
   instrumental = null;
 
   /**
    * The voices group
-   * @type {Object | null}
+   * @type {VoicesGroup | null}
    */
   voices = null;
 
@@ -114,13 +124,13 @@ class AudioManager {
 
   /**
    * Callback when song ends
-   * @type {Function | null}
+   * @type {(() => void) | null}
    */
   onComplete = null;
 
   /**
    * Loaded sound effects cache
-   * @type {Map<string, Phaser.Sound.BaseSound>}
+   * @type {Map<string, PhaserPlayableSound>}
    */
   sfxCache = new Map();
 
@@ -140,7 +150,7 @@ class AudioManager {
   /**
    * Load the instrumental track
    * @param {string} key - The audio key
-   * @returns {Phaser.Sound.BaseSound | null}
+   * @returns {PhaserPlayableSound | null}
    */
   loadInstrumental(key) {
     if (!this.scene?.sound) {
@@ -157,9 +167,13 @@ class AudioManager {
         return null;
       }
 
-      this.instrumental = this.scene.sound.add(key, {
-        volume: this.instrumentalVolume * this.masterVolume
-      });
+      /** @type {PhaserPlayableSound} */
+      const sound = /** @type {PhaserPlayableSound} */ (
+        this.scene.sound.add(key, {
+          volume: this.instrumentalVolume * this.masterVolume
+        })
+      );
+      this.instrumental = sound;
 
       // Get song length
       if (this.instrumental.duration) {
@@ -183,7 +197,7 @@ class AudioManager {
 
   /**
    * Set the voices group
-   * @param {Object} voicesGroup - The VoicesGroup instance
+   * @param {VoicesGroup} voicesGroup - The VoicesGroup instance
    */
   setVoices(voicesGroup) {
     this.voices = voicesGroup;
@@ -219,15 +233,24 @@ class AudioManager {
     // Mobile browsers block audio until a user gesture resumes the context.
     // We must wait for the context to actually be running before calling
     // play(), otherwise the play call is silently dropped on iOS/Android.
-    const ctx = this.scene?.sound?.context;
+    const soundManager = this.scene?.sound;
+    const ctx =
+      soundManager && 'context' in soundManager
+        ? /** @type {AudioContext} */ (
+            /** @type {Phaser.Sound.WebAudioSoundManager} */ (soundManager).context
+          )
+        : null;
     if (ctx && ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        this._startPlayback(seekTime, startTime);
-      }).catch(() => {
-        // Context couldn't resume — try playing anyway in case Phaser
-        // queues it, and let the delta-based fallback keep the game going.
-        this._startPlayback(seekTime, startTime);
-      });
+      ctx
+        .resume()
+        .then(() => {
+          this._startPlayback(seekTime, startTime);
+        })
+        .catch(() => {
+          // Context couldn't resume — try playing anyway in case Phaser
+          // queues it, and let the delta-based fallback keep the game going.
+          this._startPlayback(seekTime, startTime);
+        });
       return;
     }
 
@@ -243,6 +266,11 @@ class AudioManager {
    * @private
    */
   _startPlayback(seekTime, startTime) {
+    if (!this.instrumental) {
+      this.isPlaying = false;
+      return;
+    }
+
     try {
       this.instrumental.play({ seek: seekTime });
       this.isPlaying = true;
@@ -504,7 +532,7 @@ class AudioManager {
   /**
    * Load a sound effect
    * @param {string} key - The sound effect key
-   * @returns {Phaser.Sound.BaseSound | null}
+   * @returns {PhaserPlayableSound | null}
    */
   loadSFX(key) {
     if (!this.scene?.sound) {
@@ -513,13 +541,16 @@ class AudioManager {
 
     // Check if already cached
     if (this.sfxCache.has(key)) {
-      return this.sfxCache.get(key) || null;
+      return this.sfxCache.get(key) ?? null;
     }
 
     try {
-      const sfx = this.scene.sound.add(key, {
-        volume: this.sfxVolume * this.masterVolume
-      });
+      /** @type {PhaserPlayableSound} */
+      const sfx = /** @type {PhaserPlayableSound} */ (
+        this.scene.sound.add(key, {
+          volume: this.sfxVolume * this.masterVolume
+        })
+      );
       this.sfxCache.set(key, sfx);
       return sfx;
     } catch (e) {
@@ -535,7 +566,7 @@ class AudioManager {
    * @param {number} [config.volume] - Volume override (0-1)
    * @param {number} [config.rate] - Playback rate
    * @param {boolean} [config.loop] - Whether to loop
-   * @returns {Phaser.Sound.BaseSound | null}
+   * @returns {PhaserPlayableSound | null}
    */
   playSFX(key, config = {}) {
     if (!this.scene?.sound || this.muted) {
@@ -544,7 +575,7 @@ class AudioManager {
 
     try {
       // Get or create the sound
-      let sfx = this.sfxCache.get(key);
+      let sfx = this.sfxCache.get(key) ?? null;
       if (!sfx) {
         sfx = this.loadSFX(key);
       }

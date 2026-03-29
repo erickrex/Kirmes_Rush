@@ -51,6 +51,50 @@
  */
 
 /**
+ * Options for converting atlas animations to Phaser animation configs.
+ * @typedef {Object} SparrowAnimationOptions
+ * @property {string} [key] - Custom animation key (defaults to prefix)
+ * @property {number} [frameRate=24] - Frames per second
+ * @property {number} [repeat=-1] - Repeat count (-1 for infinite)
+ * @property {boolean} [yoyo=false] - Reverse on completion
+ * @property {number[]} [indices] - Specific frame indices to use
+ */
+
+/**
+ * Internal frame+index pair used during animation detection grouping.
+ * @typedef {Object} SparrowFrameEntry
+ * @property {SparrowFrame} frame - The parsed frame
+ * @property {number} index - The frame index extracted from the name
+ */
+
+/**
+ * Statistics about a parsed atlas.
+ * @typedef {Object} SparrowAtlasStats
+ * @property {string} imagePath - Path to the spritesheet image
+ * @property {number} totalFrames - Total number of frames
+ * @property {number} totalAnimations - Total number of detected animations
+ * @property {number} totalFrameArea - Sum of all frame areas in pixels
+ * @property {{minWidth: number, maxWidth: number, minHeight: number, maxHeight: number}} frameSizeRange - Min/max frame dimensions
+ * @property {string[]} animationNames - List of animation prefixes
+ */
+
+/**
+ * Individual frame entry in Phaser frame data output.
+ * @typedef {Object} PhaserFrameDataEntry
+ * @property {{x: number, y: number, w: number, h: number}} frame - Source rectangle in spritesheet
+ * @property {boolean} rotated - Whether the frame is rotated
+ * @property {boolean} trimmed - Whether the frame was trimmed
+ * @property {{x: number, y: number, w: number, h: number}} spriteSourceSize - Trimmed sprite offset and size
+ * @property {{w: number, h: number}} sourceSize - Original source dimensions
+ */
+
+/**
+ * Phaser-compatible frame data output from toPhaserFrameData.
+ * @typedef {Object} PhaserFrameDataResult
+ * @property {Record<string, PhaserFrameDataEntry>} frames - Frame data keyed by frame name
+ */
+
+/**
  * Parser for Sparrow/Starling XML texture atlas format.
  * Handles frame extraction and animation sequence detection.
  */
@@ -142,7 +186,7 @@ class SparrowParser {
    * @returns {SparrowFrame | null} Parsed frame or null if invalid
    */
   static parseSubTextureFromString(attrString) {
-    const getAttr = (name) => {
+    const getAttr = (/** @type {string} */ name) => {
       const match = attrString.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i'));
       return match ? match[1] : null;
     };
@@ -291,6 +335,7 @@ class SparrowParser {
    */
   static detectAnimations(frames) {
     const animations = new Map();
+    /** @type {Map<string, SparrowFrameEntry[]>} */
     const framesByPrefix = new Map();
 
     for (const frame of frames) {
@@ -299,7 +344,9 @@ class SparrowParser {
       if (!framesByPrefix.has(prefix)) {
         framesByPrefix.set(prefix, []);
       }
-      framesByPrefix.get(prefix).push({ frame, index });
+      /** @type {SparrowFrameEntry[]} */
+      const entries = /** @type {SparrowFrameEntry[]} */ (framesByPrefix.get(prefix));
+      entries.push({ frame, index });
     }
 
     // Convert grouped frames into animations
@@ -415,12 +462,7 @@ class SparrowParser {
    * @param {ParsedAtlas} atlas - The parsed atlas
    * @param {string} textureKey - The Phaser texture key
    * @param {string} prefix - Animation prefix
-   * @param {Object} [options={}] - Animation options
-   * @param {string} [options.key] - Custom animation key (defaults to prefix)
-   * @param {number} [options.frameRate=24] - Frames per second
-   * @param {number} [options.repeat=-1] - Repeat count (-1 for infinite)
-   * @param {boolean} [options.yoyo=false] - Reverse on completion
-   * @param {number[]} [options.indices] - Specific frame indices to use
+   * @param {SparrowAnimationOptions} [options={}] - Animation options
    * @returns {PhaserAnimationConfig | null} Phaser animation config or null
    */
   static toPhaserAnimation(atlas, textureKey, prefix, options = {}) {
@@ -458,7 +500,7 @@ class SparrowParser {
    * Convert all animations in an atlas to Phaser configurations.
    * @param {ParsedAtlas} atlas - The parsed atlas
    * @param {string} textureKey - The Phaser texture key
-   * @param {Object} [defaultOptions={}] - Default options for all animations
+   * @param {SparrowAnimationOptions} [defaultOptions={}] - Default options for all animations
    * @returns {PhaserAnimationConfig[]} Array of Phaser animation configs
    */
   static toPhaserAnimations(atlas, textureKey, defaultOptions = {}) {
@@ -478,12 +520,15 @@ class SparrowParser {
    * Generate Phaser frame data for adding to a texture.
    * This creates the frame configuration needed for Phaser's texture manager.
    * @param {ParsedAtlas} atlas - The parsed atlas
-   * @returns {Object} Frame data object for Phaser
+   * @returns {PhaserFrameDataResult} Frame data object for Phaser
    */
   static toPhaserFrameData(atlas) {
+    /** @type {Record<string, PhaserFrameDataEntry>} */
     const frameData = {};
 
     for (const frame of atlas.frames) {
+      const fx = frame.frameX ?? 0;
+      const fy = frame.frameY ?? 0;
       frameData[frame.name] = {
         frame: {
           x: frame.x,
@@ -491,17 +536,17 @@ class SparrowParser {
           w: frame.width,
           h: frame.height
         },
-        rotated: frame.rotated,
-        trimmed: frame.frameX !== 0 || frame.frameY !== 0,
+        rotated: frame.rotated ?? false,
+        trimmed: fx !== 0 || fy !== 0,
         spriteSourceSize: {
-          x: -frame.frameX,
-          y: -frame.frameY,
+          x: -fx,
+          y: -fy,
           w: frame.width,
           h: frame.height
         },
         sourceSize: {
-          w: frame.frameWidth,
-          h: frame.frameHeight
+          w: frame.frameWidth ?? frame.width,
+          h: frame.frameHeight ?? frame.height
         }
       };
     }
@@ -521,7 +566,7 @@ class SparrowParser {
   /**
    * Get statistics about an atlas.
    * @param {ParsedAtlas} atlas - The parsed atlas
-   * @returns {Object} Atlas statistics
+   * @returns {SparrowAtlasStats} Atlas statistics
    */
   static getAtlasStats(atlas) {
     let totalFrameArea = 0;

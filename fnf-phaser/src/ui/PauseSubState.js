@@ -58,7 +58,7 @@ export default class PauseSubState extends Phaser.Scene {
 
     /**
      * Song data passed from parent
-     * @type {Object | null}
+     * @type {{songName?: string, difficulty?: string, [key: string]: any} | null}
      */
     this.songData = null;
 
@@ -85,11 +85,23 @@ export default class PauseSubState extends Phaser.Scene {
      * @type {number}
      */
     this.selectedDifficultyIndex = 1;
+
+    /**
+     * Difficulty container
+     * @type {Phaser.GameObjects.Container | null}
+     */
+    this.difficultyContainer = null;
+
+    /**
+     * Difficulty text objects
+     * @type {Phaser.GameObjects.Text[]}
+     */
+    this.difficultyTexts = [];
   }
 
   /**
    * Initialize with data from parent scene
-   * @param {Object} data - Initialization data
+   * @param {{parentScene?: string, songData?: {songName?: string, difficulty?: string, [key: string]: any}} | undefined} data - Initialization data
    */
   init(data) {
     this.parentSceneKey = data?.parentScene || 'PlayState';
@@ -191,7 +203,9 @@ export default class PauseSubState extends Phaser.Scene {
       if (text.setInteractive) {
         text.setInteractive({ useHandCursor: true });
         text.on('pointerdown', () => {
-          if (this.transitioning) return;
+          if (this.transitioning) {
+            return;
+          }
           this.selectedIndex = index;
           this.updateDisplay();
           this.onSelect();
@@ -239,13 +253,15 @@ export default class PauseSubState extends Phaser.Scene {
       if (text.setInteractive) {
         text.setInteractive({ useHandCursor: true });
         text.on('pointerdown', () => {
-          if (this.transitioning) return;
+          if (this.transitioning) {
+            return;
+          }
           this.selectedDifficultyIndex = index;
           this.updateDisplay();
           this.confirmDifficulty();
         });
       }
-      this.difficultyContainer.add(text);
+      this.difficultyContainer?.add(text);
       this.difficultyTexts.push(text);
     });
   }
@@ -254,19 +270,23 @@ export default class PauseSubState extends Phaser.Scene {
    * Setup input handlers
    */
   setupInput() {
+    const kb = this.input.keyboard;
+    if (!kb) {
+      return;
+    }
     // Navigation
-    this.input.keyboard.on('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.on('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.on('keydown-W', this.onNavigateUp, this);
-    this.input.keyboard.on('keydown-S', this.onNavigateDown, this);
+    kb.on('keydown-UP', this.onNavigateUp, this);
+    kb.on('keydown-DOWN', this.onNavigateDown, this);
+    kb.on('keydown-W', this.onNavigateUp, this);
+    kb.on('keydown-S', this.onNavigateDown, this);
 
     // Selection
-    this.input.keyboard.on('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.on('keydown-SPACE', this.onSelect, this);
+    kb.on('keydown-ENTER', this.onSelect, this);
+    kb.on('keydown-SPACE', this.onSelect, this);
 
     // Back/Resume
-    this.input.keyboard.on('keydown-ESC', this.onBack, this);
-    this.input.keyboard.on('keydown-P', this.onBack, this);
+    kb.on('keydown-ESC', this.onBack, this);
+    kb.on('keydown-P', this.onBack, this);
   }
 
   /**
@@ -385,7 +405,9 @@ export default class PauseSubState extends Phaser.Scene {
 
     // Close this scene and resume parent
     this.scene.stop();
-    this.scene.resume(this.parentSceneKey);
+    if (this.parentSceneKey) {
+      this.scene.resume(this.parentSceneKey);
+    }
   }
 
   /**
@@ -400,8 +422,10 @@ export default class PauseSubState extends Phaser.Scene {
       this.scene.stop();
 
       // Restart play state with same data
-      this.scene.stop(this.parentSceneKey);
-      this.scene.start(this.parentSceneKey, this.songData);
+      if (this.parentSceneKey) {
+        this.scene.stop(this.parentSceneKey);
+        this.scene.start(this.parentSceneKey, this.songData || undefined);
+      }
     });
   }
 
@@ -410,7 +434,7 @@ export default class PauseSubState extends Phaser.Scene {
    */
   showDifficultySelector() {
     this.difficultyMode = true;
-    this.difficultyContainer.setVisible(true);
+    this.difficultyContainer?.setVisible(true);
 
     // Hide main options
     this.optionTexts.forEach((text) => text.setVisible(false));
@@ -423,7 +447,7 @@ export default class PauseSubState extends Phaser.Scene {
    */
   hideDifficultySelector() {
     this.difficultyMode = false;
-    this.difficultyContainer.setVisible(false);
+    this.difficultyContainer?.setVisible(false);
 
     // Show main options
     this.optionTexts.forEach((text) => text.setVisible(true));
@@ -449,11 +473,13 @@ export default class PauseSubState extends Phaser.Scene {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
-      this.scene.stop(this.parentSceneKey);
-      this.scene.start(this.parentSceneKey, {
-        ...this.songData,
-        difficulty: newDifficulty
-      });
+      if (this.parentSceneKey) {
+        this.scene.stop(this.parentSceneKey);
+        this.scene.start(this.parentSceneKey, {
+          ...this.songData,
+          difficulty: newDifficulty
+        });
+      }
     });
   }
 
@@ -467,7 +493,9 @@ export default class PauseSubState extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       // Stop both scenes
       this.scene.stop();
-      this.scene.stop(this.parentSceneKey);
+      if (this.parentSceneKey) {
+        this.scene.stop(this.parentSceneKey);
+      }
 
       // Go to main menu
       this.scene.start('MainMenuState');
@@ -523,7 +551,7 @@ export default class PauseSubState extends Phaser.Scene {
       const targetTexts = this.difficultyMode ? this.difficultyTexts : this.optionTexts;
       const targetIndex = this.difficultyMode ? this.selectedDifficultyIndex : this.selectedIndex;
 
-      if (targetTexts[targetIndex]) {
+      if (targetTexts && targetTexts[targetIndex]) {
         const pulse = 1.1 + Math.sin(time / 150) * 0.05;
         targetTexts[targetIndex].setScale(pulse);
       }
@@ -535,18 +563,22 @@ export default class PauseSubState extends Phaser.Scene {
    */
   shutdown() {
     this.events?.off('shutdown', this.shutdown, this);
-    this.input.keyboard.off('keydown-UP', this.onNavigateUp, this);
-    this.input.keyboard.off('keydown-DOWN', this.onNavigateDown, this);
-    this.input.keyboard.off('keydown-W', this.onNavigateUp, this);
-    this.input.keyboard.off('keydown-S', this.onNavigateDown, this);
-    this.input.keyboard.off('keydown-ENTER', this.onSelect, this);
-    this.input.keyboard.off('keydown-SPACE', this.onSelect, this);
-    this.input.keyboard.off('keydown-ESC', this.onBack, this);
-    this.input.keyboard.off('keydown-P', this.onBack, this);
+    const kb = this.input.keyboard;
+    if (kb) {
+      kb.off('keydown-UP', this.onNavigateUp, this);
+      kb.off('keydown-DOWN', this.onNavigateDown, this);
+      kb.off('keydown-W', this.onNavigateUp, this);
+      kb.off('keydown-S', this.onNavigateDown, this);
+      kb.off('keydown-ENTER', this.onSelect, this);
+      kb.off('keydown-SPACE', this.onSelect, this);
+      kb.off('keydown-ESC', this.onBack, this);
+      kb.off('keydown-P', this.onBack, this);
+    }
 
     this.optionTexts = [];
     this.difficultyTexts = [];
     this.overlay = null;
     this.songData = null;
+    this.difficultyContainer = null;
   }
 }

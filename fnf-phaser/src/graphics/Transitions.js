@@ -43,6 +43,7 @@ class Transitions {
    * The Phaser scene
    * @type {Phaser.Scene}
    */
+  // @ts-ignore - set to null in destroy()
   scene = null;
 
   /**
@@ -65,7 +66,7 @@ class Transitions {
 
   /**
    * Sticker sprites for sticker transition
-   * @type {Phaser.GameObjects.Sprite[]}
+   * @type {Phaser.GameObjects.Graphics[]}
    */
   stickers = [];
 
@@ -257,7 +258,7 @@ class Transitions {
       }
     }
 
-    this.overlay.setPosition(startX, startY);
+    this.overlay?.setPosition(startX, startY);
 
     this.currentTween = this.scene.tweens.add({
       targets: this.overlay,
@@ -347,7 +348,8 @@ class Transitions {
 
       // Start from random edge
       const edge = Phaser.Math.Between(0, 3);
-      let startX, startY;
+      let startX = targetX,
+        startY = targetY;
 
       switch (edge) {
         case 0: // Top
@@ -362,7 +364,7 @@ class Transitions {
           startX = targetX;
           startY = height + 100;
           break;
-        case 3: // Left
+        default: // Left
           startX = -100;
           startY = targetY;
           break;
@@ -405,7 +407,8 @@ class Transitions {
     this.stickers.forEach((sticker, i) => {
       const delay = (i / this.stickers.length) * (duration * 0.5);
       const edge = Phaser.Math.Between(0, 3);
-      let targetX, targetY;
+      let targetX = sticker.x,
+        targetY = sticker.y;
 
       switch (edge) {
         case 0:
@@ -420,7 +423,7 @@ class Transitions {
           targetX = sticker.x;
           targetY = height + 100;
           break;
-        case 3:
+        default:
           targetX = -100;
           targetY = sticker.y;
           break;
@@ -524,7 +527,7 @@ class Transitions {
     graphics.beginPath();
     graphics.moveTo(cx, cy + 10 * scale);
 
-    graphics.bezierCurveTo(
+    /** @type {any} */ (graphics).bezierCurveTo(
       cx,
       cy - 5 * scale,
       cx - 15 * scale,
@@ -532,7 +535,7 @@ class Transitions {
       cx - 15 * scale,
       cy + 5 * scale
     );
-    graphics.bezierCurveTo(
+    /** @type {any} */ (graphics).bezierCurveTo(
       cx - 15 * scale,
       cy + 15 * scale,
       cx,
@@ -540,7 +543,7 @@ class Transitions {
       cx,
       cy + 25 * scale
     );
-    graphics.bezierCurveTo(
+    /** @type {any} */ (graphics).bezierCurveTo(
       cx,
       cy + 20 * scale,
       cx + 15 * scale,
@@ -548,7 +551,7 @@ class Transitions {
       cx + 15 * scale,
       cy + 5 * scale
     );
-    graphics.bezierCurveTo(
+    /** @type {any} */ (graphics).bezierCurveTo(
       cx + 15 * scale,
       cy - 5 * scale,
       cx,
@@ -580,8 +583,8 @@ class Transitions {
 
     if (direction === 'out') {
       // Wipe from left to right
-      this.overlay.setScale(0, 1);
-      this.overlay.setOrigin(0, 0);
+      this.overlay?.setScale(0, 1);
+      /** @type {any} */ (this.overlay)?.setOrigin?.(0, 0);
 
       this.currentTween = this.scene.tweens.add({
         targets: this.overlay,
@@ -596,9 +599,9 @@ class Transitions {
       });
     } else {
       // Wipe from right to left (reveal)
-      this.overlay.setScale(1, 1);
-      this.overlay.setOrigin(1, 0);
-      this.overlay.setPosition(width, 0);
+      this.overlay?.setScale(1, 1);
+      /** @type {any} */ (this.overlay)?.setOrigin?.(1, 0);
+      this.overlay?.setPosition(width, 0);
 
       this.currentTween = this.scene.tweens.add({
         targets: this.overlay,
@@ -681,7 +684,7 @@ class Transitions {
    */
   destroy() {
     this.cancel();
-    this.scene = null;
+    /** @type {any} */ (this).scene = null;
   }
 }
 

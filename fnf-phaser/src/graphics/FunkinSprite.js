@@ -116,7 +116,7 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
    * @param {string} [texture] - Texture key
    * @param {string | number} [frame] - Initial frame
    */
-  constructor(scene, x = 0, y = 0, texture, frame) {
+  constructor(scene, x = 0, y = 0, texture = '__DEFAULT', frame) {
     super(scene, x, y, texture, frame);
 
     this.originalPosition = { x, y };
@@ -344,7 +344,7 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
     // Try fallback
     if (fallback && fallback !== name) {
       console.warn(`[FunkinSprite] Animation "${name}" not found, falling back to "${fallback}"`);
-      return this._correctAnimationName(fallback, null);
+      return this._correctAnimationName(fallback, undefined);
     }
 
     console.error(`[FunkinSprite] Animation "${name}" not found!`);
@@ -376,8 +376,8 @@ class FunkinSprite extends Phaser.GameObjects.Sprite {
       return null;
     }
 
-    if (this._textureKey) {
-      const namespacedKey = `${this._textureKey}-${animName}`;
+    if (/** @type {any} */ (this)._textureKey) {
+      const namespacedKey = `${/** @type {any} */ (this)._textureKey}-${animName}`;
       const hasNamespacedAnimation =
         this.scene?.anims?.exists?.(namespacedKey) ||
         this.anims.exists(namespacedKey) ||

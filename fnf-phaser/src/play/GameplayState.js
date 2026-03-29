@@ -9,6 +9,10 @@ import * as Constants from '../core/Constants.js';
 import Scoring from './Scoring.js';
 
 /**
+ * @typedef {import('../types.js').Tallies} Tallies
+ */
+
+/**
  * @typedef {Object} GameplayStateContext
  * @property {Phaser.Scene} scene - Phaser scene reference
  * @property {Object} playState - PlayState instance
@@ -94,13 +98,16 @@ export function createGameplayState(_context) {
     updateTallies(judgement, score) {
       // Map killer to sick for tally purposes
       const tallyKey = judgement === 'killer' ? 'sick' : judgement;
-      if (state.tallies[tallyKey] !== undefined) {
-        state.tallies[tallyKey]++;
+      const tallies = /** @type {Record<string, number>} */ (
+        /** @type {unknown} */ (state.tallies)
+      );
+      if (tallies[tallyKey] !== undefined) {
+        tallies[tallyKey]++;
       }
       state.tallies.totalNotesHit++;
       state.tallies.combo = state.combo;
       state.tallies.maxCombo = state.maxCombo;
-      state.tallies.score += score;
+      state.tallies.score = (state.tallies.score ?? 0) + score;
     },
 
     /**
@@ -122,7 +129,7 @@ export function createGameplayState(_context) {
       }
       destroyed = true;
       // Reset state to free references
-      state.tallies = null;
+      state.tallies = /** @type {any} */ (null);
     }
   };
 

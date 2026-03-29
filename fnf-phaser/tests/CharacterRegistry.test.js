@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the CharacterRegistry
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CharacterRegistry from '../src/data/registries/CharacterRegistry.js';
 import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
@@ -82,6 +82,13 @@ describe('CharacterRegistry', () => {
     // Create fresh instance for each test
     CharacterRegistry.instance = null;
     registry = CharacterRegistry.getInstance();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Singleton', () => {

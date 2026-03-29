@@ -6,6 +6,10 @@
 import { createRegistry } from '../../core/Registry.js';
 import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
+// ========================================
+// TYPE DEFINITIONS
+// ========================================
+
 /**
  * @typedef {Object} StageAnimationData
  * @property {string} name - Animation name
@@ -41,21 +45,46 @@ import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
  */
 
 /**
- * @typedef {Object} StageData
- * @property {string} version - Data format version
- * @property {string} name - Display name
+ * Raw stage data as read from JSON before cleaning/validation.
+ * @typedef {Object} RawStageData
+ * @property {string} [version] - Data format version
+ * @property {string} [name] - Display name
  * @property {string} [directory] - Asset directory
- * @property {number} [cameraZoom=1] - Default camera zoom
- * @property {StagePropData[]} props - Background props
- * @property {Object} characters - Character positions
+ * @property {number} [cameraZoom] - Default camera zoom
+ * @property {Array<Record<string, any>>} [props] - Stage props/layers
+ * @property {Record<string, Record<string, any>>} [characters] - Character positions by role
  */
 
 /**
+ * Cleaned/normalized stage data after processing raw JSON.
+ * @typedef {Object} StageCleanedData
+ * @property {string} version - Data format version
+ * @property {string} name - Display name
+ * @property {string | null} directory - Asset directory
+ * @property {number} cameraZoom - Default camera zoom
+ * @property {StagePropData[]} props - Cleaned stage props
+ * @property {Record<string, StageCharacterPosition>} characters - Character positions
+ */
+
+/**
+ * A stage registry entry with ID, cleaned data, and derived fields.
  * @typedef {Object} StageEntry
  * @property {string} id - Stage ID
- * @property {StageData} data - Stage data
+ * @property {StageCleanedData} data - Cleaned stage data
  * @property {string} name - Display name
  * @property {string[]} propNames - List of prop names
+ * @property {function(): void} destroy - Cleanup function
+ */
+
+/**
+ * Stage display info returned by getStageDisplayInfo.
+ * @typedef {Object} StageDisplayInfo
+ * @property {string} id - Stage ID
+ * @property {string} name - Display name
+ * @property {string | null} directory - Asset directory
+ * @property {number} cameraZoom - Camera zoom
+ * @property {number} propCount - Number of props
+ * @property {boolean} hasAnimatedProps - Whether any props are animated
  */
 
 const DEFAULTS = {
@@ -76,6 +105,11 @@ const DEFAULTS = {
 // CLEANING HELPERS
 // ========================================
 
+/**
+ * Clean raw animation data into normalized form.
+ * @param {Record<string, any>} anim - Raw animation data
+ * @returns {StageAnimationData}
+ */
 function cleanAnimationData(anim) {
   return {
     name: anim.name || '',
@@ -86,6 +120,11 @@ function cleanAnimationData(anim) {
   };
 }
 
+/**
+ * Clean raw prop data into normalized form.
+ * @param {Record<string, any>} prop - Raw prop data
+ * @returns {StagePropData}
+ */
 function cleanPropData(prop) {
   return {
     name: prop.name || 'unnamed',
@@ -104,7 +143,13 @@ function cleanPropData(prop) {
   };
 }
 
+/**
+ * Clean raw character position data into normalized form.
+ * @param {Record<string, Record<string, any>> | undefined} characters - Raw character positions
+ * @returns {Record<string, StageCharacterPosition>}
+ */
 function cleanCharacterPositions(characters) {
+  /** @type {Record<string, StageCharacterPosition>} */
   const cleaned = {};
   const charTypes = ['bf', 'dad', 'gf'];
 
@@ -140,6 +185,11 @@ const StageRegistry = createRegistry(
     versionRule: DEFAULTS.VERSION_RULE,
     entityName: 'Stage',
 
+    /**
+     * @param {RawStageData} data
+     * @param {string} [fileName]
+     * @returns {boolean}
+     */
     validateData(data, fileName) {
       if (!data.version) {
         console.warn(
@@ -153,6 +203,10 @@ const StageRegistry = createRegistry(
       return true;
     },
 
+    /**
+     * @param {RawStageData} data
+     * @returns {StageCleanedData}
+     */
     cleanData(data) {
       return {
         version: data.version || DEFAULTS.VERSION,
@@ -164,12 +218,17 @@ const StageRegistry = createRegistry(
       };
     },
 
+    /**
+     * @param {string} id
+     * @param {StageCleanedData} data
+     * @returns {StageEntry}
+     */
     createEntry(id, data) {
       return {
         id,
         data,
         name: data.name,
-        propNames: data.props.map((p) => p.name),
+        propNames: data.props.map((/** @type {StagePropData} */ p) => p.name),
         destroy: () => {}
       };
     }
@@ -181,36 +240,76 @@ const StageRegistry = createRegistry(
       // STAGE ACCESS METHODS
       // ========================================
 
+      /**
+       * Get all props for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {StagePropData[]}
+       */
       getStageProps(stageId) {
         const entry = this.fetchEntry(stageId);
         return entry ? entry.data.props : [];
       },
 
+      /**
+       * Get props sorted by z-index.
+       * @param {string} stageId - Stage ID
+       * @returns {StagePropData[]}
+       */
       getPropsSortedByZIndex(stageId) {
         const props = this.getStageProps(stageId);
-        return [...props].sort((a, b) => a.zIndex - b.zIndex);
+        return [...props].sort(
+          (/** @type {StagePropData} */ a, /** @type {StagePropData} */ b) =>
+            (a.zIndex ?? 0) - (b.zIndex ?? 0)
+        );
       },
 
+      /**
+       * Get a specific prop by name.
+       * @param {string} stageId - Stage ID
+       * @param {string} propName - Prop name
+       * @returns {StagePropData | null}
+       */
       getProp(stageId, propName) {
         const props = this.getStageProps(stageId);
-        return props.find((p) => p.name === propName) || null;
+        return props.find((/** @type {StagePropData} */ p) => p.name === propName) || null;
       },
 
+      /**
+       * Get character positions for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {Record<string, StageCharacterPosition> | null}
+       */
       getCharacterPositions(stageId) {
         const entry = this.fetchEntry(stageId);
         return entry ? entry.data.characters : null;
       },
 
+      /**
+       * Get a specific character position.
+       * @param {string} stageId - Stage ID
+       * @param {string} charType - Character type (bf, dad, gf)
+       * @returns {StageCharacterPosition | null}
+       */
       getCharacterPosition(stageId, charType) {
         const positions = this.getCharacterPositions(stageId);
         return positions ? positions[charType] || null : null;
       },
 
+      /**
+       * Get camera zoom for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {number}
+       */
       getCameraZoom(stageId) {
         const entry = this.fetchEntry(stageId);
         return entry ? entry.data.cameraZoom : DEFAULTS.CAMERA_ZOOM;
       },
 
+      /**
+       * Get asset directory for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {string | null}
+       */
       getDirectory(stageId) {
         const entry = this.fetchEntry(stageId);
         return entry ? entry.data.directory : null;
@@ -220,10 +319,22 @@ const StageRegistry = createRegistry(
       // LISTING METHODS
       // ========================================
 
+      /**
+       * Get all stages in a specific directory.
+       * @param {string} directory - Directory to filter by
+       * @returns {StageEntry[]}
+       */
       getStagesByDirectory(directory) {
-        return this.getAllEntries().filter((entry) => entry.data.directory === directory);
+        return this.getAllEntries().filter(
+          (/** @type {StageEntry} */ entry) => entry.data.directory === directory
+        );
       },
 
+      /**
+       * Get display info for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {StageDisplayInfo | null}
+       */
       getStageDisplayInfo(stageId) {
         const entry = this.fetchEntry(stageId);
         if (!entry) {
@@ -237,7 +348,8 @@ const StageRegistry = createRegistry(
           cameraZoom: entry.data.cameraZoom,
           propCount: entry.data.props.length,
           hasAnimatedProps: entry.data.props.some(
-            (p) => p.animations.length > 0 || p.danceEvery > 0
+            (/** @type {StagePropData} */ p) =>
+              (p.animations || []).length > 0 || (p.danceEvery ?? 0) > 0
           )
         };
       },
@@ -246,6 +358,12 @@ const StageRegistry = createRegistry(
       // UTILITY METHODS
       // ========================================
 
+      /**
+       * Get the full asset path for a prop.
+       * @param {string} stageId - Stage ID
+       * @param {string} propName - Prop name
+       * @returns {string | null}
+       */
       getPropAssetPath(stageId, propName) {
         const prop = this.getProp(stageId, propName);
         if (!prop) {
@@ -259,9 +377,15 @@ const StageRegistry = createRegistry(
         return `images/${prop.assetPath}`;
       },
 
+      /**
+       * Get all asset paths for a stage.
+       * @param {string} stageId - Stage ID
+       * @returns {string[]}
+       */
       getAllAssetPaths(stageId) {
         const props = this.getStageProps(stageId);
         const directory = this.getDirectory(stageId);
+        /** @type {Set<string>} */
         const paths = new Set();
 
         for (const prop of props) {
@@ -276,6 +400,7 @@ const StageRegistry = createRegistry(
         return Array.from(paths);
       },
 
+      /** @returns {string} */
       toString() {
         return `StageRegistry(${this.countEntries()} stages)`;
       }

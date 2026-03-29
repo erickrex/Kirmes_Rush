@@ -46,6 +46,7 @@ export default class LevelContentResolver {
   constructor(options = {}) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.manifestIds = options.manifestIds ?? DEFAULT_MANIFEST_IDS;
+    /** @type {Array<{id: string, name: string, songs: any[]}>} */
     this.manifests = [];
     this.songIndex = new Map();
     this.loaded = false;
@@ -77,7 +78,7 @@ export default class LevelContentResolver {
     this.songIndex.clear();
 
     manifests.forEach((manifest) => {
-      manifest.songs.forEach((song) => {
+      manifest.songs.forEach((/** @type {any} */ song) => {
         this.songIndex.set(song.id, {
           ...song,
           manifestId: manifest.id,

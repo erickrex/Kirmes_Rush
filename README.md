@@ -87,9 +87,9 @@ Current status:
 
 - `npm test` passes
 - `npm run test:integration` passes
-- `npm run lint` has outstanding warnings and errors (not yet green)
+- `npm run lint` passes (zero errors, zero warnings)
 - `npm run build` passes
-- `npm run typecheck` has outstanding legacy JSDoc/type issues (not yet green)
+- `npm run typecheck` passes (zero diagnostics)
 
 ## Project Structure
 

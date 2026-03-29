@@ -23,6 +23,7 @@ vi.mock('phaser', () => {
     destroy: vi.fn(),
     setInteractive: vi.fn(function() { this.input = { hitArea: { width: 200, height: 30 } }; return this; }),
     on: vi.fn().mockReturnThis(),
+    off: vi.fn().mockReturnThis(),
     input: null
   };
 
@@ -391,6 +392,29 @@ describe('TitleState', () => {
       expect(scene.logo).toBeNull();
       expect(scene.pressEnterText).toBeNull();
       expect(scene.attractTimer).toBeNull();
+    });
+
+    it('should kill attract mode tweens on pressEnterText during shutdown', () => {
+      scene.create();
+      scene.enterAttractMode();
+      const killTweensOf = scene.tweens.killTweensOf;
+      scene.shutdown();
+      expect(killTweensOf).toHaveBeenCalledWith(scene.pressEnterText || expect.anything());
+    });
+
+    it('should reset attractModeActive to false on shutdown', () => {
+      scene.create();
+      scene.enterAttractMode();
+      expect(scene.attractModeActive).toBe(true);
+      scene.shutdown();
+      expect(scene.attractModeActive).toBe(false);
+    });
+
+    it('should remove pointerdown listener from pressEnterText on shutdown', () => {
+      scene.create();
+      const offSpy = scene.pressEnterText.off;
+      scene.shutdown();
+      expect(offSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function), scene);
     });
   });
 });

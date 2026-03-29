@@ -6,22 +6,11 @@
 import { createRegistry } from '../../core/Registry.js';
 import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
 
-/**
- * @typedef {Object} AnimationData
- * @property {string} name - Animation name
- * @property {string} prefix - Animation prefix in the spritesheet
- * @property {number[]} [offsets=[0,0]] - X, Y offsets
- * @property {number} [frameRate=24] - Frames per second
- * @property {boolean} [looped=false] - Whether animation loops
- * @property {boolean} [flipX=false] - Flip horizontally
- * @property {boolean} [flipY=false] - Flip vertically
- * @property {number[]} [frameIndices] - Specific frame indices
- * @property {string} [assetPath] - Override asset path
- */
+// Types are defined locally in this file (CharacterCleanedData, CharacterEntry, etc.)
 
 /**
  * @typedef {Object} HealthIconData
- * @property {string} [id] - Icon ID (defaults to character ID)
+ * @property {string | null} [id] - Icon ID (defaults to character ID)
  * @property {number} [scale=1] - Icon scale
  * @property {boolean} [flipX=false] - Flip icon horizontally
  * @property {boolean} [isPixel=false] - Use pixel rendering
@@ -36,31 +25,95 @@ import { getSharedRegistryPath } from '../../utils/GameDataPaths.js';
  */
 
 /**
- * @typedef {Object} CharacterData
+ * Raw character animation data from JSON before cleaning.
+ * @typedef {Object} RawCharacterAnimationData
+ * @property {string} name - Animation name
+ * @property {string} [prefix] - Frame prefix in atlas
+ * @property {number[]} [offsets] - X, Y offset
+ * @property {number} [frameRate] - Frames per second
+ * @property {boolean} [looped] - Whether animation loops
+ * @property {boolean} [flipX] - Flip horizontally
+ * @property {boolean} [flipY] - Flip vertically
+ * @property {number[] | null} [frameIndices] - Specific frame indices
+ * @property {string | null} [assetPath] - Asset path override
+ */
+
+/**
+ * Raw character data as read from JSON before cleaning/validation.
+ * @typedef {Object} RawCharacterData
+ * @property {string} [version] - Data format version
+ * @property {string} [name] - Display name
+ * @property {string} [renderType] - Render type (sparrow, packer, etc.)
+ * @property {string} [assetPath] - Path to sprite assets
+ * @property {number} [scale] - Scale multiplier
+ * @property {Object} [healthIcon] - Health icon configuration
+ * @property {Object} [death] - Death animation configuration
+ * @property {number[]} [offsets] - Position offsets
+ * @property {number[]} [cameraOffsets] - Camera offsets
+ * @property {boolean} [isPixel] - Whether this is pixel art
+ * @property {number} [danceEvery] - Dance frequency in beats
+ * @property {number} [singTime] - Sing hold time in steps
+ * @property {RawCharacterAnimationData[]} [animations] - Animation definitions
+ * @property {string} [startingAnimation] - Starting animation name
+ * @property {boolean} [flipX] - Flip sprite horizontally
+ */
+
+/**
+ * Cleaned/normalized animation data after processing.
+ * @typedef {Object} CleanedAnimationData
+ * @property {string} name - Animation name
+ * @property {string} prefix - Frame prefix in atlas
+ * @property {number[]} offsets - X, Y offset
+ * @property {number} frameRate - Frames per second
+ * @property {boolean} looped - Whether animation loops
+ * @property {boolean} flipX - Flip horizontally
+ * @property {boolean} flipY - Flip vertically
+ * @property {number[] | null} frameIndices - Specific frame indices
+ * @property {string | null} assetPath - Asset path override
+ */
+
+/**
+ * Cleaned/normalized character data after processing raw JSON.
+ * @typedef {Object} CharacterCleanedData
  * @property {string} version - Data format version
  * @property {string} name - Display name
  * @property {string} renderType - Render type
  * @property {string} assetPath - Path to sprite assets
- * @property {number} [scale=1] - Character scale
- * @property {HealthIconData} [healthIcon] - Health icon configuration
- * @property {DeathData} [death] - Death animation configuration
- * @property {number[]} [offsets=[0,0]] - Global position offsets
- * @property {number[]} [cameraOffsets=[0,0]] - Camera focus offsets
- * @property {boolean} [isPixel=false] - Use pixel rendering
- * @property {number} [danceEvery=1] - Beats between idle animations
- * @property {number} [singTime=8] - Steps to hold sing animation
- * @property {AnimationData[]} animations - Character animations
- * @property {string} [startingAnimation='idle'] - Initial animation
- * @property {boolean} [flipX=false] - Flip entire sprite horizontally
+ * @property {number} scale - Scale multiplier
+ * @property {HealthIconData} healthIcon - Health icon configuration
+ * @property {DeathData} death - Death animation configuration
+ * @property {number[]} offsets - Position offsets
+ * @property {number[]} cameraOffsets - Camera offsets
+ * @property {boolean} isPixel - Whether this is pixel art
+ * @property {number} danceEvery - Dance frequency in beats
+ * @property {number} singTime - Sing hold time in steps
+ * @property {CleanedAnimationData[]} animations - Animation definitions
+ * @property {string} startingAnimation - Starting animation name
+ * @property {boolean} flipX - Flip sprite horizontally
  */
 
 /**
+ * A character registry entry with ID, cleaned data, and derived fields.
  * @typedef {Object} CharacterEntry
  * @property {string} id - Character ID
- * @property {CharacterData} data - Character data
+ * @property {CharacterCleanedData} data - Cleaned character data
  * @property {string} name - Display name
  * @property {string} renderType - Render type
  * @property {string[]} animationNames - List of animation names
+ * @property {function(): void} destroy - Cleanup function
+ */
+
+/**
+ * Character display info returned by getCharacterDisplayInfo.
+ * @typedef {Object} CharacterDisplayInfo
+ * @property {string} id - Character ID
+ * @property {string} name - Display name
+ * @property {string} renderType - Render type
+ * @property {boolean} isPixel - Whether this is pixel art
+ * @property {number} scale - Scale multiplier
+ * @property {number} animationCount - Number of animations
+ * @property {boolean} hasDeathAnimation - Whether character has death animation
+ * @property {string} healthIconId - Health icon ID
  */
 
 const RenderType = {
@@ -93,6 +146,11 @@ const DEFAULTS = {
 // CLEANING HELPERS
 // ========================================
 
+/**
+ * Clean raw animation data into normalized form.
+ * @param {RawCharacterAnimationData} anim - Raw animation data
+ * @returns {CleanedAnimationData}
+ */
 function cleanAnimationData(anim) {
   return {
     name: anim.name,
@@ -107,6 +165,12 @@ function cleanAnimationData(anim) {
   };
 }
 
+/**
+ * Clean raw health icon data into normalized form.
+ * @param {Record<string, any> | undefined} iconData - Raw health icon data
+ * @param {RawCharacterData} charData - Parent character data for fallback values
+ * @returns {HealthIconData}
+ */
 function cleanHealthIconData(iconData, charData) {
   const icon = iconData || {};
   return {
@@ -118,6 +182,11 @@ function cleanHealthIconData(iconData, charData) {
   };
 }
 
+/**
+ * Clean raw death data into normalized form.
+ * @param {Record<string, any> | undefined} deathData - Raw death data
+ * @returns {DeathData}
+ */
 function cleanDeathData(deathData) {
   const death = deathData || {};
   return {
@@ -138,6 +207,11 @@ const CharacterRegistry = createRegistry(
     versionRule: DEFAULTS.VERSION_RULE,
     entityName: 'Character',
 
+    /**
+     * @param {RawCharacterData} data
+     * @param {string} [fileName]
+     * @returns {boolean}
+     */
     validateData(data, fileName) {
       if (!data.version) {
         console.warn(
@@ -161,12 +235,16 @@ const CharacterRegistry = createRegistry(
       return true;
     },
 
+    /**
+     * @param {RawCharacterData} data
+     * @returns {CharacterCleanedData}
+     */
     cleanData(data) {
       return {
         version: data.version || DEFAULTS.VERSION,
         name: data.name || DEFAULTS.NAME,
         renderType: data.renderType || DEFAULTS.RENDER_TYPE,
-        assetPath: data.assetPath,
+        assetPath: /** @type {string} */ (data.assetPath),
         scale: data.scale ?? DEFAULTS.SCALE,
         healthIcon: cleanHealthIconData(data.healthIcon, data),
         death: cleanDeathData(data.death),
@@ -175,19 +253,26 @@ const CharacterRegistry = createRegistry(
         isPixel: data.isPixel ?? DEFAULTS.IS_PIXEL,
         danceEvery: data.danceEvery ?? DEFAULTS.DANCE_EVERY,
         singTime: data.singTime ?? DEFAULTS.SING_TIME,
-        animations: data.animations.map(cleanAnimationData),
+        animations: /** @type {RawCharacterAnimationData[]} */ (data.animations).map(
+          cleanAnimationData
+        ),
         startingAnimation: data.startingAnimation || DEFAULTS.STARTING_ANIM,
         flipX: data.flipX ?? DEFAULTS.FLIP_X
       };
     },
 
+    /**
+     * @param {string} id
+     * @param {CharacterCleanedData} data
+     * @returns {CharacterEntry}
+     */
     createEntry(id, data) {
       return {
         id,
         data,
         name: data.name,
         renderType: data.renderType,
-        animationNames: data.animations.map((a) => a.name),
+        animationNames: data.animations.map((/** @type {CleanedAnimationData} */ a) => a.name),
         destroy: () => {}
       };
     }
@@ -199,31 +284,65 @@ const CharacterRegistry = createRegistry(
       // CHARACTER ACCESS METHODS
       // ========================================
 
+      /**
+       * Get the render type for a character.
+       * @param {string} charId - Character ID
+       * @returns {string}
+       */
       getCharacterRenderType(charId) {
         const entry = this.fetchEntry(charId);
         return entry ? entry.renderType : DEFAULTS.RENDER_TYPE;
       },
 
+      /**
+       * Get all animations for a character.
+       * @param {string} charId - Character ID
+       * @returns {CleanedAnimationData[]}
+       */
       getCharacterAnimations(charId) {
         const entry = this.fetchEntry(charId);
         return entry ? entry.data.animations : [];
       },
 
+      /**
+       * Get a specific animation by name.
+       * @param {string} charId - Character ID
+       * @param {string} animName - Animation name
+       * @returns {CleanedAnimationData | null}
+       */
       getAnimation(charId, animName) {
         const animations = this.getCharacterAnimations(charId);
-        return animations.find((a) => a.name === animName) || null;
+        return (
+          animations.find((/** @type {CleanedAnimationData} */ a) => a.name === animName) || null
+        );
       },
 
+      /**
+       * Check if a character has a specific animation.
+       * @param {string} charId - Character ID
+       * @param {string} animName - Animation name
+       * @returns {boolean}
+       */
       hasAnimation(charId, animName) {
         const entry = this.fetchEntry(charId);
         return entry ? entry.animationNames.includes(animName) : false;
       },
 
+      /**
+       * Get the asset path for a character.
+       * @param {string} charId - Character ID
+       * @returns {string | null}
+       */
       getAssetPath(charId) {
         const entry = this.fetchEntry(charId);
         return entry ? entry.data.assetPath : null;
       },
 
+      /**
+       * Get health icon data for a character.
+       * @param {string} charId - Character ID
+       * @returns {HealthIconData | null}
+       */
       getHealthIconData(charId) {
         const entry = this.fetchEntry(charId);
         if (!entry) {
@@ -241,16 +360,32 @@ const CharacterRegistry = createRegistry(
       // LISTING METHODS
       // ========================================
 
+      /**
+       * Get all characters with a specific render type.
+       * @param {string} renderType - Render type to filter by
+       * @returns {CharacterEntry[]}
+       */
       getCharactersByRenderType(renderType) {
-        return this.getAllEntries().filter((entry) => entry.renderType === renderType);
+        return this.getAllEntries().filter(
+          (/** @type {CharacterEntry} */ entry) => entry.renderType === renderType
+        );
       },
 
+      /**
+       * Get all playable characters (those with miss animations).
+       * @returns {CharacterEntry[]}
+       */
       getPlayableCharacters() {
-        return this.getAllEntries().filter((entry) => {
-          return entry.animationNames.some((name) => name.includes('miss'));
+        return this.getAllEntries().filter((/** @type {CharacterEntry} */ entry) => {
+          return entry.animationNames.some((/** @type {string} */ name) => name.includes('miss'));
         });
       },
 
+      /**
+       * Get display info for a character.
+       * @param {string} charId - Character ID
+       * @returns {CharacterDisplayInfo | null}
+       */
       getCharacterDisplayInfo(charId) {
         const entry = this.fetchEntry(charId);
         if (!entry) {
@@ -273,6 +408,11 @@ const CharacterRegistry = createRegistry(
       // UTILITY METHODS
       // ========================================
 
+      /**
+       * Get the full sprite asset path for a character.
+       * @param {string} charId - Character ID
+       * @returns {string | null}
+       */
       getSpriteAssetPath(charId) {
         const entry = this.fetchEntry(charId);
         if (!entry) {
@@ -281,6 +421,11 @@ const CharacterRegistry = createRegistry(
         return `images/${entry.data.assetPath}`;
       },
 
+      /**
+       * Get the XML asset path for sparrow/multisparrow characters.
+       * @param {string} charId - Character ID
+       * @returns {string | null}
+       */
       getXmlAssetPath(charId) {
         const entry = this.fetchEntry(charId);
         if (!entry) {
@@ -297,6 +442,7 @@ const CharacterRegistry = createRegistry(
         return `images/${entry.data.assetPath}.xml`;
       },
 
+      /** @returns {string} */
       toString() {
         return `CharacterRegistry(${this.countEntries()} characters)`;
       }
@@ -305,13 +451,28 @@ const CharacterRegistry = createRegistry(
 );
 
 // Static helper methods (not instance methods)
-CharacterRegistry.getSingAnimationName = function (direction, miss = false) {
+const /** @type {Record<string, any>} */ charRegistryStatic = /** @type {any} */ (
+    CharacterRegistry
+  );
+
+/**
+ * Get the sing animation name for a direction.
+ * @param {number} direction - Note direction (0-3)
+ * @param {boolean} [miss=false] - Whether this is a miss animation
+ * @returns {string}
+ */
+charRegistryStatic.getSingAnimationName = function (direction, miss = false) {
   const directions = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
   const dirName = directions[direction] || 'LEFT';
   return miss ? `sing${dirName}miss` : `sing${dirName}`;
 };
 
-CharacterRegistry.getHoldAnimationName = function (direction) {
+/**
+ * Get the hold animation name for a direction.
+ * @param {number} direction - Note direction (0-3)
+ * @returns {string}
+ */
+charRegistryStatic.getHoldAnimationName = function (direction) {
   const directions = ['LEFT', 'DOWN', 'UP', 'RIGHT'];
   const dirName = directions[direction] || 'LEFT';
   return `sing${dirName}-hold`;

@@ -35,7 +35,7 @@ const TRIANGLE_VERTEX_INDICES = [0, 1, 2, 1, 2, 3, 4, 5, 6, 5, 6, 7];
 class SustainTrail {
   /**
    * The scene this trail belongs to
-   * @type {Phaser.Scene}
+   * @type {Phaser.Scene | null}
    */
   scene = null;
 
@@ -65,19 +65,19 @@ class SustainTrail {
 
   /**
    * The note data associated with this hold note
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   noteData = null;
 
   /**
    * Reference to the parent strumline
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   parentStrumline = null;
 
   /**
    * Reference to the hold note cover effect
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   cover = null;
 
@@ -248,7 +248,7 @@ class SustainTrail {
    * @param {Phaser.Scene} scene - The scene this trail belongs to
    * @param {number} [direction=0] - Note direction (0-3)
    * @param {number} [sustainLength=0] - Length in milliseconds
-   * @param {Object} [noteStyle=null] - Note style configuration
+   * @param {Record<string, any> | null} [noteStyle=null] - Note style configuration
    */
   constructor(scene, direction = 0, sustainLength = 0, noteStyle = null) {
     this.scene = scene;
@@ -296,7 +296,7 @@ class SustainTrail {
 
   /**
    * Setup the hold note graphic from a note style
-   * @param {Object} noteStyle - The note style configuration
+   * @param {Record<string, any>} noteStyle - The note style configuration
    */
   setupHoldNoteGraphic(noteStyle) {
     if (!noteStyle) {
@@ -336,8 +336,8 @@ class SustainTrail {
 
   /**
    * Setup with note data
-   * @param {Object} noteData - The note data
-   * @param {Object} [noteStyle] - The note style
+   * @param {Record<string, any>} noteData - The note data
+   * @param {Record<string, any> | null} [noteStyle] - The note style
    * @returns {this}
    */
   setup(noteData, noteStyle = null) {
@@ -636,9 +636,9 @@ class SustainTrail {
    * Destroy this sustain trail
    */
   destroy() {
-    this.vertices = null;
-    this.indices = null;
-    this.uvtData = null;
+    this.vertices = [];
+    this.indices = [];
+    this.uvtData = [];
     this.noteData = null;
     this.parentStrumline = null;
     this.cover = null;

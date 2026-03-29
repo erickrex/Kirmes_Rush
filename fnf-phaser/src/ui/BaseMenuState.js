@@ -21,6 +21,9 @@ import Phaser from 'phaser';
  * @extends Phaser.Scene
  */
 export default class BaseMenuState extends Phaser.Scene {
+  /**
+   * @param {Phaser.Types.Scenes.SettingsConfig} config
+   */
   constructor(config) {
     super(config);
 
@@ -141,7 +144,7 @@ export default class BaseMenuState extends Phaser.Scene {
 
   /**
    * Create a background from a texture key, with a gradient fallback.
-   * @param {string} textureKey - Texture to use
+   * @param {string} [textureKey] - Texture to use
    * @param {number} [color1=0x1a1a2e] - Top gradient color
    * @param {number} [color2=0x16213e] - Bottom gradient color
    */
@@ -211,8 +214,11 @@ export default class BaseMenuState extends Phaser.Scene {
    * Call this in your `create()` method.
    */
   setupInput() {
-    for (const { key, handler } of this.getInputBindings()) {
-      this.input.keyboard.on(key, handler, this);
+    const kb = this.input.keyboard;
+    if (kb) {
+      for (const { key, handler } of this.getInputBindings()) {
+        kb.on(key, handler, this);
+      }
     }
 
     // Unlock the Web Audio context on the first touch/click in any menu.
@@ -222,11 +228,14 @@ export default class BaseMenuState extends Phaser.Scene {
     if (canvas) {
       const unlock = () => {
         try {
-          const ctx = this.sound?.context;
+          const mgr = /** @type {any} */ (this.sound);
+          const ctx = mgr?.context;
           if (ctx && ctx.state === 'suspended') {
             ctx.resume();
           }
-        } catch { /* swallow */ }
+        } catch {
+          /* swallow */
+        }
         canvas.removeEventListener('touchstart', unlock);
         canvas.removeEventListener('mousedown', unlock);
       };
@@ -243,8 +252,11 @@ export default class BaseMenuState extends Phaser.Scene {
    * (or let `shutdown()` on this base class handle it).
    */
   teardownInput() {
-    for (const { key, handler } of this.getInputBindings()) {
-      this.input.keyboard.off(key, handler, this);
+    const kb = this.input.keyboard;
+    if (kb) {
+      for (const { key, handler } of this.getInputBindings()) {
+        kb.off(key, handler, this);
+      }
     }
   }
 

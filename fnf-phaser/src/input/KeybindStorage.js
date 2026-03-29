@@ -19,14 +19,18 @@ const CODE_TO_STORED = Object.fromEntries(
 
 export const ARROW_STORED_KEYS = new Set(['LEFT', 'DOWN', 'UP', 'RIGHT']);
 
+/**
+ * @param {string} value
+ * @returns {string | null}
+ */
 export function storedKeyToCode(value) {
   if (!value) {
     return null;
   }
 
   const normalized = String(value).trim().toUpperCase();
-  if (STORED_TO_CODE[normalized]) {
-    return STORED_TO_CODE[normalized];
+  if (/** @type {Record<string, string>} */ (STORED_TO_CODE)[normalized]) {
+    return /** @type {Record<string, string>} */ (STORED_TO_CODE)[normalized];
   }
 
   if (/^[A-Z]$/.test(normalized)) {
@@ -40,6 +44,10 @@ export function storedKeyToCode(value) {
   return value;
 }
 
+/**
+ * @param {string} code
+ * @returns {string}
+ */
 export function codeToStoredKey(code) {
   if (!code) {
     return '';

@@ -367,7 +367,7 @@ describe('ResultState', () => {
       scene.init({ score: 1000 });
       scene.create();
       // timingAvgText should not exist
-      expect(scene.timingAvgText).toBeUndefined();
+      expect(scene.timingAvgText).toBeNull();
     });
 
     it('should render timing section when timingStats is provided', () => {

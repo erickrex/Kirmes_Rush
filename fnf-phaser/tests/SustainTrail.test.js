@@ -478,9 +478,9 @@ describe('SustainTrail', () => {
 
       trail.destroy();
 
-      expect(trail.vertices).toBeNull();
-      expect(trail.indices).toBeNull();
-      expect(trail.uvtData).toBeNull();
+      expect(trail.vertices).toEqual([]);
+      expect(trail.indices).toEqual([]);
+      expect(trail.uvtData).toEqual([]);
       expect(trail.noteData).toBeNull();
       expect(trail.parentStrumline).toBeNull();
       expect(trail.cover).toBeNull();

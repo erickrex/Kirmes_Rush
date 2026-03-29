@@ -6,7 +6,6 @@
 import Phaser from 'phaser';
 import BaseMenuState from './BaseMenuState.js';
 import SaveManager from '../data/SaveManager.js';
-import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
 import { codeToStoredKey } from '../input/KeybindStorage.js';
 
 /**
@@ -23,7 +22,7 @@ import { codeToStoredKey } from '../input/KeybindStorage.js';
  * @property {number} [min] - Min value for sliders
  * @property {number} [max] - Max value for sliders
  * @property {number} [step] - Step value for sliders
- * @property {Function} [action] - Action to perform
+ * @property {string} [action] - Action to perform
  */
 
 /**
@@ -230,8 +229,14 @@ export default class OptionsState extends BaseMenuState {
       {
         name: 'Misc',
         items: [
-          { name: 'Offset Calibration', key: 'calibrate', type: 'action', action: 'calibrate' },
-          { name: 'Reset to Defaults', key: 'reset', type: 'action', action: 'reset' }
+          {
+            name: 'Offset Calibration',
+            key: 'calibrate',
+            type: 'action',
+            action: 'calibrate',
+            value: null
+          },
+          { name: 'Reset to Defaults', key: 'reset', type: 'action', action: 'reset', value: null }
         ]
       }
     ];
@@ -249,6 +254,48 @@ export default class OptionsState extends BaseMenuState {
     /** @type {Phaser.GameObjects.Text | null} */
     this.keybindCaptureText = null;
     this.saveManager = SaveManager.getInstance();
+
+    /**
+     * Back button
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.backButton = null;
+
+    /**
+     * Category label
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.categoryLabel = null;
+
+    /**
+     * Previous category button
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.prevCatButton = null;
+
+    /**
+     * Next category button
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.nextCatButton = null;
+
+    /**
+     * Keybind overlay container
+     * @type {Phaser.GameObjects.Container | null}
+     */
+    this.keybindOverlay = null;
+
+    /**
+     * Currently capturing keybind item
+     * @type {OptionItem | null}
+     */
+    this.captureKeybindItem = null;
+
+    /**
+     * Index of slider being dragged (-1 = none)
+     * @type {number}
+     */
+    this._draggingSliderIndex = -1;
   }
 
   /**
@@ -338,8 +385,8 @@ export default class OptionsState extends BaseMenuState {
     // When actively editing a slider, left/right adjust the value
     if (this.editingSlider) {
       const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
-      item.value = Math.round((item.value - item.step) * 1000) / 1000;
-      item.value = Math.max(item.min, item.value);
+      item.value = Math.round((item.value - (item.step || 1)) * 1000) / 1000;
+      item.value = Math.max(item.min || 0, item.value);
       this.saveOptions();
       this.updateDisplay();
       return;
@@ -363,8 +410,8 @@ export default class OptionsState extends BaseMenuState {
     // When actively editing a slider, left/right adjust the value
     if (this.editingSlider) {
       const item = this.categories[this.selectedCategoryIndex].items[this.selectedIndex];
-      item.value = Math.round((item.value + item.step) * 1000) / 1000;
-      item.value = Math.min(item.max, item.value);
+      item.value = Math.round((item.value + (item.step || 1)) * 1000) / 1000;
+      item.value = Math.min(item.max || 100, item.value);
       this.saveOptions();
       this.updateDisplay();
       return;
@@ -406,7 +453,7 @@ export default class OptionsState extends BaseMenuState {
         this.startKeybindCapture(item);
         break;
       case 'action':
-        this.executeAction(item.action);
+        this.executeAction(item.action ?? '');
         break;
     }
   }
@@ -448,7 +495,6 @@ export default class OptionsState extends BaseMenuState {
     this.editingSlider = false;
     this.selectedCategoryIndex = 0;
     this.selectedIndex = 0;
-    this.saveManager.init();
     this._draggingSliderIndex = -1;
 
     this.loadOptions();
@@ -456,7 +502,7 @@ export default class OptionsState extends BaseMenuState {
     const { width } = this.cameras.main;
     const pad = 36;
 
-    this.createBackground(null);
+    this.createBackground(undefined);
 
     // ── Header row: ← Back ... OPTIONS ──
     this.backButton = this.add
@@ -526,6 +572,11 @@ export default class OptionsState extends BaseMenuState {
     }
   }
 
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {Phaser.GameObjects.Container}
+   */
   createOptionDisplay(x, y) {
     const { width } = this.cameras.main;
     const container = this.add.container(x, y);
@@ -539,11 +590,13 @@ export default class OptionsState extends BaseMenuState {
     container.add(nameText);
     container.setData('nameText', nameText);
 
-    const valueText = this.add.text(usableWidth, 0, '', {
-      fontFamily: 'Arial',
-      fontSize: '30px',
-      color: '#00ff00'
-    }).setOrigin(1, 0);
+    const valueText = this.add
+      .text(usableWidth, 0, '', {
+        fontFamily: 'Arial',
+        fontSize: '30px',
+        color: '#00ff00'
+      })
+      .setOrigin(1, 0);
     container.add(valueText);
     container.setData('valueText', valueText);
 
@@ -614,7 +667,6 @@ export default class OptionsState extends BaseMenuState {
    * dragging on slider tracks adjusts the value.
    */
   enableTouchOnOptionItems() {
-    const minSize = BaseMenuState.MIN_TOUCH_TARGET;
     this.optionDisplays.forEach((display, index) => {
       const { width } = this.cameras.main;
       const hitHeight = 120;
@@ -623,10 +675,14 @@ export default class OptionsState extends BaseMenuState {
         Phaser.Geom.Rectangle.Contains
       );
 
-      display.on('pointerdown', (pointer) => {
-        if (this.transitioning || this.capturingKeybind) return;
+      display.on('pointerdown', (/** @type {Phaser.Input.Pointer} */ pointer) => {
+        if (this.transitioning || this.capturingKeybind) {
+          return;
+        }
         const category = this.categories[this.selectedCategoryIndex];
-        if (index >= category.items.length) return;
+        if (index >= category.items.length) {
+          return;
+        }
 
         this.selectedIndex = index;
         const item = category.items[index];
@@ -640,8 +696,10 @@ export default class OptionsState extends BaseMenuState {
         }
       });
 
-      display.on('pointermove', (pointer) => {
-        if (this._draggingSliderIndex !== index) return;
+      display.on('pointermove', (/** @type {Phaser.Input.Pointer} */ pointer) => {
+        if (this._draggingSliderIndex !== index) {
+          return;
+        }
         const category = this.categories[this.selectedCategoryIndex];
         const item = category.items[index];
         if (item?.type === 'slider') {
@@ -679,10 +737,13 @@ export default class OptionsState extends BaseMenuState {
     // pointer.x is in scene coords; display.x is the container's left edge
     const localX = pointer.x - display.x;
     const ratio = Math.max(0, Math.min(1, localX / trackWidth));
-    const raw = item.min + ratio * (item.max - item.min);
+    const minVal = item.min || 0;
+    const maxVal = item.max || 100;
+    const stepVal = item.step || 1;
+    const raw = minVal + ratio * (maxVal - minVal);
     // Snap to step
-    item.value = Math.round(raw / item.step) * item.step;
-    item.value = Math.max(item.min, Math.min(item.max, Math.round(item.value * 1000) / 1000));
+    item.value = Math.round(raw / stepVal) * stepVal;
+    item.value = Math.max(minVal, Math.min(maxVal, Math.round(item.value * 1000) / 1000));
     this.updateDisplay();
   }
 
@@ -690,6 +751,9 @@ export default class OptionsState extends BaseMenuState {
   // KEYBIND CAPTURE
   // ========================================
 
+  /**
+   * @param {KeyboardEvent} event
+   */
   onAnyKeyDown(event) {
     if (!this.capturingKeybind) {
       return;
@@ -698,29 +762,39 @@ export default class OptionsState extends BaseMenuState {
     if (key === 'ESCAPE') {
       return;
     }
-    this.captureKeybindItem.value = key;
+    if (this.captureKeybindItem) {
+      this.captureKeybindItem.value = key;
+    }
     this.saveOptions();
     this.cancelKeybindCapture();
     this.updateDisplay();
   }
 
+  /**
+   * @param {OptionItem} item
+   */
   startKeybindCapture(item) {
     this.capturingKeybind = true;
+    /** @type {OptionItem | null} */
     this.captureKeybindItem = item;
-    this.keybindOverlay.setVisible(true);
-    this.keybindCaptureText.setText(`Press key for: ${item.name}`);
+    this.keybindOverlay?.setVisible(true);
+    this.keybindCaptureText?.setText(`Press key for: ${item.name}`);
   }
 
   cancelKeybindCapture() {
     this.capturingKeybind = false;
+    /** @type {OptionItem | null} */
     this.captureKeybindItem = null;
-    this.keybindOverlay.setVisible(false);
+    this.keybindOverlay?.setVisible(false);
   }
 
   // ========================================
   // ACTIONS
   // ========================================
 
+  /**
+   * @param {string} action
+   */
   executeAction(action) {
     switch (action) {
       case 'calibrate':
@@ -797,7 +871,8 @@ export default class OptionsState extends BaseMenuState {
           sliderFill.fillRect(
             0,
             48,
-            ((item.value - item.min) / (item.max - item.min)) * trackWidth,
+            (((item.value || 0) - (item.min || 0)) / ((item.max || 100) - (item.min || 0))) *
+              trackWidth,
             24
           );
           break;
@@ -831,6 +906,7 @@ export default class OptionsState extends BaseMenuState {
   }
 
   saveOptions() {
+    /** @type {Record<string, any>} */
     const data = {};
     this.categories.forEach((category) => {
       category.items.forEach((item) => {

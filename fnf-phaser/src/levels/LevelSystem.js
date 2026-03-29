@@ -93,6 +93,7 @@ class FeatureToggles {
 
   /** @returns {Object<string, boolean>} */
   static getDefaultFeatures() {
+    /** @type {Record<string, boolean>} */
     const defaults = {};
     for (const name of FEATURE_NAMES) {
       defaults[name] = false;
@@ -102,6 +103,7 @@ class FeatureToggles {
 
   /** @returns {Object<string, boolean>} */
   static getAllEnabled() {
+    /** @type {Record<string, boolean>} */
     const all = {};
     for (const name of FEATURE_NAMES) {
       all[name] = true;
@@ -225,7 +227,7 @@ class LevelManifest {
   static VERSION = MANIFEST_VERSION;
   static REQUIRED_FIELDS = REQUIRED_FIELDS;
 
-  /** @param {Object} data @returns {LevelConfig | null} */
+  /** @param {Record<string, any>} data @returns {LevelConfig | null} */
   static parse(data) {
     if (!data || typeof data !== 'object') {
       return null;
@@ -246,7 +248,7 @@ class LevelManifest {
     }
   }
 
-  /** @param {Object} [data] @returns {Object<string, boolean>} */
+  /** @param {Record<string, any>} [data] @returns {Object<string, boolean>} */
   static parseFeatures(data) {
     const defaults = FeatureToggles.getDefaultFeatures();
     if (!data || typeof data !== 'object') {
@@ -258,7 +260,7 @@ class LevelManifest {
     return defaults;
   }
 
-  /** @param {Object} [data] @returns {LevelUIConfig} */
+  /** @param {Record<string, any>} [data] @returns {LevelUIConfig} */
   static parseUI(data) {
     const defaults = LevelManifest.getDefaultUI();
     if (!data || typeof data !== 'object') {
@@ -286,9 +288,9 @@ class LevelManifest {
           errors.push(`Missing or invalid required field: ${field}`);
         }
       } else if (
-        !config[field] ||
-        typeof config[field] !== 'string' ||
-        config[field].trim() === ''
+        !(/** @type {Record<string, any>} */ (config)[field]) ||
+        typeof (/** @type {Record<string, any>} */ (config)[field]) !== 'string' ||
+        /** @type {Record<string, any>} */ (config)[field].trim() === ''
       ) {
         errors.push(`Missing or invalid required field: ${field}`);
       }
@@ -365,7 +367,7 @@ class LevelSystem {
   /** @type {LevelConfig | null} */
   currentLevel = null;
   /** @type {FeatureToggles} */
-  featureToggles = null;
+  featureToggles;
   /** @type {boolean} */
   loaded = false;
 

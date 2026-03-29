@@ -6,6 +6,8 @@
 import Phaser from 'phaser';
 import EventBus, { Events } from '../core/EventBus.js';
 
+/** @import { LoadingStatePayload } from '../types.js' */
+
 /**
  * Given a single audio path (e.g. `foo/bar.ogg`), return an array containing
  * both the original and an alternate format so Phaser can pick whichever the
@@ -30,18 +32,6 @@ function audioPathsWithFallback(audioPath) {
   }
   return [audioPath];
 }
-
-/**
- * Loading configuration
- * @typedef {Object} LoadingConfig
- * @property {string} nextScene - Scene to transition to after loading
- * @property {Object} [nextSceneData] - Data to pass to next scene
- * @property {string[]} [assets] - Assets to load
- * @property {Function} [loadCallback] - Custom loading callback
- * @property {Function} [prepareCallback] - Async preparation callback returning { assets, nextSceneData }
- * @property {string} [message] - Loading message to display
- * @property {number} [minDuration=500] - Minimum display time in ms
- */
 
 /**
  * LoadingState - Displays loading progress between scenes
@@ -198,7 +188,7 @@ export default class LoadingState extends Phaser.Scene {
 
   /**
    * Initialize with loading configuration
-   * @param {LoadingConfig} config - Loading configuration
+   * @param {LoadingStatePayload} config - Loading configuration
    */
   init(config) {
     this.nextScene = config?.nextScene || '';
@@ -319,7 +309,7 @@ export default class LoadingState extends Phaser.Scene {
     };
     this.load.on('progress', this.loadEventHandlers.progress);
 
-    this.loadEventHandlers.fileprogress = (file) => {
+    this.loadEventHandlers.fileprogress = (/** @type {{key: string}} */ file) => {
       if (this.assetText) {
         this.assetText.setText(`Loading: ${file.key}`);
       }
@@ -351,10 +341,10 @@ export default class LoadingState extends Phaser.Scene {
   loadAssets() {
     let queuedAssets = 0;
 
-    this.assets.forEach((asset) => {
+    this.assets.forEach((/** @type {any} */ asset) => {
       if (typeof asset === 'string') {
         // Simple string path - infer type from extension
-        const ext = asset.split('.').pop().toLowerCase();
+        const ext = (asset.split('.').pop() || '').toLowerCase();
         const key = asset.replace(/\.[^/.]+$/, '').replace(/\//g, '-');
 
         switch (ext) {
@@ -480,7 +470,7 @@ export default class LoadingState extends Phaser.Scene {
    */
   async prepareAssets() {
     try {
-      const prepared = await this.prepareCallback(this);
+      const prepared = await /** @type {Function} */ (this.prepareCallback)(this);
 
       if (prepared?.nextScene) {
         this.nextScene = prepared.nextScene;
@@ -591,10 +581,10 @@ export default class LoadingState extends Phaser.Scene {
 
   /**
    * Update loop
-   * @param {number} time - Total time
+   * @param {number} _time - Total time
    * @param {number} delta - Delta time
    */
-  update(time, delta) {
+  update(_time, delta) {
     // Rotate spinner
     if (this.spinner) {
       this.spinner.rotation += delta * 0.005;
@@ -681,7 +671,7 @@ export default class LoadingState extends Phaser.Scene {
     this.cameras.main.fadeOut(300, 0, 0, 0);
 
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start(this.nextScene, this.nextSceneData);
+      this.scene.start(this.nextScene, this.nextSceneData || undefined);
     });
   }
 

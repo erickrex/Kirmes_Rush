@@ -74,11 +74,14 @@ describe('ReplayManager', () => {
   beforeEach(() => {
     mockStorage = createMockLocalStorage();
     vi.stubGlobal('localStorage', mockStorage);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     manager = new ReplayManager();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {

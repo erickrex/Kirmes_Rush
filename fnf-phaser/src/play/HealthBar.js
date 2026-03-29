@@ -372,15 +372,12 @@ class HealthBar {
 
   /**
    * Set the camera for the health bar (for HUD camera)
-   * @param {Phaser.Cameras.Scene2D.Camera} camera - The camera
+   * @param {Phaser.Cameras.Scene2D.Camera} _camera - The camera
    * @returns {this}
    */
-  setCamera(camera) {
+  setCamera(_camera) {
     if (this.backgroundGraphics) {
       this.backgroundGraphics.setScrollFactor(0);
-      if (camera && this.backgroundGraphics.cameras) {
-        // In Phaser, we'd set cameras array
-      }
     }
     if (this.barGraphics) {
       this.barGraphics.setScrollFactor(0);

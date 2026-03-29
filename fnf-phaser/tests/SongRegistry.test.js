@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the SongRegistry
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import SongRegistry from '../src/data/registries/SongRegistry.js';
 import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
@@ -82,6 +82,13 @@ describe('SongRegistry', () => {
     // Create fresh instance for each test
     SongRegistry.instance = null;
     registry = SongRegistry.getInstance();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Singleton', () => {

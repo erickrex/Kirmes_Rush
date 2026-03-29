@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for LoadingState
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Phaser
 vi.mock('phaser', () => {
@@ -138,6 +138,12 @@ describe('LoadingState', () => {
   beforeEach(() => {
     state = new LoadingState();
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Constructor', () => {

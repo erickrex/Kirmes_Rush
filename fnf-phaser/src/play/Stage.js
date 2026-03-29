@@ -16,6 +16,15 @@ import { PORTRAIT_WIDTH, PORTRAIT_HEIGHT, PLAYER_CHAR_Y_RANGE } from '../layout/
  */
 
 /**
+ * @typedef {Object} StageDataDef
+ * @property {string} [name] - Display name
+ * @property {string} [directory] - Asset directory
+ * @property {number} [cameraZoom] - Default camera zoom
+ * @property {Record<string, {position?: number[], zIndex?: number, cameraOffsets?: number[], scale?: number}>} [characters] - Character positions
+ * @property {Array<{name: string, position?: number[], scale?: number[], zIndex?: number, scroll?: number[], alpha?: number, isPixel?: boolean, danceEvery?: number, assetPath?: string}>} [props] - Stage props
+ */
+
+/**
  * Stage background and props for Friday Night Funkin' gameplay.
  * Handles:
  * - Loading stage data from registry
@@ -38,7 +47,7 @@ class Stage {
 
   /**
    * Stage data from registry
-   * @type {Object | null}
+   * @type {StageDataDef | null}
    */
   stageData = null;
 
@@ -62,7 +71,7 @@ class Stage {
 
   /**
    * Character positions
-   * @type {Object}
+   * @type {Record<string, {x: number, y: number, zIndex: number, cameraOffsets?: number[], scale?: number}>}
    */
   characterPositions = {
     bf: { x: 0, y: 0, zIndex: 0 },
@@ -97,7 +106,9 @@ class Stage {
    */
   loadFromRegistry(registry) {
     const reg = registry || StageRegistry.getInstance();
-    const data = reg.getStageData(this.stageId);
+    const data = /** @type {StageDataDef | null} */ (
+      /** @type {any} */ (reg).getStageData?.(this.stageId) || null
+    );
 
     if (!data) {
       console.error(`[Stage] Stage not found: ${this.stageId}`);
@@ -111,10 +122,7 @@ class Stage {
 
   /**
    * Apply stage data, adjusting positions for portrait (720×1280) framing.
-   * - Background props are scaled to cover the portrait canvas.
-   * - Player character is centered in the visible area between HUD and strumline.
-   * - Opponent character is shifted to the side / partially off-screen.
-   * @param {Object} data - Stage data
+   * @param {StageDataDef} data - Stage data
    */
   applyStageData(data) {
     this.cameraZoom = data.cameraZoom || 1.0;
@@ -164,7 +172,9 @@ class Stage {
     }
 
     // Sort props by z-index for proper layering
-    const sortedProps = [...this.stageData.props].sort((a, b) => a.zIndex - b.zIndex);
+    const sortedProps = [...(this.stageData.props || [])].sort(
+      (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+    );
 
     for (const propData of sortedProps) {
       const prop = this.createProp(propData);
@@ -179,8 +189,7 @@ class Stage {
 
   /**
    * Create a single prop sprite.
-   * Background props (negative zIndex) are scaled to cover the 720×1280 portrait canvas.
-   * @param {Object} propData - Prop data from stage definition
+   * @param {{name?: string, position?: number[], scale?: number[], zIndex?: number, scroll?: number[], alpha?: number, isPixel?: boolean, danceEvery?: number, assetPath?: string}} propData - Prop data from stage definition
    * @returns {FunkinSprite | null}
    */
   createProp(propData) {
@@ -239,7 +248,7 @@ class Stage {
     prop.danceEvery = propData.danceEvery || 0;
 
     // Store prop data for later use
-    prop._propData = propData;
+    /** @type {any} */ (prop)._propData = propData;
 
     // Add to scene
     this.scene.add.existing(prop);
@@ -313,7 +322,7 @@ class Stage {
   /**
    * Get character position
    * @param {string} charType - Character type ('bf', 'dad', 'gf')
-   * @returns {{x: number, y: number, zIndex: number, cameraOffsets: number[], scale: number}}
+   * @returns {{x: number, y: number, zIndex: number, cameraOffsets?: number[], scale?: number}}
    */
   getCharacterPosition(charType) {
     return (
@@ -329,7 +338,7 @@ class Stage {
 
   /**
    * Position a character on the stage
-   * @param {Object} character - Character sprite
+   * @param {{setPosition?: Function, x?: number, y?: number, setZIndex?: Function, setDepth?: Function, setScale?: Function}} character - Character sprite
    * @param {string} charType - Character type ('bf', 'dad', 'gf')
    */
   positionCharacter(character, charType) {
@@ -470,7 +479,7 @@ class Stage {
     const paths = [];
     const directory = this.stageData.directory;
 
-    for (const prop of this.stageData.props) {
+    for (const prop of this.stageData.props || []) {
       if (prop.assetPath) {
         const path = directory
           ? `images/${directory}/${prop.assetPath}`

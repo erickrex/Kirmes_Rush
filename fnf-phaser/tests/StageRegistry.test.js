@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the StageRegistry
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import StageRegistry from '../src/data/registries/StageRegistry.js';
 import { getSharedRegistryPath } from '../src/utils/GameDataPaths.js';
 
@@ -110,6 +110,13 @@ describe('StageRegistry', () => {
   beforeEach(() => {
     StageRegistry.instance = null;
     registry = StageRegistry.getInstance();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Singleton', () => {

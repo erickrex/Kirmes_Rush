@@ -17,7 +17,6 @@ import CharacterRegistry from '../data/registries/CharacterRegistry.js';
 import StageRegistry from '../data/registries/StageRegistry.js';
 import NoteStyleRegistry from '../data/registries/NoteStyleRegistry.js';
 import SaveManager from '../data/SaveManager.js';
-import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
 import {
   HEALTH_BAR_Y,
   HEALTH_BAR_WIDTH,
@@ -26,6 +25,12 @@ import {
   COMBO_POPUP_Y,
   PORTRAIT_WIDTH
 } from '../layout/LayoutManager.js';
+
+/**
+ * @typedef {import('../play/ScoreDisplay.js').default} ScoreDisplay
+ * @typedef {import('../play/ExpandedStatsDisplay.js').default} ExpandedStatsDisplay
+ * @typedef {import('../play/Strumline.js').default} Strumline
+ */
 
 /**
  * @typedef {{
@@ -49,25 +54,44 @@ import {
  *   noteStyle?: string | null,
  *   id?: string | null,
  *   stage?: string | null,
- *   characters?: Object | null,
+ *   characters?: Record<string, string> | null,
  *   returnScene?: string,
  *   returnSceneData?: object,
+ *   difficulty?: string,
  * }} SessionSongData
  *
  * @typedef {{
  *   level?: SessionLevel | null,
  *   difficulty?: string,
  *   startTimestamp?: number,
- *   chart?: object | null,
+ *   chart?: { scrollSpeed?: number } | null,
  *   songData?: SessionSongData | null,
- *   audio?: object | null,
+ *   audio?: { instrumental?: { key: string }, vocals?: Record<string, any> } | null,
  *   metadata?: {
  *     playData?: {
  *       stage?: string | null,
- *       characters?: Object | null
+ *       characters?: Record<string, string> | null
  *     }
- *   } | null
+ *   } | null,
+ *   assets?: object[],
  * }} PreparedPlaySessionLike
+ *
+ * @typedef {{
+ *   session?: PreparedPlaySessionLike,
+ *   chart?: object | null,
+ *   songData?: SessionSongData | null,
+ *   song?: SessionSongData | null,
+ *   difficulty?: string,
+ *   replayId?: string,
+ *   isReplay?: boolean,
+ * }} PlaySceneInitData
+ *
+ * @typedef {{
+ *   score: number,
+ *   rank: string,
+ *   tallies?: { maxCombo?: number },
+ *   isReplay?: boolean,
+ * }} SongEndData
  */
 
 /**
@@ -81,7 +105,7 @@ export default class PlayScene extends Phaser.Scene {
     /** @type {PlayState | null} */
     this.playState = null;
 
-    /** @type {object | null} */
+    /** @type {PlaySceneInitData | null} */
     this.initData = null;
 
     /** @type {PreparedPlaySessionLike | null} */
@@ -114,18 +138,21 @@ export default class PlayScene extends Phaser.Scene {
     /** @type {Phaser.GameObjects.Graphics | null} */
     this.backgroundGraphics = null;
 
-    /** @type {CharacterRegistry | null} */
+    /** @type {Phaser.GameObjects.Text | null} */
+    this.pauseButton = null;
+
+    /** @type {InstanceType<typeof CharacterRegistry> | null} */
     this.characterRegistry = null;
 
-    /** @type {StageRegistry | null} */
+    /** @type {InstanceType<typeof StageRegistry> | null} */
     this.stageRegistry = null;
 
-    /** @type {NoteStyleRegistry | null} */
+    /** @type {InstanceType<typeof NoteStyleRegistry> | null} */
     this.noteStyleRegistry = null;
   }
 
   /**
-   * @param {object} data - Scene data passed from scene.start()
+   * @param {PlaySceneInitData} data - Scene data passed from scene.start()
    */
   init(data) {
     this.initData = data || {};
@@ -133,7 +160,7 @@ export default class PlayScene extends Phaser.Scene {
 
   preload() {
     // Suppress individual load errors — PlayState handles missing assets gracefully
-    this.load.on('loaderror', (file) => {
+    this.load.on('loaderror', (/** @type {{ key: string }} */ file) => {
       console.warn(`[PlayScene] Asset not found: ${file.key}`);
     });
   }
@@ -141,10 +168,6 @@ export default class PlayScene extends Phaser.Scene {
   create() {
     // Stop any lingering menu music
     this.sound.stopAll();
-
-    // Ensure touch detection has run — BootScene.create() normally calls
-    // this, but the shipped scene order may skip BootScene entirely.
-    TouchDeviceDetector.detect();
 
     // Mobile browsers suspend the Web Audio context until a user gesture.
     // Register a one-time pointer listener that resumes it on the first tap
@@ -161,12 +184,13 @@ export default class PlayScene extends Phaser.Scene {
     this.setupAudio();
     this.setupRegistries();
 
-    const config = {
-      song: this.session.songData || null,
-      difficulty: this.session.difficulty || 'normal',
-      startTimestamp: this.session.startTimestamp || 0,
-      chart: this.session.chart || null
-    };
+    const session = /** @type {PreparedPlaySessionLike} */ (this.session);
+    const config = /** @type {import('../play/PlayState.js').PlayStateInitConfig} */ ({
+      song: session.songData || null,
+      difficulty: session.difficulty || 'normal',
+      startTimestamp: session.startTimestamp || 0,
+      chart: session.chart || null
+    });
 
     this.playState.init(config);
     if (this.audioManager) {
@@ -187,27 +211,31 @@ export default class PlayScene extends Phaser.Scene {
     // Wire audio before presentation — must not be swallowed by the
     // try/catch below so the game always has audio even when stage or
     // character loading fails.
-    if (!this.session.audio?.instrumental) {
-      console.warn('[PlayScene] session.audio missing instrumental:', this.session.audio);
+    if (!this.session?.audio?.instrumental) {
+      console.warn('[PlayScene] session.audio missing instrumental:', this.session?.audio);
     }
-    this.playState.wireAudio(this.session.audio ?? {});
+    this.playState.wireAudio(this.session?.audio ?? {});
 
     try {
       this.bootstrapPresentation();
     } catch (err) {
-      console.warn('[PlayScene] bootstrapPresentation error (non-fatal):', err.message);
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[PlayScene] bootstrapPresentation error (non-fatal):', message);
     }
 
     this.gameplaySkin = new GeneratedGameplaySkin(this, {
-      noteStyleId: this.session.songData?.noteStyle ?? null,
+      noteStyleId: this.session?.songData?.noteStyle ?? undefined,
       noteStyleRegistry: this.noteStyleRegistry
     });
-    this.playState.createStrumlines(
-      this.gameplaySkin.createNoteStyle(),
-      typeof this.session.chart?.scrollSpeed === 'number' ? this.session.chart.scrollSpeed : 1.0
-    );
-    this.gameplaySkin.attachStrumline(this.playState.opponentStrumline, { alpha: 0.65 });
-    this.gameplaySkin.attachStrumline(this.playState.playerStrumline);
+    const scrollSpeed =
+      typeof this.session?.chart?.scrollSpeed === 'number' ? this.session.chart.scrollSpeed : 1.0;
+    this.playState.createStrumlines(this.gameplaySkin.createNoteStyle(), scrollSpeed);
+    if (this.playState.opponentStrumline) {
+      this.gameplaySkin.attachStrumline(this.playState.opponentStrumline, { alpha: 0.65 });
+    }
+    if (this.playState.playerStrumline) {
+      this.gameplaySkin.attachStrumline(this.playState.playerStrumline);
+    }
     this.createHud();
     this.setupCameraLayers();
     this.registerGameplayFlow();
@@ -236,6 +264,7 @@ export default class PlayScene extends Phaser.Scene {
 
   shutdown() {
     this.events?.off('shutdown', this.shutdown, this);
+    this.input.keyboard?.off('keydown-ESC', this._exitToLevelSelect, this);
     EventBus.off(Events.SONG_END, this.handleSongEnd, this);
     EventBus.off(Events.GAME_OVER, this.handleGameOver, this);
 
@@ -287,7 +316,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * @param {object | null} data
+   * @param {PlaySceneInitData | null} data
    * @returns {PreparedPlaySessionLike}
    */
   resolveSession(data) {
@@ -346,20 +375,26 @@ export default class PlayScene extends Phaser.Scene {
   setupLevelSystem() {
     this.levelSystem = new LevelSystem();
 
-    if (this.session.level) {
-      this.levelSystem.levels = [this.session.level];
+    const level = this.session?.level;
+    if (level) {
+      /** @type {any} */
+      const levelConfig = level;
+      this.levelSystem.levels = [levelConfig];
       this.levelSystem.loaded = true;
-      this.levelSystem.setCurrentLevel(this.session.level.id);
+      if (level.id) {
+        this.levelSystem.setCurrentLevel(level.id);
+      }
     }
   }
 
   setupInput() {
-    this.preciseInput = new PreciseInput(this, new Controls());
+    this.preciseInput = new PreciseInput(
+      /** @type {any} */ (this),
+      /** @type {any} */ (new Controls())
+    );
 
     // ESC to pause / exit to level select
-    this.input.keyboard.on('keydown-ESC', () => {
-      this._exitToLevelSelect();
-    });
+    this.input.keyboard?.on('keydown-ESC', this._exitToLevelSelect, this);
 
     // Pause button for mobile — top-right corner
     this.pauseButton = this.add.text(this.cameras.main.width - 36, 36, '⏸', {
@@ -368,9 +403,15 @@ export default class PlayScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3
     });
-    if (this.pauseButton.setOrigin) this.pauseButton.setOrigin(0.5, 0.5);
-    if (this.pauseButton.setDepth) this.pauseButton.setDepth(9000);
-    if (this.pauseButton.setScrollFactor) this.pauseButton.setScrollFactor(0);
+    if (this.pauseButton.setOrigin) {
+      this.pauseButton.setOrigin(0.5, 0.5);
+    }
+    if (this.pauseButton.setDepth) {
+      this.pauseButton.setDepth(9000);
+    }
+    if (this.pauseButton.setScrollFactor) {
+      this.pauseButton.setScrollFactor(0);
+    }
     if (this.pauseButton.setInteractive) {
       this.pauseButton.setInteractive({ useHandCursor: true });
       this.pauseButton.on('pointerdown', () => {
@@ -423,15 +464,24 @@ export default class PlayScene extends Phaser.Scene {
     };
 
     const handler = () => {
-      const ctx = this.sound?.context;
+      const ctx = /** @type {{ state: string, resume: () => Promise<void> } | undefined} */ (
+        /** @type {any} */ (this.sound)?.context
+      );
       if (ctx && ctx.state === 'suspended') {
-        ctx.resume().then(() => {
-          if (this.audioManager?.instrumental && !this.audioManager.isPlaying && this.playState?.songStarted) {
-            this.audioManager.play(this.playState.songPosition);
-          }
-          // Context is now running — safe to remove listeners
-          removeListeners();
-        }).catch(() => {});
+        ctx
+          .resume()
+          .then(() => {
+            if (
+              this.audioManager?.instrumental &&
+              !this.audioManager.isPlaying &&
+              this.playState?.songStarted
+            ) {
+              this.audioManager.play(this.playState.songPosition);
+            }
+            // Context is now running — safe to remove listeners
+            removeListeners();
+          })
+          .catch(() => {});
       } else if (ctx && ctx.state === 'running') {
         // Already running — remove listeners immediately
         removeListeners();
@@ -446,9 +496,15 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   setupRegistries() {
-    this.characterRegistry = CharacterRegistry.getInstance();
-    this.stageRegistry = StageRegistry.getInstance();
-    this.noteStyleRegistry = NoteStyleRegistry.getInstance();
+    this.characterRegistry = /** @type {InstanceType<typeof CharacterRegistry>} */ (
+      CharacterRegistry.getInstance()
+    );
+    this.stageRegistry = /** @type {InstanceType<typeof StageRegistry>} */ (
+      StageRegistry.getInstance()
+    );
+    this.noteStyleRegistry = /** @type {InstanceType<typeof NoteStyleRegistry>} */ (
+      NoteStyleRegistry.getInstance()
+    );
 
     // The note style registry should have been populated by the
     // LoadingState prepareCallback. If it's empty (e.g. the async load
@@ -456,6 +512,7 @@ export default class PlayScene extends Phaser.Scene {
     // atlas-based note arrows render instead of placeholder shapes.
     const noteStyleId = this.session?.songData?.noteStyle ?? 'funkin';
     if (
+      this.noteStyleRegistry &&
       typeof this.noteStyleRegistry.hasEntry === 'function' &&
       !this.noteStyleRegistry.hasEntry(noteStyleId)
     ) {
@@ -471,7 +528,10 @@ export default class PlayScene extends Phaser.Scene {
    * @private
    */
   _loadNoteStyleSync(noteStyleId) {
-    const reg = this.noteStyleRegistry;
+    const reg = /** @type {any} */ (this.noteStyleRegistry);
+    if (!reg) {
+      return;
+    }
     const jsonKey = `${reg.dataFilePath}/${noteStyleId}.json`;
 
     // Try the shared Phaser JSON cache first
@@ -493,13 +553,16 @@ export default class PlayScene extends Phaser.Scene {
     if (noteStyleId === 'funkin') {
       const fallbackData = {
         version: '1.1.0',
-        name: 'Funkin\'',
+        name: "Funkin'",
         author: 'PhantomArcade',
         fallback: null,
         assets: {
           note: {
-            assetPath: 'shared:notes', scale: 0.7, isPixel: false,
-            offsets: [0, 0], alpha: 1,
+            assetPath: 'shared:notes',
+            scale: 0.7,
+            isPixel: false,
+            offsets: [0, 0],
+            alpha: 1,
             data: {
               left: { prefix: 'noteLeft' },
               down: { prefix: 'noteDown' },
@@ -508,8 +571,11 @@ export default class PlayScene extends Phaser.Scene {
             }
           },
           noteStrumline: {
-            assetPath: 'shared:noteStrumline', scale: 0.7, isPixel: false,
-            offsets: [0, 0], alpha: 1,
+            assetPath: 'shared:noteStrumline',
+            scale: 0.7,
+            isPixel: false,
+            offsets: [0, 0],
+            alpha: 1,
             data: {
               leftStatic: { prefix: 'staticLeft0' },
               leftPress: { prefix: 'pressLeft0' },
@@ -542,6 +608,10 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   bootstrapPresentation() {
+    if (!this.playState || !this.session) {
+      return;
+    }
+
     if (this.session.level?.features?.replayRecording === true) {
       this.playState.setReplayRecordingEnabled(true);
     }
@@ -555,7 +625,7 @@ export default class PlayScene extends Phaser.Scene {
     const hasPreparedStage =
       this.session.songData && Object.prototype.hasOwnProperty.call(this.session.songData, 'stage');
     const stageId = hasPreparedStage
-      ? this.session.songData.stage
+      ? (this.session.songData?.stage ?? null)
       : (this.session.metadata?.playData?.stage ?? null);
     if (stageId && this.stageRegistry?.loaded) {
       const stageCreated = this.playState.createStage(stageId, this.stageRegistry);
@@ -568,8 +638,8 @@ export default class PlayScene extends Phaser.Scene {
       this.session.songData &&
       Object.prototype.hasOwnProperty.call(this.session.songData, 'characters');
     const characterConfig = hasPreparedCharacters
-      ? this.session.songData.characters
-      : this.session.metadata?.playData?.characters;
+      ? (this.session.songData?.characters ?? null)
+      : (this.session.metadata?.playData?.characters ?? null);
     const hasVisibleCharacters =
       characterConfig &&
       Object.values(characterConfig).some(
@@ -585,19 +655,25 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   createHud() {
-    const level = this.session.level;
+    if (!this.playState) {
+      return;
+    }
+
+    const level = this.session?.level;
     const ui = level?.ui || {};
 
     // Task 9.3: Position score display using LayoutManager constants, centered horizontally
-    this.playState.createHUDDisplay({
-      x: PORTRAIT_WIDTH / 2,
-      y: SCORE_DISPLAY_Y,
-      align: 'center',
-      fontSize: 20,
-      showCombo: ui.showCombo ?? true,
-      showAccuracy: ui.showAccuracy ?? false,
-      showMisses: ui.showMisses ?? false
-    });
+    this.playState.createHUDDisplay(
+      /** @type {any} */ ({
+        x: PORTRAIT_WIDTH / 2,
+        y: SCORE_DISPLAY_Y,
+        align: 'center',
+        fontSize: 20,
+        showCombo: ui.showCombo ?? true,
+        showAccuracy: ui.showAccuracy ?? false,
+        showMisses: ui.showMisses ?? false
+      })
+    );
     this.scoreDisplay = this.playState.scoreDisplay;
     this.registerHudObject(this.scoreDisplay?.text ?? null);
 
@@ -622,14 +698,20 @@ export default class PlayScene extends Phaser.Scene {
     this.registerHudObject(this.backgroundGraphics);
     this.registerHudObject(this.countdownText);
     this.registerHudObject(this.pauseButton);
-    this.registerHudObject(this.scoreDisplay?.text ?? null);
-    this.registerHudObject(this.healthBar?.backgroundGraphics ?? null);
-    this.registerHudObject(this.healthBar?.barGraphics ?? null);
+    if (this.scoreDisplay) {
+      this.registerHudObject(/** @type {any} */ (this.scoreDisplay).text ?? null);
+    }
+    if (this.healthBar) {
+      this.registerHudObject(this.healthBar.backgroundGraphics);
+      this.registerHudObject(this.healthBar.barGraphics);
+    }
     this.registerHudObject(this.playState.replayIndicator);
 
     if (this.gameplaySkin?.attachments) {
-      this.gameplaySkin.attachments.forEach((attachment) => {
-        attachment.receptorSprites.forEach((sprite) => this.registerHudObject(sprite));
+      this.gameplaySkin.attachments.forEach((/** @type {any} */ attachment) => {
+        attachment.receptorSprites.forEach((/** @type {any} */ sprite) =>
+          this.registerHudObject(sprite)
+        );
         this.registerHudObject(attachment.holdGraphics);
       });
     }
@@ -727,7 +809,7 @@ export default class PlayScene extends Phaser.Scene {
     }
 
     const prev = strumline.onNoteSpawn;
-    strumline.onNoteSpawn = (noteSprite) => {
+    strumline.onNoteSpawn = (/** @type {any} */ noteSprite) => {
       this.registerHudNote(noteSprite);
       if (prev) {
         prev(noteSprite);
@@ -736,6 +818,10 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   registerGameplayFlow() {
+    if (!this.playState) {
+      return;
+    }
+
     this.playState.onCountdownStep = (step) => {
       const labels = ['3', '2', '1', 'GO'];
       if (!this.countdownText || step > 3) {
@@ -755,7 +841,9 @@ export default class PlayScene extends Phaser.Scene {
     };
 
     this.playState.onNoteHit = (note, judgement) => {
-      this.spawnJudgementFeedback(judgement, this.playState.combo);
+      if (this.playState) {
+        this.spawnJudgementFeedback(judgement, this.playState.combo);
+      }
       this.spawnNoteSplash(note, judgement);
     };
 
@@ -768,7 +856,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * @param {{ score: number, rank: string, tallies?: { maxCombo?: number }, isReplay?: boolean }} data
+   * @param {SongEndData} data
    */
   handleSongEnd(data) {
     const saveManager = SaveManager.getInstance();
@@ -776,11 +864,11 @@ export default class PlayScene extends Phaser.Scene {
     const isReplayRun = data?.isReplay === true;
     let newHighScore = false;
 
-    if (!isReplayRun && this.session.songData?.id && saveManager.loaded) {
+    if (!isReplayRun && this.session?.songData?.id && saveManager.loaded) {
       newHighScore = saveManager.recordSongResult({
-        levelId: this.session.level?.id ?? null,
+        levelId: this.session.level?.id ?? undefined,
         songId: this.session.songData.id,
-        difficulty: this.session.difficulty,
+        difficulty: this.session?.difficulty ?? 'normal',
         score: data.score,
         rank: data.rank,
         accuracy,
@@ -792,7 +880,7 @@ export default class PlayScene extends Phaser.Scene {
       ...data,
       accuracy,
       newHighScore,
-      songData: this.session.songData
+      songData: this.session?.songData ?? null
     });
   }
 
@@ -800,9 +888,9 @@ export default class PlayScene extends Phaser.Scene {
     this.scene.start('GameOverState', {
       songData: {
         session: this.session,
-        returnScene: this.session.songData?.returnScene || 'LevelSelectState',
-        returnSceneData: this.session.songData?.returnSceneData || {
-          selectedLevelId: this.session.level?.id
+        returnScene: this.session?.songData?.returnScene || 'LevelSelectState',
+        returnSceneData: this.session?.songData?.returnSceneData || {
+          selectedLevelId: this.session?.level?.id
         }
       },
       position: {
@@ -837,7 +925,8 @@ export default class PlayScene extends Phaser.Scene {
 
   getAccuracy() {
     const totalNotes = this.playState?.tallies?.totalNotes || 0;
-    return totalNotes > 0 ? (this.playState.tallies.totalNotesHit / totalNotes) * 100 : 0;
+    const totalNotesHit = this.playState?.tallies?.totalNotesHit || 0;
+    return totalNotes > 0 ? (totalNotesHit / totalNotes) * 100 : 0;
   }
 
   /**
@@ -845,7 +934,7 @@ export default class PlayScene extends Phaser.Scene {
    * @param {number} combo
    */
   spawnJudgementFeedback(judgement, combo) {
-    if (this.session.level?.features?.comboPopups !== true) {
+    if (this.session?.level?.features?.comboPopups !== true) {
       return;
     }
 
@@ -875,7 +964,7 @@ export default class PlayScene extends Phaser.Scene {
     const totalWidth = digits.length * 32;
     digits.forEach((digit, index) => {
       const comboObject = this.createPopupSprite(
-        `notestyle-${this.session.songData?.noteStyle}-comboNumber${digit}`,
+        `notestyle-${this.session?.songData?.noteStyle}-comboNumber${digit}`,
         centerX - totalWidth / 2 + index * 32,
         baseY + 78,
         digit,
@@ -889,7 +978,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   spawnMissFeedback() {
-    if (this.session.level?.features?.comboPopups !== true) {
+    if (this.session?.level?.features?.comboPopups !== true) {
       return;
     }
 
@@ -912,7 +1001,7 @@ export default class PlayScene extends Phaser.Scene {
    * @param {string} judgement
    */
   spawnNoteSplash(note, judgement) {
-    if (this.session.level?.features?.noteSplashes !== true) {
+    if (this.session?.level?.features?.noteSplashes !== true) {
       return;
     }
 
@@ -925,8 +1014,8 @@ export default class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const splashTextureKey = `notestyle-${this.session.songData?.noteStyle}-noteSplash`;
-    const playerStrumline = this.playState.playerStrumline;
+    const splashTextureKey = `notestyle-${this.session?.songData?.noteStyle}-noteSplash`;
+    const playerStrumline = this.playState?.playerStrumline;
     if (!playerStrumline) {
       return;
     }
@@ -936,11 +1025,14 @@ export default class PlayScene extends Phaser.Scene {
 
     if (
       this.noteStyleRegistry &&
-      this.session.songData?.noteStyle &&
+      this.session?.songData?.noteStyle &&
       this.textures.exists(splashTextureKey)
     ) {
       const splashData =
-        this.noteStyleRegistry.getSplashData(this.session.songData.noteStyle, note.direction) ?? [];
+        /** @type {any} */ (this.noteStyleRegistry).getSplashData(
+          this.session.songData.noteStyle,
+          note.direction
+        ) ?? [];
       const prefix = splashData[Math.floor(Math.random() * splashData.length)]?.prefix ?? null;
       const frame = this.gameplaySkin?.findAtlasFrame?.(splashTextureKey, prefix);
 

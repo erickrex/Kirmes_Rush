@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for the SparrowParser
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import SparrowParser from '../src/data/parsers/SparrowParser.js';
 
 // Sample Sparrow XML based on actual FNF format
@@ -47,6 +47,15 @@ const noAtlasXML = `<?xml version="1.0" encoding="utf-8"?>
 </SomeOtherElement>`;
 
 describe('SparrowParser', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('parse', () => {
     it('should parse valid Sparrow XML', () => {
       const result = SparrowParser.parse(sampleXML);

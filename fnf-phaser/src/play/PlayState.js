@@ -38,6 +38,10 @@ import { createSongFlowController } from './SongFlowController.js';
  * @typedef {import('../types.js').Tallies} Tallies
  * @typedef {import('../types.js').NoteData} NoteData
  * @typedef {import('../types.js').Judgement} Judgement
+ * @typedef {import('../types.js').ReplayData} ReplayData
+ * @typedef {import('../graphics/FunkinCamera.js').default} FunkinCamera
+ * @typedef {import('../audio/AudioManager.js').default} AudioManager
+ * @typedef {import('../audio/VoicesGroup.js').default} VoicesGroup
  * @typedef {{ direction: number, timestamp: number }} QueuedInput
  * @typedef {{
  *   x?: number,
@@ -54,6 +58,106 @@ import { createSongFlowController } from './SongFlowController.js';
  */
 
 /**
+ * @typedef {Object} PlayStateCharacterConfig
+ * @property {string} [player] - Player character ID
+ * @property {string} [opponent] - Opponent character ID
+ * @property {string} [girlfriend] - Girlfriend character ID
+ */
+
+/**
+ * @typedef {Object} PlayStateInitConfig
+ * @property {SongMetadata | null} [song] - Song metadata
+ * @property {string} [difficulty] - Difficulty level
+ * @property {number} [startTimestamp] - Start timestamp in ms
+ * @property {ChartData | null} [chart] - Chart data
+ */
+
+/**
+ * @typedef {Object} SessionAudio
+ * @property {{ key: string }} [instrumental] - Instrumental audio reference
+ * @property {{ player?: { key: string }, opponent?: { key: string }, combined?: { key: string } }} [vocals] - Vocal audio references
+ */
+
+/**
+ * @typedef {Object} CameraEventData
+ * @property {number} [char] - Character index
+ * @property {number} [zoom] - Zoom level
+ * @property {boolean} [instant] - Whether to apply instantly
+ * @property {{ char?: number, zoom?: number, instant?: boolean }} [value] - Nested event value
+ */
+
+/**
+ * @typedef {Object} LevelSystem
+ * @property {(featureName: string) => boolean} isFeatureEnabled - Check if a feature is enabled
+ */
+
+/**
+ * @typedef {Object} PreciseInputInstance
+ * @property {() => QueuedInput[]} consumePresses - Consume press events
+ * @property {() => QueuedInput[]} consumeReleases - Consume release events
+ */
+
+/**
+ * @typedef {Object} GameplayStateModule
+ * @property {number} health
+ * @property {number} score
+ * @property {number} combo
+ * @property {number} maxCombo
+ * @property {Tallies | null} tallies
+ * @property {() => void} reset
+ * @property {(delta: number) => void} updateHealth
+ * @property {(points: number) => void} updateScore
+ * @property {(judgement: string) => void} updateCombo
+ * @property {(judgement: string, score: number) => void} updateTallies
+ * @property {(judgement: string) => number} getHealthBonus
+ * @property {() => void} destroy
+ */
+
+/**
+ * @typedef {Object} NoteProcessorModule
+ * @property {() => void} checkMissedNotes
+ * @property {() => void} processOpponentNotes
+ * @property {(note: any, timing: number) => void} hitNote
+ * @property {(direction: number) => void} ghostMiss
+ * @property {(note: any) => void} opponentHitNote
+ * @property {(note: any) => void} missNote
+ * @property {() => void} destroy
+ */
+
+/**
+ * @typedef {Object} InputManagerModule
+ * @property {() => void} processInputQueue
+ * @property {(direction: number, timestamp: number) => void} handleNoteInput
+ * @property {(direction: number, timestamp: number) => void} handleNoteRelease
+ * @property {() => void} destroy
+ */
+
+/**
+ * @typedef {Object} CameraControllerModule
+ * @property {Phaser.Cameras.Scene2D.Camera | null} camGame
+ * @property {Phaser.Cameras.Scene2D.Camera | null} camHUD
+ * @property {FunkinCamera | null} funkinCamera
+ * @property {number} cameraFocusTarget
+ * @property {() => void} setupCameras
+ * @property {(target: number, instant?: boolean) => void} focusCamera
+ * @property {(target: number) => Character | null} getCameraFocusCharacter
+ * @property {(eventData: any) => void} handleFocusCameraEvent
+ * @property {(eventData: any) => void} handleZoomCameraEvent
+ * @property {() => void} destroy
+ */
+
+/**
+ * @typedef {Object} SongFlowControllerModule
+ * @property {() => void} startCountdown
+ * @property {(step: number) => void} scheduleCountdownStep
+ * @property {(step: number) => void} executeCountdownStep
+ * @property {() => void} startSong
+ * @property {() => void} endSong
+ * @property {() => void} gameOver
+ * @property {() => void} destroy
+ */
+
+/**
  * Main gameplay scene for Friday Night Funkin'.
  * Orchestrates focused modules for note processing, input, camera, scoring, and song flow.
  */
@@ -63,7 +167,9 @@ class PlayState {
   scene = null;
   /** @type {SongMetadata | null} */
   songData = null;
+  /** @type {string} */
   difficulty = Constants.DEFAULT_DIFFICULTY;
+  /** @type {number} */
   startTimestamp = 0;
   /** @type {ChartData | null} */
   chart = null;
@@ -71,9 +177,13 @@ class PlayState {
   conductor = null;
 
   // Gameplay state (kept on PlayState for backward compatibility)
+  /** @type {number} */
   health = Constants.HEALTH_STARTING;
+  /** @type {number} */
   score = 0;
+  /** @type {number} */
   combo = 0;
+  /** @type {number} */
   maxCombo = 0;
   /** @type {Tallies} */
   tallies = {
@@ -89,10 +199,15 @@ class PlayState {
   };
 
   // Timing
+  /** @type {number} */
   songPosition = 0;
+  /** @type {number} */
   songLength = 0;
+  /** @type {boolean} */
   songStarted = false;
+  /** @type {boolean} */
   countdownActive = false;
+  /** @type {number} */
   countdownStep = 0;
 
   // Strumlines
@@ -110,6 +225,7 @@ class PlayState {
   inputPressQueue = [];
   /** @type {QueuedInput[]} */
   inputReleaseQueue = [];
+  /** @type {PreciseInputInstance | null} */
   preciseInput = null;
   /** @type {TouchInputController | null} */
   touchInputController = null;
@@ -121,6 +237,7 @@ class PlayState {
   // Competitive stats
   /** @type {InputStatistics | null} */
   inputStatistics = null;
+  /** @type {boolean} */
   competitiveStatsEnabled = false;
   /** @type {ScoreDisplay | ExpandedStatsDisplay | null} */
   scoreDisplay = null;
@@ -128,25 +245,35 @@ class PlayState {
   // Replay
   /** @type {ReplayRecorder | null} */
   replayRecorder = null;
+  /** @type {boolean} */
   replayRecordingEnabled = false;
   /** @type {ReplayPlayer | null} */
   replayPlayer = null;
+  /** @type {boolean} */
   replayMode = false;
   /** @type {Phaser.GameObjects.Text | null} */
   replayIndicator = null;
 
   // Systems
+  /** @type {LevelSystem | null} */
   levelSystem = null;
   /** @type {InputBuffer | null} */
   inputBuffer = null;
+  /** @type {boolean} */
   inputBufferEnabled = false;
+  /** @type {AudioManager | null} */
   audioManager = null;
+  /** @type {VoicesGroup | null} */
   voices = null;
 
   // Cameras (synced from CameraController for backward compat)
+  /** @type {Phaser.Cameras.Scene2D.Camera | null} */
   camGame = null;
+  /** @type {Phaser.Cameras.Scene2D.Camera | null} */
   camHUD = null;
+  /** @type {FunkinCamera | null} */
   funkinCamera = null;
+  /** @type {number} */
   cameraFocusTarget = 0;
 
   // Characters & Stage
@@ -164,21 +291,27 @@ class PlayState {
   onNoteHit = null;
   /** @type {(() => void) | null} */
   onNoteMiss = null;
+  /** @type {((score: number, tallies: Tallies, rank: string, replayData: any, timingStats: any) => void) | null} */
   onSongEnd = null;
-  /** @type {((step: number) => void) | null} */
+  /** @type {((step: number, name?: string) => void) | null} */
   onCountdownStep = null;
 
   // Modules (private)
-  /** @type {ReturnType<typeof createGameplayState> | null} */
+  /** @type {GameplayStateModule | null} */
   _gameplayState = null;
-  /** @type {ReturnType<typeof createNoteProcessor> | null} */
+  /** @type {NoteProcessorModule | null} */
   _noteProcessor = null;
-  /** @type {ReturnType<typeof createInputManager> | null} */
+  /** @type {InputManagerModule | null} */
   _inputManager = null;
-  /** @type {ReturnType<typeof createCameraController> | null} */
+  /** @type {CameraControllerModule | null} */
   _cameraController = null;
-  /** @type {ReturnType<typeof createSongFlowController> | null} */
+  /** @type {SongFlowControllerModule | null} */
   _songFlowController = null;
+
+  /** @type {((data: { timing: number, judgement: string }) => void) | null} */
+  _onNoteHitForStats = null;
+  /** @type {(() => void) | null} */
+  _onComboBreakForStats = null;
 
   /**
    * @param {Phaser.Scene & { registerHudObject?: (obj: any) => any }} scene
@@ -187,6 +320,7 @@ class PlayState {
     this.scene = scene;
     this.conductor = Conductor.instance;
 
+    /** @type {any} */
     const context = {
       scene,
       playState: this,
@@ -197,13 +331,17 @@ class PlayState {
       noteProcessor: null
     };
 
-    this._gameplayState = createGameplayState(context);
+    this._gameplayState = /** @type {GameplayStateModule} */ (createGameplayState(context));
     context.gameplayState = this._gameplayState;
-    this._noteProcessor = createNoteProcessor(context);
+    this._noteProcessor = /** @type {NoteProcessorModule} */ (createNoteProcessor(context));
     context.noteProcessor = this._noteProcessor;
-    this._inputManager = createInputManager(context);
-    this._cameraController = createCameraController(context);
-    this._songFlowController = createSongFlowController(context);
+    this._inputManager = /** @type {InputManagerModule} */ (createInputManager(context));
+    this._cameraController = /** @type {CameraControllerModule} */ (
+      createCameraController(context)
+    );
+    this._songFlowController = /** @type {SongFlowControllerModule} */ (
+      createSongFlowController(context)
+    );
 
     // Bind competitive stats event handlers
     this._onNoteHitForStats = (data) => {
@@ -224,7 +362,7 @@ class PlayState {
   }
 
   /**
-   * @param {{ song?: SongMetadata | null, difficulty?: string, startTimestamp?: number, chart?: ChartData | null }} config
+   * @param {PlayStateInitConfig} config
    */
   init(config) {
     this.songData = config.song ?? null;
@@ -244,18 +382,27 @@ class PlayState {
       this.performanceMonitor = new PerformanceMonitor(this.scene.game);
     }
 
-    if (this.chart?.timeChanges) {
-      this.conductor.mapTimeChanges(this.chart.timeChanges);
+    if (this.conductor && this.chart) {
+      const chartAny = /** @type {any} */ (this.chart);
+      if (chartAny.timeChanges) {
+        this.conductor.mapTimeChanges(chartAny.timeChanges);
+      }
     }
     if (this.chart?.notes) {
-      const allNotes = [...(this.chart.notes.player ?? []), ...(this.chart.notes.opponent ?? [])];
+      const chartNotes = /** @type {any} */ (this.chart.notes);
+      const allNotes = [...(chartNotes.player ?? []), ...(chartNotes.opponent ?? [])];
       if (allNotes.length > 0) {
-        const lastNote = allNotes.reduce((a, b) => (a.time > b.time ? a : b));
+        const lastNote = allNotes.reduce((/** @type {any} */ a, /** @type {any} */ b) =>
+          a.time > b.time ? a : b
+        );
         this.songLength = lastNote.time + (lastNote.length ?? 0) + 1000;
       }
     }
-    if (this.chart?.notes?.player) {
-      this.tallies.totalNotes = this.chart.notes.player.length;
+    if (this.chart?.notes) {
+      const chartNotes = /** @type {any} */ (this.chart.notes);
+      if (chartNotes.player) {
+        this.tallies.totalNotes = chartNotes.player.length;
+      }
     }
   }
 
@@ -286,7 +433,14 @@ class PlayState {
     }
   }
 
+  /**
+   * @param {any} [noteStyle=null] - Note style configuration
+   * @param {number} [scrollSpeed=1.0] - Scroll speed multiplier
+   */
   createStrumlines(noteStyle = null, scrollSpeed = 1.0) {
+    if (!this.scene) {
+      return;
+    }
     // Player strumline: centered horizontally, forced downscroll, portrait Y position
     this.playerStrumline = new Strumline(this.scene, true, noteStyle, scrollSpeed);
     this.playerStrumline.setPosition(PLAYER_STRUMLINE_X, PLAYER_STRUMLINE_Y);
@@ -295,7 +449,7 @@ class PlayState {
     // Opponent strumline: hidden, used for timing/scoring only
     this.opponentStrumline = new Strumline(this.scene, false, noteStyle, scrollSpeed);
     this.opponentStrumline.setPosition(Constants.STRUMLINE_X_OFFSET, Constants.STRUMLINE_Y_OFFSET);
-    this.opponentStrumline.visible = false;
+    /** @type {any} */ (this.opponentStrumline).visible = false;
     this.opponentStrumline.renderNotes = false;
 
     // Opponent indicator widget replaces visible opponent strumline
@@ -311,6 +465,9 @@ class PlayState {
    * Passes input queues so touch events feed into the same pipeline as keyboard.
    */
   createTouchInputController() {
+    if (!this.scene) {
+      return;
+    }
     if (TouchDeviceDetector.isTouch()) {
       this.touchInputController = new TouchInputController(this.scene, {
         pressQueue: this.inputPressQueue,
@@ -321,17 +478,30 @@ class PlayState {
   }
 
   setupCameras() {
+    if (!this._cameraController) {
+      return;
+    }
     this._cameraController.setupCameras();
     this.camGame = this._cameraController.camGame;
     this.camHUD = this._cameraController.camHUD;
     this.funkinCamera = this._cameraController.funkinCamera;
   }
 
+  /**
+   * @param {string | null} stageId - Stage ID to load
+   * @param {any} registry - Stage registry instance
+   * @returns {boolean} Whether stage creation succeeded
+   */
   createStage(stageId, registry) {
     if (!this.isFeatureEnabled('stage')) {
       return false;
     }
-    const id = stageId || this.chart?.stage || this.songData?.stage || Constants.DEFAULT_STAGE;
+    if (!this.scene) {
+      return false;
+    }
+    const chartAny = /** @type {any} */ (this.chart);
+    const songAny = /** @type {any} */ (this.songData);
+    const id = stageId || chartAny?.stage || songAny?.stage || Constants.DEFAULT_STAGE;
     this.stage = new Stage(this.scene, id);
     if (!this.stage.loadFromRegistry(registry)) {
       console.warn(`[PlayState] Failed to load stage: ${id}`);
@@ -345,21 +515,34 @@ class PlayState {
     return true;
   }
 
-  createCharacters(config = {}, registry) {
+  /**
+   * @param {PlayStateCharacterConfig} config - Character ID overrides
+   * @param {any} [registry] - Character registry instance
+   */
+  createCharacters(config, registry) {
+    config = config || {};
     if (!this.isFeatureEnabled('characters')) {
       return;
     }
-    const playerChar = config.player || this.chart?.player || this.songData?.player || 'bf';
-    const opponentChar =
-      config.opponent || this.chart?.opponent || this.songData?.opponent || 'dad';
-    const gfChar = config.girlfriend || this.chart?.girlfriend || this.songData?.girlfriend || 'gf';
+    const chartAny = /** @type {any} */ (this.chart);
+    const songAny = /** @type {any} */ (this.songData);
+    const playerChar = config.player || chartAny?.player || songAny?.player || 'bf';
+    const opponentChar = config.opponent || chartAny?.opponent || songAny?.opponent || 'dad';
+    const gfChar = config.girlfriend || chartAny?.girlfriend || songAny?.girlfriend || 'gf';
     this.girlfriend = this.createCharacter(gfChar, 'gf', false, registry);
     this.opponent = this.createCharacter(opponentChar, 'dad', false, registry);
     this.player = this.createCharacter(playerChar, 'bf', true, registry);
     this.positionCharacters();
   }
 
-  createCharacter(characterId, charType, isPlayer, registry) {
+  /**
+   * @param {string} characterId - Character ID to create
+   * @param {string} _charType - Character type (bf, dad, gf)
+   * @param {boolean} isPlayer - Whether this is the player character
+   * @param {any} registry - Character registry instance
+   * @returns {Character | null}
+   */
+  createCharacter(characterId, _charType, isPlayer, registry) {
     if (!this.scene) {
       return null;
     }
@@ -387,6 +570,10 @@ class PlayState {
     }
   }
 
+  /**
+   * Wire character textures and animations from loaded assets.
+   * @param {any} characterRegistry - Character registry with getCharacterAnimations
+   */
   wireCharacterAssets(characterRegistry) {
     const characters = [
       { ref: this.player, label: 'player' },
@@ -394,7 +581,7 @@ class PlayState {
       { ref: this.girlfriend, label: 'girlfriend' }
     ];
     for (const { ref } of characters) {
-      if (!ref) {
+      if (!ref || !this.scene) {
         continue;
       }
       const id = ref.characterId;
@@ -403,13 +590,14 @@ class PlayState {
         continue;
       }
       ref.setTexture(textureKey);
-      ref._textureKey = textureKey;
+      /** @type {any} */ (ref)._textureKey = textureKey;
       registerCharacterAnimations(
         this.scene,
         textureKey,
         characterRegistry.getCharacterAnimations(id)
       );
-      const startAnim = ref.characterData?.startingAnimation || 'idle';
+      const charData = /** @type {any} */ (ref.characterData);
+      const startAnim = charData?.startingAnimation || 'idle';
       const namespacedKey = `${textureKey}-${startAnim}`;
       if (this.scene.anims.exists(namespacedKey)) {
         ref.play({ key: namespacedKey, repeat: -1 }, true);
@@ -417,11 +605,16 @@ class PlayState {
     }
   }
 
+  /**
+   * Wire stage prop textures and animations from loaded assets.
+   * @param {string} stageId - Stage ID
+   * @param {any} stageRegistry - Stage registry with getStageProps
+   */
   wireStageAssets(stageId, stageRegistry) {
     const props = stageRegistry.getStageProps(stageId);
     for (const prop of props) {
       const sprite = this.stage?.getProp(prop.name);
-      if (!sprite) {
+      if (!sprite || !this.scene) {
         continue;
       }
       const textureKey = `stage-${stageId}-${prop.name}`;
@@ -431,7 +624,7 @@ class PlayState {
       }
 
       sprite.setTexture(textureKey);
-      sprite._textureKey = textureKey;
+      /** @type {any} */ (sprite)._textureKey = textureKey;
       if (prop.animations && prop.animations.length > 0) {
         registerPropAnimations(this.scene, textureKey, prop.animations);
         const startAnimKey = `${textureKey}-${prop.startingAnimation}`;
@@ -442,19 +635,30 @@ class PlayState {
     }
   }
 
+  /**
+   * Wire audio tracks from session audio references.
+   * @param {SessionAudio} sessionAudio - Audio session data
+   */
   wireAudio(sessionAudio) {
-    if (sessionAudio.instrumental) {
+    if (sessionAudio.instrumental && this.audioManager) {
       this.audioManager.loadInstrumental(sessionAudio.instrumental.key);
     }
-    if (sessionAudio.vocals?.player && sessionAudio.vocals?.opponent) {
+    if (sessionAudio.vocals?.player && sessionAudio.vocals?.opponent && this.voices) {
       this.voices.loadSplit(sessionAudio.vocals.player.key, sessionAudio.vocals.opponent.key);
     }
-    if (sessionAudio.vocals?.combined) {
+    if (sessionAudio.vocals?.combined && this.voices) {
       this.voices.loadCombined(sessionAudio.vocals.combined.key);
     }
-    this.audioManager.setVoices(this.voices);
+    if (this.audioManager && this.voices) {
+      this.audioManager.setVoices(this.voices);
+    }
   }
 
+  /**
+   * Get a character by type.
+   * @param {string} charType - Character type (bf, player, dad, opponent, gf, girlfriend)
+   * @returns {Character | null}
+   */
   getCharacter(charType) {
     switch (charType) {
       case 'bf':
@@ -472,19 +676,24 @@ class PlayState {
   }
 
   // Setters
+  /** @param {AudioManager} audioManager */
   setAudioManager(audioManager) {
     this.audioManager = audioManager;
   }
+  /** @param {VoicesGroup} voices */
   setVoices(voices) {
     this.voices = voices;
   }
+  /** @param {PreciseInputInstance} preciseInput */
   setPreciseInput(preciseInput) {
     this.preciseInput = preciseInput;
   }
+  /** @param {LevelSystem} levelSystem */
   setLevelSystem(levelSystem) {
     this.levelSystem = levelSystem;
   }
 
+  /** @param {boolean} enabled */
   setReplayRecordingEnabled(enabled) {
     this.replayRecordingEnabled = enabled;
     if (enabled && !this.replayRecorder) {
@@ -492,6 +701,11 @@ class PlayState {
     }
   }
 
+  /**
+   * Check if a gameplay feature is enabled via the level system.
+   * @param {string} featureName - Feature name to check
+   * @returns {boolean}
+   */
   isFeatureEnabled(featureName) {
     if (!this.levelSystem) {
       return true;
@@ -499,6 +713,10 @@ class PlayState {
     return this.levelSystem.isFeatureEnabled(featureName);
   }
 
+  /**
+   * Check if competitive stats are enabled.
+   * @returns {boolean}
+   */
   isCompetitiveStatsEnabled() {
     if (!this.levelSystem) {
       return true;
@@ -510,6 +728,9 @@ class PlayState {
    * @param {HUDDisplayConfig} [config={}]
    */
   createHUDDisplay(config = {}) {
+    if (!this.scene) {
+      return;
+    }
     if (this.competitiveStatsEnabled) {
       const saveManager = SaveManager.getInstance();
       this.scoreDisplay = new ExpandedStatsDisplay(this.scene, {
@@ -529,6 +750,10 @@ class PlayState {
     }
   }
 
+  /**
+   * @param {boolean} enabled - Whether input buffer is enabled
+   * @param {number} [windowMs=50] - Buffer window in ms
+   */
   setInputBufferEnabled(enabled, windowMs = 50) {
     this.inputBufferEnabled = enabled;
     if (enabled && !this.inputBuffer) {
@@ -539,6 +764,11 @@ class PlayState {
   }
 
   // Replay playback
+  /**
+   * Load replay data for playback.
+   * @param {ReplayData} replayData - Replay data to load
+   * @returns {boolean} Whether loading succeeded
+   */
   loadReplay(replayData) {
     if (!replayData) {
       console.error('[PlayState] No replay data provided');
@@ -623,9 +853,11 @@ class PlayState {
     this.replayMode = false;
   }
 
+  /** @returns {boolean} */
   isReplayMode() {
     return this.replayMode;
   }
+  /** @returns {ReplayPlayer | null} */
   getReplayPlayer() {
     return this.replayPlayer;
   }
@@ -635,16 +867,24 @@ class PlayState {
     if (!this.chart?.notes) {
       return;
     }
-    if (this.chart.notes.player && this.playerStrumline) {
-      this.playerStrumline.applyNoteData(this.chart.notes.player);
+    const chartNotes = /** @type {any} */ (this.chart.notes);
+    if (chartNotes.player && this.playerStrumline) {
+      this.playerStrumline.applyNoteData(chartNotes.player);
     }
-    if (this.chart.notes.opponent && this.opponentStrumline) {
-      this.opponentStrumline.applyNoteData(this.chart.notes.opponent);
+    if (chartNotes.opponent && this.opponentStrumline) {
+      this.opponentStrumline.applyNoteData(chartNotes.opponent);
     }
   }
 
   // Main update loop — delegates to modules
-  update(time, delta) {
+  /**
+   * @param {number} _time - Current game time
+   * @param {number} delta - Delta time in ms since last frame
+   */
+  update(_time, delta) {
+    if (!this.conductor) {
+      return;
+    }
     const prevStep = this.conductor.currentStep;
     const prevBeat = this.conductor.currentBeat;
 
@@ -676,7 +916,7 @@ class PlayState {
 
     if (this.replayMode) {
       this.processReplayInputs();
-    } else {
+    } else if (this._inputManager) {
       this._inputManager.processInputQueue();
     }
 
@@ -687,12 +927,14 @@ class PlayState {
       this.opponentStrumline.update(this.songPosition);
     }
 
-    this._noteProcessor.processOpponentNotes();
+    if (this._noteProcessor) {
+      this._noteProcessor.processOpponentNotes();
+    }
     this.updateCharacters(delta);
     if (this.stage) {
       this.stage.update(delta);
     }
-    if (this._cameraController.funkinCamera) {
+    if (this._cameraController?.funkinCamera) {
       this._cameraController.funkinCamera.update(delta);
     }
     if (this.scoreDisplay) {
@@ -704,7 +946,9 @@ class PlayState {
     if (this.touchInputController) {
       this.touchInputController.update();
     }
-    this._noteProcessor.checkMissedNotes();
+    if (this._noteProcessor) {
+      this._noteProcessor.checkMissedNotes();
+    }
 
     // Performance monitoring — disable effects when FPS is low
     if (this.performanceMonitor) {
@@ -720,7 +964,13 @@ class PlayState {
     }
   }
 
+  /**
+   * @param {number} delta - Delta time in ms
+   */
   updateCharacters(delta) {
+    if (!this.conductor) {
+      return;
+    }
     const stepsPassed = delta / this.conductor.stepLengthMs;
     if (this.player) {
       this.player.update(delta, stepsPassed);
@@ -734,6 +984,9 @@ class PlayState {
   }
 
   // Beat/step sync
+  /**
+   * @param {number} step - Current step number
+   */
   onStepHit(step) {
     if (this.stage) {
       this.stage.onStepHit(step);
@@ -749,6 +1002,9 @@ class PlayState {
     }
   }
 
+  /**
+   * @param {number} beat - Current beat number
+   */
   onBeatHit(beat) {
     if (this.funkinCamera && this.isFeatureEnabled('cameraEffects')) {
       this.funkinCamera.onBeatHit(beat);
@@ -769,33 +1025,77 @@ class PlayState {
 
   // Input/note delegation to modules
   processInputQueue() {
-    this._inputManager.processInputQueue();
+    if (this._inputManager) {
+      this._inputManager.processInputQueue();
+    }
   }
+  /**
+   * @param {number} direction - Note direction (0-3)
+   * @param {number} timestamp - Input timestamp
+   */
   handleNoteInput(direction, timestamp) {
-    this._inputManager.handleNoteInput(direction, timestamp);
+    if (this._inputManager) {
+      this._inputManager.handleNoteInput(direction, timestamp);
+    }
   }
+  /**
+   * @param {number} direction - Note direction (0-3)
+   * @param {number} timestamp - Input timestamp
+   */
   handleNoteRelease(direction, timestamp) {
-    this._inputManager.handleNoteRelease(direction, timestamp);
+    if (this._inputManager) {
+      this._inputManager.handleNoteRelease(direction, timestamp);
+    }
   }
+  /**
+   * @param {any} note - Note sprite
+   * @param {number} timing - Timing offset in ms
+   */
   hitNote(note, timing) {
-    this._noteProcessor.hitNote(note, timing);
+    if (this._noteProcessor) {
+      this._noteProcessor.hitNote(note, timing);
+    }
   }
+  /**
+   * @param {number} direction - Note direction (0-3)
+   */
   ghostMiss(direction) {
-    this._noteProcessor.ghostMiss(direction);
+    if (this._noteProcessor) {
+      this._noteProcessor.ghostMiss(direction);
+    }
   }
   processOpponentNotes() {
-    this._noteProcessor.processOpponentNotes();
+    if (this._noteProcessor) {
+      this._noteProcessor.processOpponentNotes();
+    }
   }
+  /**
+   * @param {any} note - Note sprite
+   */
   opponentHitNote(note) {
-    this._noteProcessor.opponentHitNote(note);
+    if (this._noteProcessor) {
+      this._noteProcessor.opponentHitNote(note);
+    }
   }
   checkMissedNotes() {
-    this._noteProcessor.checkMissedNotes();
+    if (this._noteProcessor) {
+      this._noteProcessor.checkMissedNotes();
+    }
   }
+  /**
+   * @param {any} note - Note sprite
+   */
   missNote(note) {
-    this._noteProcessor.missNote(note);
+    if (this._noteProcessor) {
+      this._noteProcessor.missNote(note);
+    }
   }
 
+  /**
+   * Get health bonus for a judgement.
+   * @param {string} judgement - Judgement string
+   * @returns {number}
+   */
   getHealthBonus(judgement) {
     switch (judgement) {
       case 'killer':
@@ -814,6 +1114,10 @@ class PlayState {
   }
 
   // Camera — kept on PlayState for backward compat with tests
+  /**
+   * @param {number} target - Camera target (0=opponent, 1=player, 2=gf)
+   * @param {boolean} [instant=false] - Whether to snap instantly
+   */
   focusCamera(target, instant = false) {
     this.cameraFocusTarget = target;
     const character = this.getCameraFocusCharacter(target);
@@ -830,6 +1134,10 @@ class PlayState {
     this.funkinCamera.setFollowTarget(focusPoint.x, focusPoint.y, instant);
   }
 
+  /**
+   * @param {number} target - Camera target index
+   * @returns {Character | null}
+   */
   getCameraFocusCharacter(target) {
     switch (target) {
       case 0:
@@ -843,6 +1151,9 @@ class PlayState {
     }
   }
 
+  /**
+   * @param {CameraEventData} eventData - Focus camera event payload
+   */
   handleFocusCameraEvent(eventData) {
     if (!this.isFeatureEnabled('cameraEffects')) {
       return;
@@ -851,6 +1162,9 @@ class PlayState {
     this.focusCamera(charIndex);
   }
 
+  /**
+   * @param {CameraEventData} eventData - Zoom camera event payload
+   */
   handleZoomCameraEvent(eventData) {
     if (!this.isFeatureEnabled('cameraEffects')) {
       return;
@@ -865,22 +1179,40 @@ class PlayState {
 
   // Song flow delegation
   startCountdown() {
-    this._songFlowController.startCountdown();
+    if (this._songFlowController) {
+      this._songFlowController.startCountdown();
+    }
   }
+  /**
+   * @param {number} step - Countdown step number
+   */
   scheduleCountdownStep(step) {
-    this._songFlowController.scheduleCountdownStep(step);
+    if (this._songFlowController) {
+      this._songFlowController.scheduleCountdownStep(step);
+    }
   }
+  /**
+   * @param {number} step - Countdown step number
+   */
   executeCountdownStep(step) {
-    this._songFlowController.executeCountdownStep(step);
+    if (this._songFlowController) {
+      this._songFlowController.executeCountdownStep(step);
+    }
   }
   startSong() {
-    this._songFlowController.startSong();
+    if (this._songFlowController) {
+      this._songFlowController.startSong();
+    }
   }
   endSong() {
-    this._songFlowController.endSong();
+    if (this._songFlowController) {
+      this._songFlowController.endSong();
+    }
   }
   gameOver() {
-    this._songFlowController.gameOver();
+    if (this._songFlowController) {
+      this._songFlowController.gameOver();
+    }
   }
 
   // Pause/resume
@@ -1006,8 +1338,12 @@ class PlayState {
     this.replayMode = false;
 
     // Clean up competitive stats
-    EventBus.off(Events.NOTE_HIT, this._onNoteHitForStats);
-    EventBus.off(Events.COMBO_BREAK, this._onComboBreakForStats);
+    if (this._onNoteHitForStats) {
+      EventBus.off(Events.NOTE_HIT, this._onNoteHitForStats);
+    }
+    if (this._onComboBreakForStats) {
+      EventBus.off(Events.COMBO_BREAK, this._onComboBreakForStats);
+    }
     this.inputStatistics = null;
     if (this.scoreDisplay) {
       this.scoreDisplay.destroy();

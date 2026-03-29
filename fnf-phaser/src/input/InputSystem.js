@@ -21,6 +21,7 @@ export const NoteDirection = {
   RIGHT: 3
 };
 
+/** @type {Record<string, string[]>} */
 const DEFAULT_NOTE_KEYBINDS = {
   left: ['KeyA', 'ArrowLeft'],
   down: ['KeyS', 'ArrowDown'],
@@ -28,6 +29,7 @@ const DEFAULT_NOTE_KEYBINDS = {
   right: ['KeyD', 'ArrowRight']
 };
 
+/** @type {Record<string, string[]>} */
 const DEFAULT_UI_KEYBINDS = {
   up: ['ArrowUp', 'KeyW'],
   down: ['ArrowDown', 'KeyS'],
@@ -40,10 +42,20 @@ const DEFAULT_UI_KEYBINDS = {
 
 const DIRECTION_NAMES = ['left', 'down', 'up', 'right'];
 
+/**
+ * @param {(string | null)[]} keys
+ * @returns {string[]}
+ */
 function uniqueKeys(keys) {
-  return [...new Set(keys.filter(Boolean))];
+  return [...new Set(/** @type {string[]} */ (keys.filter(Boolean)))];
 }
 
+/**
+ * @param {string[]} keys
+ * @param {string} primaryFallback
+ * @param {string} alternateFallback
+ * @returns {{ primary: string, alternate: string }}
+ */
 function selectStoredPair(keys, primaryFallback, alternateFallback) {
   const storedKeys = uniqueKeys(keys.map((key) => codeToStoredKey(key)));
   const primary =
@@ -80,21 +92,29 @@ function selectStoredPair(keys, primaryFallback, alternateFallback) {
  * Manages keybinds for gameplay and UI.
  */
 export class Controls {
-  /** @type {Object<string, string[]>} */
+  /** @type {Record<string, string[]>} */
   noteKeybinds = { ...DEFAULT_NOTE_KEYBINDS };
 
-  /** @type {Object<string, string[]>} */
+  /** @type {Record<string, string[]>} */
   uiKeybinds = { ...DEFAULT_UI_KEYBINDS };
 
   constructor() {
     this.loadFromStorage();
   }
 
+  /**
+   * @param {number} direction
+   * @returns {string[]}
+   */
   getNoteKeybinds(direction) {
     const name = DIRECTION_NAMES[direction];
     return this.noteKeybinds[name] ?? [];
   }
 
+  /**
+   * @param {number} direction
+   * @param {string[]} keys
+   */
   setNoteKeybinds(direction, keys) {
     const name = DIRECTION_NAMES[direction];
     if (name) {
@@ -102,22 +122,44 @@ export class Controls {
     }
   }
 
+  /**
+   * @param {string} action
+   * @returns {string[]}
+   */
   getUIKeybinds(action) {
     return this.uiKeybinds[action] ?? [];
   }
 
+  /**
+   * @param {string} action
+   * @param {string[]} keys
+   */
   setUIKeybinds(action, keys) {
     this.uiKeybinds[action] = [...keys];
   }
 
+  /**
+   * @param {string} keyCode
+   * @param {number} direction
+   * @returns {boolean}
+   */
   isNoteKey(keyCode, direction) {
     return this.getNoteKeybinds(direction).includes(keyCode);
   }
 
+  /**
+   * @param {string} keyCode
+   * @param {string} action
+   * @returns {boolean}
+   */
   isUIKey(keyCode, action) {
     return this.getUIKeybinds(action).includes(keyCode);
   }
 
+  /**
+   * @param {string} keyCode
+   * @returns {number}
+   */
   getDirectionForKey(keyCode) {
     for (let i = 0; i < 4; i++) {
       if (this.isNoteKey(keyCode, i)) {
@@ -127,6 +169,10 @@ export class Controls {
     return -1;
   }
 
+  /**
+   * @param {string} keyCode
+   * @returns {string | null}
+   */
   getUIActionForKey(keyCode) {
     for (const action of Object.keys(this.uiKeybinds)) {
       if (this.isUIKey(keyCode, action)) {
@@ -139,9 +185,6 @@ export class Controls {
   saveToStorage() {
     try {
       const saveManager = SaveManager.getInstance();
-      if (!saveManager.loaded) {
-        saveManager.init();
-      }
 
       const left = selectStoredPair(this.noteKeybinds.left, 'A', 'LEFT');
       const down = selectStoredPair(this.noteKeybinds.down, 'S', 'DOWN');
@@ -166,9 +209,6 @@ export class Controls {
   loadFromStorage() {
     try {
       const saveManager = SaveManager.getInstance();
-      if (!saveManager.loaded) {
-        saveManager.init();
-      }
 
       this.noteKeybinds = {
         left: uniqueKeys([
@@ -190,8 +230,8 @@ export class Controls {
       };
 
       for (const direction of Object.keys(DEFAULT_NOTE_KEYBINDS)) {
-        if (this.noteKeybinds[direction].length === 0) {
-          this.noteKeybinds[direction] = [...DEFAULT_NOTE_KEYBINDS[direction]];
+        if (this.noteKeybinds[direction]?.length === 0) {
+          this.noteKeybinds[direction] = [...(DEFAULT_NOTE_KEYBINDS[direction] ?? [])];
         }
       }
 
@@ -213,15 +253,25 @@ export class Controls {
     this.saveToStorage();
   }
 
+  /** @returns {Record<string, string[]>} */
   static getDefaultNoteKeybinds() {
     return { ...DEFAULT_NOTE_KEYBINDS };
   }
+  /** @returns {Record<string, string[]>} */
   static getDefaultUIKeybinds() {
     return { ...DEFAULT_UI_KEYBINDS };
   }
+  /**
+   * @param {number} direction
+   * @returns {string}
+   */
   static getDirectionName(direction) {
     return DIRECTION_NAMES[direction] ?? 'left';
   }
+  /**
+   * @param {string} code
+   * @returns {string}
+   */
   static getStoredKeyForCode(code) {
     return codeToStoredKey(code);
   }
@@ -246,6 +296,12 @@ export class InputBuffer {
     this.bufferWindowMs = Math.max(0, Math.min(100, bufferWindowMs));
   }
 
+  /**
+   * @param {number} direction
+   * @param {number} timestamp
+   * @param {string} keyCode
+   * @param {number} songPosition
+   */
   addInput(direction, timestamp, keyCode, songPosition) {
     this.buffer.push({
       direction,
@@ -255,6 +311,11 @@ export class InputBuffer {
     });
   }
 
+  /**
+   * @param {number} direction
+   * @param {number} songPosition
+   * @returns {BufferedInput | null}
+   */
   getBufferedInput(direction, songPosition) {
     for (let i = 0; i < this.buffer.length; i++) {
       const input = this.buffer[i];
@@ -269,6 +330,9 @@ export class InputBuffer {
     return null;
   }
 
+  /**
+   * @param {number} songPosition
+   */
   clearExpired(songPosition) {
     this.buffer = this.buffer.filter((input) => input.expiresAt >= songPosition);
   }
@@ -281,6 +345,9 @@ export class InputBuffer {
     return this.buffer.length;
   }
 
+  /**
+   * @param {number} windowMs
+   */
   setBufferWindow(windowMs) {
     this.bufferWindowMs = Math.max(0, Math.min(100, windowMs));
   }
@@ -291,6 +358,13 @@ export class InputBuffer {
 // ========================================
 
 /**
+ * @typedef {Object} KeyboardEventHandlers
+ * @property {function(KeyboardEvent): void} keydown
+ * @property {function(KeyboardEvent): void} keyup
+ * @property {function(): void} blur
+ */
+
+/**
  * Precise input handler with timestamped event queue.
  * Uses raw DOM events for most accurate timing.
  * Supports optional InputBuffer integration for competitive play.
@@ -299,7 +373,7 @@ export class PreciseInput {
   /** @type {Phaser.Scene | null} */
   scene = null;
 
-  /** @type {Controls} */
+  /** @type {Controls | null} */
   controls = null;
 
   /** @type {InputEvent[]} */
@@ -323,9 +397,16 @@ export class PreciseInput {
   /** @type {boolean} */
   bufferEnabled = false;
 
-  /** @private */
+  /**
+   * @type {KeyboardEventHandlers | null}
+   * @private
+   */
   _boundHandlers = null;
 
+  /**
+   * @param {Phaser.Scene | null} [scene]
+   * @param {Controls | null} [controls]
+   */
   constructor(scene = null, controls = null) {
     this.scene = scene;
     this.controls = controls ?? new Controls();
@@ -340,23 +421,33 @@ export class PreciseInput {
   }
 
   setupListeners() {
+    if (!this._boundHandlers) {
+      return;
+    }
     document.addEventListener('keydown', this._boundHandlers.keydown);
     document.addEventListener('keyup', this._boundHandlers.keyup);
     window.addEventListener('blur', this._boundHandlers.blur);
   }
 
   removeListeners() {
+    if (!this._boundHandlers) {
+      return;
+    }
     document.removeEventListener('keydown', this._boundHandlers.keydown);
     document.removeEventListener('keyup', this._boundHandlers.keyup);
     window.removeEventListener('blur', this._boundHandlers.blur);
   }
 
+  /**
+   * @param {KeyboardEvent} event
+   * @private
+   */
   _onKeyDown(event) {
     if (!this.enabled || event.repeat) {
       return;
     }
     const keyCode = event.code;
-    const direction = this.controls.getDirectionForKey(keyCode);
+    const direction = this.controls?.getDirectionForKey(keyCode) ?? -1;
     if (direction !== -1 && !this.heldKeys.has(keyCode)) {
       this.heldKeys.add(keyCode);
       this.heldDirections[direction] = true;
@@ -364,15 +455,19 @@ export class PreciseInput {
     }
   }
 
+  /**
+   * @param {KeyboardEvent} event
+   * @private
+   */
   _onKeyUp(event) {
     if (!this.enabled) {
       return;
     }
     const keyCode = event.code;
-    const direction = this.controls.getDirectionForKey(keyCode);
+    const direction = this.controls?.getDirectionForKey(keyCode) ?? -1;
     if (direction !== -1) {
       this.heldKeys.delete(keyCode);
-      const keysForDirection = this.controls.getNoteKeybinds(direction);
+      const keysForDirection = this.controls?.getNoteKeybinds(direction) ?? [];
       const stillHeld = keysForDirection.some((k) => this.heldKeys.has(k));
       if (!stillHeld) {
         this.heldDirections[direction] = false;
@@ -409,6 +504,10 @@ export class PreciseInput {
     return this.releaseQueue.length;
   }
 
+  /**
+   * @param {number} direction
+   * @returns {boolean}
+   */
   isHeld(direction) {
     return this.heldDirections[direction] ?? false;
   }
@@ -444,6 +543,9 @@ export class PreciseInput {
     this.enabled = false;
     this.clearQueues();
   }
+  /**
+   * @param {boolean} enabled
+   */
   setEnabled(enabled) {
     if (enabled) {
       this.enable();
@@ -456,6 +558,9 @@ export class PreciseInput {
   // INPUT BUFFER INTEGRATION
   // ========================================
 
+  /**
+   * @param {number} [bufferWindowMs]
+   */
   enableBuffer(bufferWindowMs = 50) {
     if (!this.inputBuffer) {
       this.inputBuffer = new InputBuffer(bufferWindowMs);
@@ -476,6 +581,9 @@ export class PreciseInput {
     return this.bufferEnabled && this.inputBuffer !== null;
   }
 
+  /**
+   * @param {number} windowMs
+   */
   setBufferWindow(windowMs) {
     if (this.inputBuffer) {
       this.inputBuffer.setBufferWindow(windowMs);
@@ -486,12 +594,23 @@ export class PreciseInput {
     return this.inputBuffer ? this.inputBuffer.bufferWindowMs : 0;
   }
 
+  /**
+   * @param {number} direction
+   * @param {number} timestamp
+   * @param {string} keyCode
+   * @param {number} songPosition
+   */
   bufferInput(direction, timestamp, keyCode, songPosition) {
     if (this.bufferEnabled && this.inputBuffer) {
       this.inputBuffer.addInput(direction, timestamp, keyCode, songPosition);
     }
   }
 
+  /**
+   * @param {number} direction
+   * @param {number} songPosition
+   * @returns {BufferedInput | null}
+   */
   getBufferedInput(direction, songPosition) {
     if (this.bufferEnabled && this.inputBuffer) {
       return this.inputBuffer.getBufferedInput(direction, songPosition);
@@ -499,6 +618,9 @@ export class PreciseInput {
     return null;
   }
 
+  /**
+   * @param {number} songPosition
+   */
   clearExpiredBufferedInputs(songPosition) {
     if (this.inputBuffer) {
       this.inputBuffer.clearExpired(songPosition);

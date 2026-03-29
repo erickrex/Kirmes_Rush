@@ -19,18 +19,29 @@ export default class LevelSelectState extends BaseMenuState {
     super({ key: 'LevelSelectState' });
 
     this.levelSystem = new LevelSystem();
+    /** @type {Array<{id: string, name: string, songId: string, difficulty: string, description?: string, [key: string]: any}>} */
     this.levels = [];
+    /** @type {Phaser.GameObjects.Text[]} */
     this.levelTexts = [];
+    /** @type {Phaser.GameObjects.Text | null} */
     this.descriptionText = null;
     this.songText = null;
     this.difficultyText = null;
     this.bestScoreText = null;
     this.progressText = null;
     this.statusText = null;
+    /** @type {string | null} */
     this.selectedLevelId = null;
     this.saveManager = SaveManager.getInstance();
+    /** @type {Phaser.GameObjects.Text | null} */
+    this.backButton = null;
+    /** @type {Phaser.GameObjects.Text | null} */
+    this.playButton = null;
   }
 
+  /**
+   * @param {{selectedLevelId?: string} | undefined} data
+   */
   init(data) {
     this.selectedLevelId = data?.selectedLevelId || null;
   }
@@ -46,9 +57,8 @@ export default class LevelSelectState extends BaseMenuState {
   create() {
     this.transitioning = false;
     this.selectedIndex = 0;
-    this.saveManager.init();
 
-    this.createBackground(null, 0x0f1724, 0x1b2436);
+    this.createBackground(undefined, 0x0f1724, 0x1b2436);
     this.createStaticUi();
     this.setupInput();
     this.fadeIn();
@@ -72,7 +82,9 @@ export default class LevelSelectState extends BaseMenuState {
       fontSize: '30px',
       color: '#94a3b8'
     });
-    if (this.backButton.setOrigin) this.backButton.setOrigin(0, 0.5);
+    if (this.backButton.setOrigin) {
+      this.backButton.setOrigin(0, 0.5);
+    }
     if (this.backButton.setInteractive) {
       this.backButton.setInteractive({ useHandCursor: true });
       this.backButton.on('pointerdown', () => this.onBack());
@@ -104,7 +116,9 @@ export default class LevelSelectState extends BaseMenuState {
       backgroundColor: '#facc15',
       padding: { x: 48, y: 16 }
     });
-    if (this.playButton.setOrigin) this.playButton.setOrigin(0.5, 0.5);
+    if (this.playButton.setOrigin) {
+      this.playButton.setOrigin(0.5, 0.5);
+    }
     if (this.playButton.setInteractive) {
       this.playButton.setInteractive({ useHandCursor: true });
       this.playButton.on('pointerdown', () => this.onSelect());
@@ -223,7 +237,7 @@ export default class LevelSelectState extends BaseMenuState {
     if (this.bestScoreText) {
       if (highScore) {
         this.bestScoreText.setText(
-          `Best: ${highScore.score.toLocaleString()} | ${highScore.rank} | ${highScore.accuracy.toFixed(2)}%`
+          `Best: ${highScore.score.toLocaleString()} | ${highScore.rank} | ${(highScore.accuracy || 0).toFixed(2)}%`
         );
       } else {
         this.bestScoreText.setText('Best: No saved result yet');
@@ -255,11 +269,14 @@ export default class LevelSelectState extends BaseMenuState {
     // within the gesture — Phaser's abstraction can delay it past the
     // browser's gesture window.
     try {
-      const ctx = this.sound?.context;
+      const mgr = /** @type {any} */ (this.sound);
+      const ctx = mgr?.context;
       if (ctx && ctx.state === 'suspended') {
         await ctx.resume();
       }
-    } catch { /* swallow */ }
+    } catch {
+      /* swallow */
+    }
 
     this.transitionToScene('LoadingState', {
       nextScene: 'PlayState',
@@ -284,14 +301,18 @@ export default class LevelSelectState extends BaseMenuState {
   enableTouchOnLevelItems() {
     const minSize = 48;
     this.levelTexts.forEach((text, index) => {
-      if (!text.setInteractive) return;
+      if (!text.setInteractive) {
+        return;
+      }
       text.setInteractive({ useHandCursor: true });
       if (text.input && text.input.hitArea) {
         text.input.hitArea.width = Math.max(text.input.hitArea.width, minSize);
         text.input.hitArea.height = Math.max(text.input.hitArea.height, minSize);
       }
       text.on('pointerdown', () => {
-        if (this.transitioning) return;
+        if (this.transitioning) {
+          return;
+        }
         this.selectedIndex = index;
         this.updateSelection();
       });

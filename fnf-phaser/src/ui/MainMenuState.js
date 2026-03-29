@@ -142,6 +142,10 @@ export default class MainMenuState extends BaseMenuState {
     }
   }
 
+  /**
+   * @param {number} time
+   * @param {number} _delta
+   */
   update(time, _delta) {
     if (!this.transitioning && this.menuTexts[this.selectedIndex]) {
       const pulse = 1.1 + Math.sin(time / 200) * 0.05;
@@ -152,5 +156,6 @@ export default class MainMenuState extends BaseMenuState {
   shutdown() {
     super.shutdown();
     this.menuTexts = [];
+    this.menuMusic = null;
   }
 }

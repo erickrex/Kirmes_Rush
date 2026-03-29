@@ -16,11 +16,20 @@ import Scoring from '../play/Scoring.js';
  * }} ResultSongData
  *
  * @typedef {{
+ *   offsets?: number[],
+ *   averageOffset?: number,
+ *   earlyCount?: number,
+ *   lateCount?: number,
+ *   perfectCount?: number,
+ *   byJudgement?: Record<string, {avgOffset: number, count: number}>
+ * }} TimingStatsData
+ *
+ * @typedef {{
  *   score?: number,
  *   tallies?: Tallies,
  *   rank?: string,
  *   songData?: ResultSongData | null,
- *   timingStats?: object | null,
+ *   timingStats?: TimingStatsData | null,
  *   newHighScore?: boolean
  * }} ResultStateData
  */
@@ -114,6 +123,54 @@ export default class ResultState extends Phaser.Scene {
      * @type {boolean}
      */
     this.newHighScore = false;
+
+    /**
+     * Timing statistics from InputStatistics
+     * @type {TimingStatsData | null}
+     */
+    this.timingStats = null;
+
+    /**
+     * Tally text objects for animation
+     * @type {{text: Phaser.GameObjects.Text, target: number}[]}
+     */
+    this.tallyTexts = [];
+
+    /**
+     * Max combo text
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.maxComboText = null;
+
+    /**
+     * Rank sprite
+     * @type {Phaser.GameObjects.Sprite | null}
+     */
+    this.rankSprite = null;
+
+    /**
+     * Continue text
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.continueText = null;
+
+    /**
+     * Timing average text
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.timingAvgText = null;
+
+    /**
+     * Timing ratio text
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.timingRatioText = null;
+
+    /**
+     * Timing judgement texts
+     * @type {Phaser.GameObjects.Text[]}
+     */
+    this.timingJudgementTexts = [];
   }
 
   /**
@@ -123,7 +180,7 @@ export default class ResultState extends Phaser.Scene {
   init(data) {
     this.score = data?.score || 0;
     this.tallies = data?.tallies || this.tallies;
-    this.rank = data?.rank || Scoring.calculateRank(this.tallies);
+    this.rank = data?.rank || Scoring.calculateRank(this.tallies) || 'N/A';
     this.songData = data?.songData || null;
     this.timingStats = data?.timingStats || null;
     this.newHighScore = data?.newHighScore === true;
@@ -385,7 +442,7 @@ export default class ResultState extends Phaser.Scene {
     const startY = height / 2 + 100;
 
     // Average offset with Early/Late label
-    const avgMs = this.timingStats.averageOffset;
+    const avgMs = this.timingStats.averageOffset || 0;
     const label = avgMs < 0 ? 'Early' : avgMs > 0 ? 'Late' : '';
     const avgText = `Avg: ${Math.abs(avgMs).toFixed(1)}ms${label ? ` (${label})` : ''}`;
 
@@ -398,7 +455,7 @@ export default class ResultState extends Phaser.Scene {
       .setOrigin(0, 0);
 
     // Early / Late / Perfect counts
-    const ratioText = `Early: ${this.timingStats.earlyCount} | Late: ${this.timingStats.lateCount} | Perfect: ${this.timingStats.perfectCount}`;
+    const ratioText = `Early: ${this.timingStats.earlyCount || 0} | Late: ${this.timingStats.lateCount || 0} | Perfect: ${this.timingStats.perfectCount || 0}`;
     this.timingRatioText = this.add
       .text(startX, startY + 30, ratioText, {
         fontFamily: 'Arial',
@@ -410,9 +467,9 @@ export default class ResultState extends Phaser.Scene {
     // Per-judgement average offsets
     this.timingJudgementTexts = [];
     let yOffset = 60;
-    const byJudgement = this.timingStats.byJudgement;
+    const byJudgement = this.timingStats.byJudgement || {};
     for (const [judgement, data] of Object.entries(byJudgement)) {
-      if (data.count > 0) {
+      if (data && data.count > 0) {
         const jLabel = data.avgOffset < 0 ? 'Early' : data.avgOffset > 0 ? 'Late' : '';
         const jText = `${judgement}: ${Math.abs(data.avgOffset).toFixed(1)}ms${jLabel ? ` (${jLabel})` : ''} [${data.count} hits]`;
         const text = this.add
@@ -541,7 +598,7 @@ export default class ResultState extends Phaser.Scene {
       duration: 2000,
       ease: 'Cubic.easeOut',
       onUpdate: (tween) => {
-        this.displayedScore = Math.floor(tween.getValue());
+        this.displayedScore = Math.floor(tween.getValue() ?? 0);
         if (this.scoreText) {
           this.scoreText.setText(this.displayedScore.toLocaleString());
         }
@@ -561,6 +618,9 @@ export default class ResultState extends Phaser.Scene {
    * Animate tallies counting up
    */
   animateTallies() {
+    if (!this.tallyTexts) {
+      return;
+    }
     this.tallyTexts.forEach((tally, index) => {
       this.time.delayedCall(index * 200, () => {
         this.tweens.addCounter({
@@ -569,14 +629,14 @@ export default class ResultState extends Phaser.Scene {
           duration: 500,
           ease: 'Cubic.easeOut',
           onUpdate: (tween) => {
-            tally.text.setText(Math.floor(tween.getValue()).toString());
+            tally.text.setText(Math.floor(tween.getValue() ?? 0).toString());
           }
         });
       });
     });
 
     // Max combo
-    this.time.delayedCall(this.tallyTexts.length * 200, () => {
+    this.time.delayedCall((this.tallyTexts?.length || 0) * 200, () => {
       this.tweens.addCounter({
         from: 0,
         to: this.tallies.maxCombo,
@@ -584,7 +644,7 @@ export default class ResultState extends Phaser.Scene {
         ease: 'Cubic.easeOut',
         onUpdate: (tween) => {
           if (this.maxComboText) {
-            this.maxComboText.setText(Math.floor(tween.getValue()).toString());
+            this.maxComboText.setText(Math.floor(tween.getValue() ?? 0).toString());
           }
         }
       });
@@ -712,16 +772,30 @@ export default class ResultState extends Phaser.Scene {
     this.input.keyboard?.off('keydown-SPACE', this.onContinue, this);
     this.input.keyboard?.off('keydown-ESC', this.onContinue, this);
 
+    // Kill all tweens and timers
+    if (this.tweens?.killAll) {
+      this.tweens.killAll();
+    }
+    if (this.time?.removeAllEvents) {
+      this.time.removeAllEvents();
+    }
+
     if (this.resultMusic) {
       this.resultMusic.stop();
       this.resultMusic = null;
     }
 
+    // Null owned game object references
     this.scoreText = null;
     this.rankText = null;
+    this.rankSprite = null;
     this.accuracyText = null;
     this.continueText = null;
+    this.maxComboText = null;
     this.tallyTexts = [];
+    this.timingAvgText = null;
+    this.timingRatioText = null;
+    this.timingJudgementTexts = [];
     this.songData = null;
     this.timingStats = null;
   }

@@ -9,25 +9,14 @@
 // TYPES
 // ========================================
 
+// Types are defined locally in this module
+
 /**
  * @typedef {Object} ReplayInputEvent
  * @property {number} time - Time in ms from song start
  * @property {'press' | 'release'} type - Event type
  * @property {number} direction - Direction (0-3)
  * @property {string} keyCode - Key code used
- */
-
-/**
- * @typedef {Object} ReplayData
- * @property {string} version - Replay format version
- * @property {string} songId - Song identifier
- * @property {string} difficulty - Difficulty level
- * @property {number} timestamp - Recording timestamp (Date.now())
- * @property {number} score - Final score
- * @property {Object} tallies - Final tallies
- * @property {number} seed - Random seed for determinism
- * @property {ReplayInputEvent[]} inputs - Recorded inputs
- * @property {Object} metadata - Additional metadata
  */
 
 /**
@@ -41,6 +30,19 @@
  * @property {number} timestamp - Recording timestamp
  */
 
+/**
+ * @typedef {Object} ReplayDataFull
+ * @property {string} version - Replay format version
+ * @property {string} songId - Song identifier
+ * @property {string} difficulty - Difficulty level
+ * @property {number} timestamp - Recording timestamp
+ * @property {number} score - Final score
+ * @property {Record<string, any>} tallies - Final tallies
+ * @property {number} seed - Random seed
+ * @property {ReplayInputEvent[]} inputs - Recorded input frames
+ * @property {Record<string, any>} metadata - Additional metadata
+ */
+
 // ========================================
 // REPLAY RECORDER
 // ========================================
@@ -52,17 +54,23 @@ export class ReplayRecorder {
   static VERSION = '1.0.0';
 
   recording = false;
+  /** @type {ReplayInputEvent[]} */
   inputs = [];
   songStartTime = 0;
   songId = '';
   difficulty = '';
   seed = 0;
+  /** @type {Record<string, any>} */
   metadata = {};
 
   constructor() {
     this.reset();
   }
 
+  /**
+   * @param {string} songId
+   * @param {string} difficulty
+   */
   start(songId, difficulty) {
     this.reset();
     this.recording = true;
@@ -72,6 +80,12 @@ export class ReplayRecorder {
     this.seed = Math.random();
   }
 
+  /**
+   * @param {'press' | 'release'} type
+   * @param {number} direction
+   * @param {string} keyCode
+   * @param {number} songPosition
+   */
   recordInput(type, direction, keyCode, songPosition) {
     if (!this.recording) {
       return;
@@ -79,6 +93,11 @@ export class ReplayRecorder {
     this.inputs.push({ time: songPosition, type, direction, keyCode });
   }
 
+  /**
+   * @param {number} score
+   * @param {Record<string, any>} tallies
+   * @returns {ReplayDataFull}
+   */
   stop(score, tallies) {
     this.recording = false;
     return {
@@ -133,6 +152,7 @@ export class ReplayRecorder {
 export class ReplayPlayer {
   static SUPPORTED_VERSION = '1.0.0';
 
+  /** @type {ReplayDataFull | null} */
   replayData = null;
   inputIndex = 0;
   playing = false;
@@ -141,6 +161,10 @@ export class ReplayPlayer {
     this.reset();
   }
 
+  /**
+   * @param {ReplayDataFull} replayData
+   * @returns {boolean}
+   */
   load(replayData) {
     if (!replayData) {
       console.error('ReplayPlayer: No replay data provided');
@@ -169,6 +193,10 @@ export class ReplayPlayer {
     this.inputIndex = 0;
   }
 
+  /**
+   * @param {number} songPosition
+   * @returns {ReplayInputEvent[]}
+   */
   getInputsForPosition(songPosition) {
     if (!this.playing || !this.replayData) {
       return [];
@@ -235,6 +263,7 @@ export class ReplayManager {
   static INDEX_KEY = 'fnf-replay-idx';
   static MAX_REPLAYS = 50;
 
+  /** @type {ReplayListEntry[]} */
   replayIndex = [];
 
   constructor() {
@@ -266,6 +295,10 @@ export class ReplayManager {
     return `replay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  /**
+   * @param {ReplayDataFull} replayData
+   * @returns {string}
+   */
   saveReplay(replayData) {
     while (this.replayIndex.length >= ReplayManager.MAX_REPLAYS) {
       const oldest = this.replayIndex.pop();
@@ -300,6 +333,10 @@ export class ReplayManager {
     return id;
   }
 
+  /**
+   * @param {string} replayId
+   * @returns {ReplayDataFull | null}
+   */
   loadReplay(replayId) {
     try {
       const data = localStorage.getItem(`${ReplayManager.STORAGE_KEY}_${replayId}`);
@@ -312,7 +349,7 @@ export class ReplayManager {
     return null;
   }
 
-  /** @private */
+  /** @param {string} replayId @private */
   deleteReplayData(replayId) {
     try {
       localStorage.removeItem(`${ReplayManager.STORAGE_KEY}_${replayId}`);
@@ -321,6 +358,10 @@ export class ReplayManager {
     }
   }
 
+  /**
+   * @param {string} replayId
+   * @returns {boolean}
+   */
   deleteReplay(replayId) {
     const index = this.replayIndex.findIndex((entry) => entry.id === replayId);
     if (index === -1) {
@@ -332,21 +373,29 @@ export class ReplayManager {
     return true;
   }
 
+  /** @returns {ReplayListEntry[]} */
   getReplayList() {
     return [...this.replayIndex].sort((a, b) => b.timestamp - a.timestamp);
   }
 
+  /**
+   * @param {string} songId
+   * @returns {ReplayListEntry[]}
+   */
   filterBySong(songId) {
     return this.getReplayList().filter((entry) => entry.songId === songId);
   }
 
+  /** @returns {number} */
   getReplayCount() {
     return this.replayIndex.length;
   }
+  /** @returns {boolean} */
   isAtCapacity() {
     return this.replayIndex.length >= ReplayManager.MAX_REPLAYS;
   }
 
+  /** @returns {void} */
   clearAll() {
     for (const entry of this.replayIndex) {
       this.deleteReplayData(entry.id);

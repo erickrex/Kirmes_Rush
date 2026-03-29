@@ -2,7 +2,7 @@
  * @fileoverview Tests for Controls - Keybind management
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Controls, NoteDirection } from '../src/input/InputSystem.js';
 import SaveManager from '../src/data/SaveManager.js';
 
@@ -18,7 +18,13 @@ describe('Controls', () => {
     });
 
     SaveManager.resetInstance();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     controls = new Controls();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('NoteDirection enum', () => {
@@ -198,6 +204,7 @@ describe('Controls', () => {
       });
       localStorage.getItem = vi.fn(() => savedData);
       SaveManager.resetInstance();
+      SaveManager.getInstance().init();
 
       const newControls = new Controls();
       expect(newControls.noteKeybinds.left).toContain('KeyZ');

@@ -2,16 +2,7 @@
  * @fileoverview PreparedPlaySession helpers for the current 5-level release path.
  */
 
-/**
- * @typedef {Object} PreparedPlaySession
- * @property {Object | null} level
- * @property {string} difficulty
- * @property {Object | null} chart
- * @property {Object | null} songData
- * @property {Object | null} audio
- * @property {Object[]} assets
- * @property {Object | null} metadata
- */
+/** @import { PreparedPlaySession } from '../types.js' */
 
 /**
  * Normalize arbitrary play-scene data into the prepared-session contract used by
@@ -20,16 +11,19 @@
  * @param {Partial<PreparedPlaySession> | null | undefined} session
  * @returns {PreparedPlaySession}
  */
-export function createPreparedPlaySession(session = {}) {
-  const difficulty = session.difficulty ?? session.songData?.difficulty ?? 'normal';
+export function createPreparedPlaySession(
+  session = /** @type {Partial<PreparedPlaySession>} */ ({})
+) {
+  const s = session || {};
+  const difficulty = s.difficulty ?? /** @type {any} */ (s.songData)?.difficulty ?? 'normal';
 
   return {
-    level: session.level ?? null,
+    level: s.level ?? null,
     difficulty,
-    chart: session.chart ?? null,
-    songData: session.songData ?? null,
-    audio: session.audio ?? null,
-    assets: Array.isArray(session.assets) ? [...session.assets] : [],
-    metadata: session.metadata ?? null
+    chart: s.chart ?? null,
+    songData: s.songData ?? null,
+    audio: s.audio ?? null,
+    assets: Array.isArray(s.assets) ? [...s.assets] : [],
+    metadata: s.metadata ?? null
   };
 }

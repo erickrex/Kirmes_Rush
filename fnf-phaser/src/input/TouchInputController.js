@@ -46,8 +46,8 @@ const PRESSED_ALPHA = 0.8;
  * @property {number} height      - Zone height
  * @property {boolean} pressed    - Current press state
  * @property {number|null} pointerId - Active pointer tracking for multi-touch
- * @property {Object|null} rect   - Phaser.GameObjects.Rectangle (null in headless)
- * @property {Object|null} icon   - Phaser.GameObjects.Graphics arrow overlay (null in headless)
+ * @property {Phaser.GameObjects.Rectangle|null} rect   - Phaser rectangle (null in headless)
+ * @property {Phaser.GameObjects.Graphics|null} icon   - Phaser graphics arrow overlay (null in headless)
  */
 
 /**
@@ -57,13 +57,20 @@ const PRESSED_ALPHA = 0.8;
  */
 
 /**
+ * @typedef {Object} PointerEventHandlers
+ * @property {function(Phaser.Input.Pointer): void} down
+ * @property {function(Phaser.Input.Pointer): void} up
+ * @property {function(Phaser.Input.Pointer): void} move
+ */
+
+/**
  * Touch input controller for portrait mode.
  * Creates four directional touch zones at the bottom of the canvas.
  */
 class TouchInputController {
   /**
    * The Phaser scene.
-   * @type {Object|null}
+   * @type {Phaser.Scene|null}
    */
   scene = null;
 
@@ -87,13 +94,13 @@ class TouchInputController {
 
   /**
    * Bound pointer event handlers for cleanup.
-   * @type {Object|null}
+   * @type {PointerEventHandlers|null}
    * @private
    */
   _boundHandlers = null;
 
   /**
-   * @param {Object} scene - The Phaser scene
+   * @param {Phaser.Scene} scene - The Phaser scene
    * @param {InputQueue} inputQueue - Object with pressQueue and releaseQueue arrays
    */
   constructor(scene, inputQueue) {
@@ -172,7 +179,7 @@ class TouchInputController {
 
   /**
    * Draw an arrow icon on a Graphics object.
-   * @param {Object} graphics - Phaser.GameObjects.Graphics
+   * @param {Phaser.GameObjects.Graphics} graphics - Phaser Graphics object
    * @param {number} cx - Center X
    * @param {number} cy - Center Y
    * @param {number} direction - Direction index (0-3)
@@ -250,7 +257,7 @@ class TouchInputController {
    * Handle pointer down events. Maps pointer position to a zone and pushes
    * a press event to the input queue.
    *
-   * @param {Object} pointer - Phaser pointer object with x, y, id properties
+   * @param {Phaser.Input.Pointer} pointer - Phaser pointer object
    */
   onPointerDown(pointer) {
     if (!this.visible || !this.inputQueue) {
@@ -283,7 +290,7 @@ class TouchInputController {
    * Handle pointer up events. Pushes a release event for the zone
    * associated with this pointer.
    *
-   * @param {Object} pointer - Phaser pointer object with x, y, id properties
+   * @param {Phaser.Input.Pointer} pointer - Phaser pointer object
    */
   onPointerUp(pointer) {
     if (!this.visible || !this.inputQueue) {
@@ -312,7 +319,7 @@ class TouchInputController {
    * If a pointer drags from one zone to another, release the old zone
    * and press the new one.
    *
-   * @param {Object} pointer - Phaser pointer object with x, y, id, isDown properties
+   * @param {Phaser.Input.Pointer} pointer - Phaser pointer object
    */
   onPointerMove(pointer) {
     if (!this.visible || !this.inputQueue) {

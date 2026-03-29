@@ -160,6 +160,8 @@ describe('LevelSelectState', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     scene = new LevelSelectState();
   });
 

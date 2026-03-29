@@ -66,6 +66,8 @@ export const Judgement = {
 
 /** Legacy scoring strategy (Week 6 and older). */
 const LegacyStrategy = {
+  /** @param {number} msTiming @returns {number} */
+  /** @param {number} msTiming @returns {number} */
   scoreNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -85,6 +87,7 @@ const LegacyStrategy = {
     return Constants.LEGACY_MISS_SCORE;
   },
 
+  /** @param {number} msTiming @returns {string} */
   judgeNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -111,6 +114,7 @@ const LegacyStrategy = {
 
 /** Week 7 scoring strategy with tighter windows. */
 const Week7Strategy = {
+  /** @param {number} msTiming @returns {number} */
   scoreNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -130,6 +134,7 @@ const Week7Strategy = {
     return Constants.WEEK7_MISS_SCORE;
   },
 
+  /** @param {number} msTiming @returns {string} */
   judgeNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -156,6 +161,7 @@ const Week7Strategy = {
 
 /** PBOT1 scoring strategy (Points Based On Timing v1). */
 const PBOT1Strategy = {
+  /** @param {number} msTiming @returns {number} */
   scoreNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -179,6 +185,7 @@ const PBOT1Strategy = {
     return Math.floor(Constants.PBOT1_MAX_SCORE * factor + Constants.PBOT1_MIN_SCORE);
   },
 
+  /** @param {number} msTiming @returns {string} */
   judgeNote(msTiming) {
     const absTiming = Math.abs(msTiming);
 
@@ -436,7 +443,7 @@ class Scoring {
 
     // Update totals
     tallies.totalNotesHit++;
-    tallies.score += score;
+    tallies.score = (tallies.score || 0) + score;
 
     return tallies;
   }
@@ -450,7 +457,7 @@ class Scoring {
   static updateTalliesOnMiss(tallies, scoringSystem = ScoringSystem.PBOT1) {
     tallies.missed++;
     tallies.combo = 0;
-    tallies.score += this.getMissScore(scoringSystem);
+    tallies.score = (tallies.score || 0) + this.getMissScore(scoringSystem);
 
     return tallies;
   }

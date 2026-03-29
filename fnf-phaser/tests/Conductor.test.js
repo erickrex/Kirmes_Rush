@@ -43,10 +43,12 @@ describe('Conductor', () => {
     // Reset the singleton before each test
     Conductor.reset();
     conductor = Conductor.instance;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
     conductor.destroy();
+    vi.restoreAllMocks();
   });
 
   describe('Singleton Pattern', () => {

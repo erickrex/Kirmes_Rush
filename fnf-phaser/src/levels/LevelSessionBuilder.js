@@ -7,13 +7,19 @@ import LevelContentResolver, { fetchJson } from './LevelContentResolver.js';
 import { createPreparedPlaySession } from './PreparedPlaySession.js';
 import LevelSystem, { LevelManifest } from './LevelSystem.js';
 
+/**
+ * @param {Record<string, any>} note
+ * @param {Record<string, any>} [features={}]
+ * @returns {import('../types.js').NoteData}
+ */
 function normalizeNote(note, features = {}) {
+  /** @type {import('../types.js').NoteData} */
   const normalized = {
     time: note.time ?? 0,
     data: note.data ?? 0,
     direction: ChartParser.getNoteDirection(note),
     length: note.length ?? 0,
-    kind: note.kind ?? null,
+    kind: note.kind ?? undefined,
     params: Array.isArray(note.params) ? [...note.params] : []
   };
 
@@ -24,8 +30,14 @@ function normalizeNote(note, features = {}) {
   return normalized;
 }
 
+/**
+ * @param {Record<string, any>} song
+ * @returns {{audio: Record<string, any>, entries: Array<Record<string, any>>}}
+ */
 function buildAudioEntries(song) {
+  /** @type {Array<Record<string, any>>} */
   const entries = [];
+  /** @type {Record<string, any>} */
   const audio = {
     instrumental: null,
     vocals: {
@@ -71,6 +83,12 @@ function buildAudioEntries(song) {
   return { audio, entries };
 }
 
+/**
+ * @param {Record<string, any>} song
+ * @param {Record<string, any>} metadata
+ * @param {Record<string, any>} [features={}]
+ * @returns {Record<string, any>}
+ */
 function buildCharacterConfig(song, metadata, features = {}) {
   if (features.characters === false) {
     return {};
@@ -107,11 +125,13 @@ export default class LevelSessionBuilder {
   }
 
   /**
-   * @param {string | Object} levelInput
-   * @returns {Promise<Object>}
+   * @param {string | Record<string, any>} levelInput
+   * @returns {Promise<Record<string, any>>}
    */
   async build(levelInput) {
-    const level = typeof levelInput === 'string' ? await this.loadLevel(levelInput) : levelInput;
+    const level = /** @type {Record<string, any>} */ (
+      typeof levelInput === 'string' ? await this.loadLevel(levelInput) : levelInput
+    );
 
     if (!level) {
       throw new Error('Level session build failed: level not found');
@@ -176,12 +196,12 @@ export default class LevelSessionBuilder {
 
   /**
    * @param {string} levelId
-   * @returns {Promise<Object>}
+   * @returns {Promise<Record<string, any> | null>}
    */
   async loadLevel(levelId) {
     const rawLevel = await fetchJson(`${LevelSystem.MANIFEST_PATH}${levelId}.json`, this.fetchImpl);
-    const level = LevelManifest.parse(rawLevel);
-    const validation = LevelManifest.validate(level);
+    const level = /** @type {Record<string, any> | null} */ (LevelManifest.parse(rawLevel));
+    const validation = LevelManifest.validate(/** @type {any} */ (level));
 
     if (!validation.valid) {
       throw new Error(`Invalid level manifest for ${levelId}: ${validation.errors.join(', ')}`);

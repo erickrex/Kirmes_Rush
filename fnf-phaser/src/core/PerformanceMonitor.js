@@ -15,7 +15,7 @@ import { LOW_FPS_THRESHOLD, FPS_SAMPLE_WINDOW } from '../layout/LayoutManager.js
 class PerformanceMonitor {
   /**
    * Reference to the Phaser game instance
-   * @type {Object|null}
+   * @type {Record<string, any>|null}
    */
   game = null;
 
@@ -57,7 +57,7 @@ class PerformanceMonitor {
 
   /**
    * Create a new PerformanceMonitor.
-   * @param {Object} game - Phaser game instance (needs game.loop.actualFps)
+   * @param {Record<string, any>} game - Phaser game instance (needs game.loop.actualFps)
    */
   constructor(game) {
     this.game = game;

@@ -9,6 +9,8 @@ import * as Constants from '../core/Constants.js';
 import NoteSprite from './NoteSprite.js';
 import SustainTrail from './SustainTrail.js';
 
+/** @import { NoteData } from '../types.js' */
+
 /**
  * Note directions in order
  * @type {number[]}
@@ -49,12 +51,21 @@ const KEY_COUNT = 4;
  */
 
 /**
+ * @typedef {Object} ReceptorData
+ * @property {number} direction - Direction index (0-3)
+ * @property {number} x - X position offset
+ * @property {number} y - Y position offset
+ * @property {'static' | 'press' | 'confirm'} state - Current animation state
+ * @property {string | null} animation - Current animation name
+ */
+
+/**
  * Manages the receptor arrows, notes, and hold notes for a player.
  */
 class Strumline {
   /**
    * The scene this strumline belongs to
-   * @type {Phaser.Scene}
+   * @type {Phaser.Scene | null}
    */
   scene = null;
 
@@ -90,7 +101,7 @@ class Strumline {
 
   /**
    * The note style being used
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   noteStyle = null;
 
@@ -108,13 +119,13 @@ class Strumline {
 
   /**
    * Receptor/strumline note sprites
-   * @type {Object[]}
+   * @type {ReceptorData[]}
    */
   receptors = [];
 
   /**
    * Note data from the chart
-   * @type {Array<Object>}
+   * @type {NoteData[]}
    */
   noteData = [];
 
@@ -138,7 +149,7 @@ class Strumline {
 
   /**
    * Conductor reference for timing
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   conductor = null;
 
@@ -159,7 +170,7 @@ class Strumline {
    * Create a new Strumline
    * @param {Phaser.Scene} scene - The scene this strumline belongs to
    * @param {boolean} isPlayer - Whether this is the player's strumline
-   * @param {Object} [noteStyle=null] - The note style to use
+   * @param {Record<string, any> | null} [noteStyle=null] - The note style to use
    * @param {number} [scrollSpeed=1.0] - Initial scroll speed
    */
   constructor(scene, isPlayer, noteStyle = null, scrollSpeed = 1.0) {
@@ -219,6 +230,7 @@ class Strumline {
     this.receptors = [];
 
     for (let i = 0; i < KEY_COUNT; i++) {
+      /** @type {ReceptorData} */
       const receptor = {
         direction: i,
         x: this.getXPos(i),
@@ -266,7 +278,7 @@ class Strumline {
 
   /**
    * Apply note data from a chart
-   * @param {Array<Object>} data - Array of note data objects
+   * @param {NoteData[]} data - Array of note data objects
    */
   applyNoteData(data) {
     this.notes = [];
@@ -280,7 +292,7 @@ class Strumline {
 
   /**
    * Add a single note to the data
-   * @param {Object} note - Note data object
+   * @param {NoteData} note - Note data object
    * @param {boolean} [sort=true] - Whether to re-sort after adding
    */
   addNoteData(note, sort = true) {
@@ -464,7 +476,7 @@ class Strumline {
 
   /**
    * Build a note sprite from note data
-   * @param {Object} noteData - The note data
+   * @param {NoteData} noteData - The note data
    * @returns {NoteSprite}
    */
   buildNoteSprite(noteData) {
@@ -474,7 +486,7 @@ class Strumline {
     if (noteSprite) {
       noteSprite.revive();
     } else {
-      noteSprite = new NoteSprite(this.scene, noteData.direction);
+      noteSprite = new NoteSprite(/** @type {Phaser.Scene} */ (this.scene), noteData.direction);
       if (this.scene?.add?.existing) {
         this.scene.add.existing(noteSprite);
       }
@@ -482,7 +494,7 @@ class Strumline {
     }
 
     // Configure the note
-    noteSprite.setup(noteData, this.noteStyle);
+    noteSprite.setup(noteData, this.noteStyle ?? undefined);
     noteSprite.strumline = this;
     noteSprite.setDepth?.(30);
 
@@ -500,7 +512,7 @@ class Strumline {
 
   /**
    * Build a hold note sprite from note data
-   * @param {Object} noteData - The note data
+   * @param {NoteData} noteData - The note data
    * @returns {SustainTrail}
    */
   buildHoldNoteSprite(noteData) {
@@ -510,12 +522,17 @@ class Strumline {
     if (holdNote) {
       holdNote.revive();
     } else {
-      holdNote = new SustainTrail(this.scene, noteData.direction, noteData.length, this.noteStyle);
+      holdNote = new SustainTrail(
+        /** @type {Phaser.Scene} */ (this.scene),
+        noteData.direction,
+        noteData.length,
+        this.noteStyle ?? undefined
+      );
       this.holdNotes.push(holdNote);
     }
 
     // Configure
-    holdNote.setup(noteData, this.noteStyle);
+    holdNote.setup(noteData, this.noteStyle ?? undefined);
     holdNote.parentStrumline = this;
     holdNote.flipY = this.isDownscroll;
 
@@ -593,7 +610,7 @@ class Strumline {
 
   /**
    * Get a note sprite by its note data
-   * @param {Object} target - The note data to find
+   * @param {NoteData | null} target - The note data to find
    * @returns {NoteSprite | null}
    */
   getNoteSprite(target) {
@@ -615,7 +632,7 @@ class Strumline {
 
   /**
    * Get a hold note sprite by its note data
-   * @param {Object} target - The note data to find
+   * @param {NoteData | null} target - The note data to find
    * @returns {SustainTrail | null}
    */
   getHoldNoteSprite(target) {
@@ -688,7 +705,7 @@ class Strumline {
   /**
    * Get a receptor by direction
    * @param {number} direction - Direction (0-3)
-   * @returns {Object}
+   * @returns {ReceptorData}
    */
   getByDirection(direction) {
     return this.receptors[direction];

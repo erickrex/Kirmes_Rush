@@ -3,7 +3,7 @@
  * Tests replay playback functionality.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ReplayPlayer } from '../src/replay/ReplaySystem.js';
 
 /**
@@ -49,7 +49,13 @@ describe('ReplayPlayer', () => {
   let player;
 
   beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     player = new ReplayPlayer();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
