@@ -266,6 +266,14 @@ class PlayState {
   /** @type {VoicesGroup | null} */
   voices = null;
 
+  // Visual options (read from SaveManager in PlayScene.create())
+  /** @type {boolean} */
+  flashingLights = true;
+  /** @type {boolean} */
+  cameraZoomEnabled = true;
+  /** @type {boolean} */
+  comboDisplayEnabled = true;
+
   // Cameras (synced from CameraController for backward compat)
   /** @type {Phaser.Cameras.Scene2D.Camera | null} */
   camGame = null;
@@ -444,7 +452,7 @@ class PlayState {
     // Player strumline: centered horizontally, forced downscroll, portrait Y position
     this.playerStrumline = new Strumline(this.scene, true, noteStyle, scrollSpeed);
     this.playerStrumline.setPosition(PLAYER_STRUMLINE_X, PLAYER_STRUMLINE_Y);
-    this.playerStrumline.isDownscroll = true;
+    this.playerStrumline.isDownscroll = SaveManager.getInstance().getOption('downscroll') ?? false;
 
     // Opponent strumline: hidden, used for timing/scoring only
     this.opponentStrumline = new Strumline(this.scene, false, noteStyle, scrollSpeed);

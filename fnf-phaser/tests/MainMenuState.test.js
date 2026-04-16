@@ -78,6 +78,7 @@ vi.mock('phaser', () => {
               isPlaying: false
             })),
             get: vi.fn(),
+            getAll: vi.fn(() => []),
             play: vi.fn()
           };
           this.cache = {

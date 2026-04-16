@@ -380,10 +380,11 @@ describe('PlayState', () => {
       expect(playState.playerStrumline.y).toBe(900); // PLAYER_STRUMLINE_Y
     });
 
-    it('should force downscroll on player strumline', () => {
+    it('should read downscroll option from SaveManager for player strumline', () => {
       playState.createStrumlines();
 
-      expect(playState.playerStrumline.isDownscroll).toBe(true);
+      // Default downscroll option is false in SaveManager
+      expect(playState.playerStrumline.isDownscroll).toBe(false);
     });
 
     it('should create opponent strumline hidden', () => {

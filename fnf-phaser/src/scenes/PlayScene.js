@@ -149,6 +149,9 @@ export default class PlayScene extends Phaser.Scene {
 
     /** @type {InstanceType<typeof NoteStyleRegistry> | null} */
     this.noteStyleRegistry = null;
+
+    /** @type {Phaser.GameObjects.Text | null} */
+    this.fpsText = null;
   }
 
   /**
@@ -193,6 +196,26 @@ export default class PlayScene extends Phaser.Scene {
     });
 
     this.playState.init(config);
+
+    // Read visual options from SaveManager and store on PlayState
+    const saveManager = SaveManager.getInstance();
+    this.playState.flashingLights = saveManager.getOption('flashingLights') ?? true;
+    this.playState.cameraZoomEnabled = saveManager.getOption('cameraZoom') ?? true;
+    this.playState.comboDisplayEnabled = saveManager.getOption('comboDisplay') ?? true;
+
+    // Conditionally create FPS text display
+    if (saveManager.getOption('showFps')) {
+      this.fpsText = this.add.text(10, 10, 'FPS: 0', {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#00ff00',
+        stroke: '#000000',
+        strokeThickness: 2
+      });
+      this.fpsText.setDepth(10000);
+      this.fpsText.setScrollFactor(0);
+    }
+
     if (this.audioManager) {
       this.playState.setAudioManager(this.audioManager);
     }
@@ -260,6 +283,10 @@ export default class PlayScene extends Phaser.Scene {
     }
 
     this.updateHud(delta);
+
+    if (this.fpsText) {
+      this.fpsText.setText(`FPS: ${Math.round(this.game.loop.actualFps)}`);
+    }
   }
 
   shutdown() {
@@ -301,6 +328,11 @@ export default class PlayScene extends Phaser.Scene {
     if (this.pauseButton) {
       this.pauseButton.destroy();
       this.pauseButton = null;
+    }
+
+    if (this.fpsText) {
+      this.fpsText.destroy();
+      this.fpsText = null;
     }
 
     if (this.playState) {
@@ -438,6 +470,7 @@ export default class PlayScene extends Phaser.Scene {
     this.audioManager = new AudioManager(this);
     this.voices = new VoicesGroup(this);
     this.audioManager.setVoices(this.voices);
+    this.audioManager.applyOptionsFromSave();
   }
 
   /**

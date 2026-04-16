@@ -9,6 +9,32 @@ import SaveManager from '../data/SaveManager.js';
 import { codeToStoredKey } from '../input/KeybindStorage.js';
 
 /**
+ * Description hints for each option, keyed by the option's storage key.
+ * Displayed below the option name in the UI.
+ * @type {Record<string, string>}
+ */
+const OPTION_DESCRIPTIONS = {
+  downscroll: 'Notes scroll from top to bottom instead of bottom to top',
+  ghostTapping: 'Allow pressing keys when no notes are present without penalty',
+  scrollSpeed: 'Speed multiplier for note scrolling (0.5x - 3.0x)',
+  noteOffset: 'Adjust note timing offset in milliseconds (-100 to +100)',
+  inputBufferWindow: 'Input buffer window in milliseconds for late inputs',
+  inputDelayCompensation: 'Compensate for input delay in milliseconds',
+  showNPS: 'Show notes per second meter during gameplay',
+  showGrade: 'Show letter grade during gameplay',
+  showComboBreaks: 'Show combo break counter during gameplay',
+  showJudgements: 'Show judgement counters (Sick, Good, Bad, etc.)',
+  masterVolume: 'Overall game volume',
+  musicVolume: 'Volume for music and instrumentals',
+  sfxVolume: 'Volume for sound effects and hitsounds',
+  hitsounds: 'Play a sound on perfectly timed note hits',
+  showFps: 'Show frames per second counter',
+  flashingLights: 'Enable flashing light effects during gameplay',
+  cameraZoom: 'Enable camera zoom effects on beat',
+  comboDisplay: 'Show combo popup on note hits'
+};
+
+/**
  * @typedef {'toggle' | 'slider' | 'keybind' | 'action'} OptionType
  */
 
@@ -388,6 +414,9 @@ export default class OptionsState extends BaseMenuState {
       item.value = Math.round((item.value - (item.step || 1)) * 1000) / 1000;
       item.value = Math.max(item.min || 0, item.value);
       this.saveOptions();
+      if (item.key === 'masterVolume' || item.key === 'musicVolume' || item.key === 'sfxVolume') {
+        this._applyLiveVolumePreview();
+      }
       this.updateDisplay();
       return;
     }
@@ -413,6 +442,9 @@ export default class OptionsState extends BaseMenuState {
       item.value = Math.round((item.value + (item.step || 1)) * 1000) / 1000;
       item.value = Math.min(item.max || 100, item.value);
       this.saveOptions();
+      if (item.key === 'masterVolume' || item.key === 'musicVolume' || item.key === 'sfxVolume') {
+        this._applyLiveVolumePreview();
+      }
       this.updateDisplay();
       return;
     }
@@ -600,6 +632,15 @@ export default class OptionsState extends BaseMenuState {
     container.add(valueText);
     container.setData('valueText', valueText);
 
+    const descText = this.add.text(0, 32, '', {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      color: '#94a3b8',
+      wordWrap: { width: usableWidth }
+    });
+    container.add(descText);
+    container.setData('descText', descText);
+
     // Slider track — full width, tall for easy finger dragging
     const sliderTrackWidth = usableWidth;
     const sliderBg = this.add.graphics();
@@ -744,7 +785,38 @@ export default class OptionsState extends BaseMenuState {
     // Snap to step
     item.value = Math.round(raw / stepVal) * stepVal;
     item.value = Math.max(minVal, Math.min(maxVal, Math.round(item.value * 1000) / 1000));
+    if (item.key === 'masterVolume' || item.key === 'musicVolume' || item.key === 'sfxVolume') {
+      this._applyLiveVolumePreview();
+    }
     this.updateDisplay();
+  }
+
+  // ========================================
+  // LIVE VOLUME PREVIEW
+  // ========================================
+
+  /**
+   * Read current volume slider values from the category items and apply
+   * the effective volume to the Phaser sound manager so the user hears
+   * changes in real-time.
+   * @private
+   */
+  _applyLiveVolumePreview() {
+    const audioCategory = this.categories.find((c) => c.name === 'Audio');
+    if (!audioCategory) return;
+
+    let masterVolume = 100;
+    let musicVolume = 100;
+
+    for (const item of audioCategory.items) {
+      if (item.key === 'masterVolume') masterVolume = item.value ?? 100;
+      if (item.key === 'musicVolume') musicVolume = item.value ?? 100;
+    }
+
+    const effectiveVolume = (masterVolume / 100) * (musicVolume / 100);
+    if (this.sound) {
+      this.sound.volume = effectiveVolume;
+    }
   }
 
   // ========================================
@@ -842,12 +914,14 @@ export default class OptionsState extends BaseMenuState {
       display.setVisible(true);
       const nameText = display.getData('nameText');
       const valueText = display.getData('valueText');
+      const descText = display.getData('descText');
       const sliderBg = display.getData('sliderBg');
       const sliderFill = display.getData('sliderFill');
       const trackWidth = display.getData('sliderTrackWidth') || 640;
 
       nameText.setText(item.name);
       nameText.setColor(index === this.selectedIndex ? '#ffff00' : '#ffffff');
+      descText?.setText(OPTION_DESCRIPTIONS[item.key] || '');
 
       switch (item.type) {
         case 'toggle':

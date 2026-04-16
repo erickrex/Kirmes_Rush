@@ -4,6 +4,7 @@
  */
 
 import BaseMenuState from './BaseMenuState.js';
+import SaveManager from '../data/SaveManager.js';
 
 /**
  * @typedef {Object} MenuItem
@@ -131,13 +132,25 @@ export default class MainMenuState extends BaseMenuState {
   }
 
   playMenuMusic() {
-    const existingMusic = this.sound.get('menu-music') || this.sound.get('title-music');
-    if (existingMusic && existingMusic.isPlaying) {
-      this.menuMusic = existingMusic;
-      return;
-    }
+    // Stop any lingering audio from a previous scene (e.g. title music that
+    // wasn't cleaned up, or a duplicate menu-music instance left behind by a
+    // scene transition that didn't call stopAll).
+    this.sound.getAll('menu-music').forEach((s) => {
+      if (s.isPlaying) {
+        s.stop();
+      }
+    });
+    this.sound.getAll('title-music').forEach((s) => {
+      if (s.isPlaying) {
+        s.stop();
+      }
+    });
+
     if (this.cache.audio.exists('menu-music')) {
-      this.menuMusic = this.sound.add('menu-music', { loop: true, volume: 0.7 });
+      const masterVolume = SaveManager.getInstance().getOption('masterVolume');
+      const musicVolume = SaveManager.getInstance().getOption('musicVolume');
+      const combinedVolume = (masterVolume / 100) * (musicVolume / 100);
+      this.menuMusic = this.sound.add('menu-music', { loop: true, volume: combinedVolume });
       this.menuMusic.play();
     }
   }
@@ -155,6 +168,9 @@ export default class MainMenuState extends BaseMenuState {
 
   shutdown() {
     super.shutdown();
+    if (this.menuMusic && this.menuMusic.isPlaying) {
+      this.menuMusic.stop();
+    }
     this.menuTexts = [];
     this.menuMusic = null;
   }

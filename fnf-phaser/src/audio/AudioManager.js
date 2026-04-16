@@ -6,6 +6,7 @@
  */
 
 import * as Constants from '../core/Constants.js';
+import SaveManager from '../data/SaveManager.js';
 
 /**
  * Phaser sound instance with seek/volume support.
@@ -428,6 +429,25 @@ class AudioManager {
   // ========================================
   // VOLUME CONTROL
   // ========================================
+
+  /**
+   * Read saved volume options from SaveManager and apply them.
+   * Converts the 0-100 scale stored in SaveManager to the 0-1 scale
+   * used internally by AudioManager, then calls updateVolumes() so
+   * the new levels take effect on the instrumental and voices tracks.
+   */
+  applyOptionsFromSave() {
+    const save = SaveManager.getInstance();
+    const masterVolume = save.getOption('masterVolume') ?? 100;
+    const musicVolume = save.getOption('musicVolume') ?? 100;
+    const sfxVolume = save.getOption('sfxVolume') ?? 100;
+
+    this.masterVolume = masterVolume / 100;
+    this.instrumentalVolume = musicVolume / 100;
+    this.sfxVolume = sfxVolume / 100;
+
+    this.updateVolumes();
+  }
 
   /**
    * Set the master volume

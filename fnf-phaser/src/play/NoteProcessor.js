@@ -10,6 +10,7 @@
 
 import * as Constants from '../core/Constants.js';
 import { Events } from '../core/EventBus.js';
+import SaveManager from '../data/SaveManager.js';
 
 /**
  * @typedef {import('../types.js').Tallies} Tallies
@@ -186,8 +187,10 @@ export function createNoteProcessor(context) {
      */
     hitNote(note, timing) {
       const { playState } = context;
-      const judgement = scoring.judgeNote(timing);
-      const noteScore = scoring.scoreNote(timing);
+      const noteOffset = SaveManager.getInstance().getOption('noteOffset') ?? 0;
+      const adjustedTiming = timing + noteOffset;
+      const judgement = scoring.judgeNote(adjustedTiming);
+      const noteScore = scoring.scoreNote(adjustedTiming);
       const healthEnabled = playState.isFeatureEnabled
         ? playState.isFeatureEnabled('healthBar')
         : true;
@@ -224,6 +227,12 @@ export function createNoteProcessor(context) {
           Constants.HEALTH_MIN,
           Math.min(Constants.HEALTH_MAX, playState.health + healthBonus)
         );
+      }
+
+      // Play hitsound on sick/killer judgement when hitsounds enabled
+      const hitsoundsEnabled = SaveManager.getInstance().getOption('hitsounds');
+      if (hitsoundsEnabled && (judgement === 'sick' || judgement === 'killer')) {
+        playState.audioManager?.playHitsound();
       }
 
       // Hit the note on strumline
@@ -311,11 +320,50 @@ export function createNoteProcessor(context) {
     /**
      * Ghost miss (pressed key with no note).
      * @param {number} direction - Direction
+     * @param {boolean} [applyPenalty=false] - Whether to apply a miss penalty (when ghostTapping is disabled)
      */
-    ghostMiss(direction) {
+    ghostMiss(direction, applyPenalty = false) {
       const { playState } = context;
-      // Only play press animation
+      // Play press animation
       playState.playerStrumline?.playPress(direction);
+
+      if (applyPenalty) {
+        const healthEnabled = playState.isFeatureEnabled
+          ? playState.isFeatureEnabled('healthBar')
+          : true;
+
+        // Reset combo
+        playState.combo = 0;
+
+        // Update tallies
+        playState.tallies.missed++;
+
+        // Apply health penalty
+        if (healthEnabled) {
+          playState.health = Math.max(
+            Constants.HEALTH_MIN,
+            playState.health + Constants.HEALTH_MISS_PENALTY
+          );
+        }
+
+        // Trigger player miss animation
+        if (playState.player) {
+          playState.player.miss(direction);
+        }
+
+        // Mute player vocals
+        if (playState.voices) {
+          playState.voices.mutePlayer();
+        }
+
+        // Emit miss event
+        eventBus.emit(Events.NOTE_MISS, { note: null, direction, isGhostTap: true });
+
+        // Check for game over
+        if (healthEnabled && playState.health <= Constants.HEALTH_MIN && playState.gameOver) {
+          playState.gameOver();
+        }
+      }
     },
 
     /**

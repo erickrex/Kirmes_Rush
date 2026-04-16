@@ -128,7 +128,14 @@ export function createInputManager(context) {
       }
 
       // Ghost tap (no note to hit)
-      noteProcessor.ghostMiss(direction);
+      const ghostTapping = SaveManager.getInstance().getOption('ghostTapping');
+      if (ghostTapping === false) {
+        // Ghost tapping disabled — apply miss penalty
+        noteProcessor.ghostMiss(direction, true);
+      } else {
+        // Ghost tapping enabled (default) — press animation only
+        noteProcessor.ghostMiss(direction);
+      }
     },
 
     /**
