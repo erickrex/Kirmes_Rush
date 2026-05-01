@@ -3,7 +3,7 @@
  * Implements FR-6.1: Title screen with attract mode
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import * as Constants from '../core/Constants.js';
 import EventBus, { Events } from '../core/EventBus.js';
 

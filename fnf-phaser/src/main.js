@@ -2,7 +2,7 @@
  * @fileoverview Main entry point for Friday Night Funkin' Phaser JS
  */
 
-import Phaser from 'phaser';
+import Phaser from './phaser.js';
 import TitleState from './ui/TitleState.js';
 import MainMenuState from './ui/MainMenuState.js';
 import StoryMenuState from './ui/StoryMenuState.js';
@@ -32,12 +32,6 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
-  },
-  physics: {
-    default: 'arcade',
-    arcade: {
-      debug: false
-    }
   },
   audio: {
     disableWebAudio: false

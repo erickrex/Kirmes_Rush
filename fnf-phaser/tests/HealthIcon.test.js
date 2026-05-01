@@ -70,6 +70,10 @@ vi.stubGlobal('Phaser', {
   }
 });
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Import after mocks
 const { default: HealthIcon, HealthIconState } = await import('../src/play/HealthIcon.js');
 const Constants = await import('../src/core/Constants.js');

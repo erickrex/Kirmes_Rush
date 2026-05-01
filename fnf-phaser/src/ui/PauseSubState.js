@@ -3,7 +3,7 @@
  * Implements FR-6.6: Pause menu with Resume, Restart, Exit options
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import EventBus, { Events } from '../core/EventBus.js';
 
 /**

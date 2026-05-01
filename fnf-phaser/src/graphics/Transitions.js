@@ -3,7 +3,7 @@
  * Implements FR-6.2: Fade and sticker transitions
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 
 /**
  * Transition types
@@ -505,10 +505,12 @@ class Transitions {
     for (let i = 0; i < 2 * points; i++) {
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
       const angle = i * step - Math.PI / 2;
-      path.push({
-        x: cx + radius * Math.cos(angle),
-        y: cy + radius * Math.sin(angle)
-      });
+      path.push(
+        new Phaser.Math.Vector2(
+          cx + radius * Math.cos(angle),
+          cy + radius * Math.sin(angle)
+        )
+      );
     }
 
     graphics.fillPoints(path, true);

@@ -3,7 +3,7 @@
  * Implements FR-6.7: Results display with score, rank, and tallies
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import Scoring from '../play/Scoring.js';
 
 /**

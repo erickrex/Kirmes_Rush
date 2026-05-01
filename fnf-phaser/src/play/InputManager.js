@@ -24,7 +24,7 @@ import SaveManager from '../data/SaveManager.js';
 /**
  * @typedef {Object} InputManagerNoteProcessor
  * @property {(note: any, timing: number) => void} hitNote - Hit a note
- * @property {(direction: number) => void} ghostMiss - Ghost miss
+ * @property {(direction: number, applyPenalty?: boolean) => void} ghostMiss - Ghost miss
  */
 
 /**

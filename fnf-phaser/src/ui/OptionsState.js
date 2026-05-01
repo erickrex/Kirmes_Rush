@@ -3,7 +3,7 @@
  * Implements FR-6.5: Options menu with keybinds, calibration, preferences
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import BaseMenuState from './BaseMenuState.js';
 import SaveManager from '../data/SaveManager.js';
 import { codeToStoredKey } from '../input/KeybindStorage.js';

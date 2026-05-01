@@ -4,7 +4,7 @@
  * background creation, fade transitions, and navigation guards.
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 /**
  * Base class for menu scenes. Handles common input binding,
  * sound effects, background rendering, scene transitions,

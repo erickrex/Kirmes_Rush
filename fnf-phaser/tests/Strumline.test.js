@@ -94,6 +94,10 @@ global.Phaser = {
   }
 };
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Dynamic import AFTER Phaser mock is set up
 const { default: Strumline } = await import('../src/play/Strumline.js');
 

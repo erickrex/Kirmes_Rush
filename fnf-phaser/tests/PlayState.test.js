@@ -88,6 +88,10 @@ vi.stubGlobal('Phaser', {
   }
 });
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Mock Conductor
 const mockConductor = {
   songPosition: 0,

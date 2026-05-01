@@ -13,7 +13,7 @@
  * from the current shipped menu until the release path supports it end-to-end.
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import { ReplayManager } from '../replay/ReplaySystem.js';
 
 /**

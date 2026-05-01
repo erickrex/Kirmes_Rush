@@ -102,6 +102,10 @@ vi.stubGlobal('Phaser', {
   }
 });
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Mock Conductor
 const mockConductor = {
   songPosition: 0,
@@ -173,6 +177,9 @@ vi.mock('phaser', () => {
 
   return {
     default: {
+      GameObjects: globalThis.Phaser.GameObjects,
+      Events: globalThis.Phaser.Events,
+      Math: globalThis.Phaser.Math,
       Scene: class MockScene {
         constructor(config) {
           this.config = config;

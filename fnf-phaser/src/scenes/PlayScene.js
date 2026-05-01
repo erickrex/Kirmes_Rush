@@ -3,7 +3,7 @@
  * Bridges PlayState (plain class) with Phaser's scene system.
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import PlayState from '../play/PlayState.js';
 import EventBus, { Events } from '../core/EventBus.js';
 import LevelSystem from '../levels/LevelSystem.js';

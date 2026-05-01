@@ -30,6 +30,7 @@ import SaveManager from '../data/SaveManager.js';
  * @property {{ sing: (dir: number) => void, miss: (dir: number) => void } | null} [player] - Player character
  * @property {{ sing: (dir: number) => void } | null} [opponent] - Opponent character
  * @property {{ mutePlayer: () => void, unmutePlayer: () => void } | null} [voices] - Voices group
+ * @property {{ playHitsound: () => void } | null} [audioManager] - Audio manager
  * @property {((note: any, judgement: string, score: number, timing: number) => void) | null} [onNoteHit] - Note hit callback
  * @property {((note: any) => void) | null} [onNoteMiss] - Note miss callback
  * @property {((featureName: string) => boolean) | undefined} [isFeatureEnabled] - Feature flag check

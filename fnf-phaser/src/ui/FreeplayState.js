@@ -7,7 +7,7 @@
  * paths when freeplay is productized again.
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import BaseMenuState from './BaseMenuState.js';
 
 /**

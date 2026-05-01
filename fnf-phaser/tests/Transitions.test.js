@@ -66,7 +66,13 @@ vi.mock('phaser', () => {
       Math: {
         Between: vi.fn((min, max) => Math.floor((min + max) / 2)),
         FloatBetween: vi.fn((min, max) => (min + max) / 2),
-        DegToRad: vi.fn((deg) => deg * Math.PI / 180)
+        DegToRad: vi.fn((deg) => deg * Math.PI / 180),
+        Vector2: class MockVector2 {
+          constructor(x, y) {
+            this.x = x;
+            this.y = y;
+          }
+        }
       },
       Utils: {
         Array: {

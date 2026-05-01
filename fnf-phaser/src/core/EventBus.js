@@ -6,7 +6,7 @@
  * without tight coupling.
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 
 /**
  * Event type constants for type-safe event handling.

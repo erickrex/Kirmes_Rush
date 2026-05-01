@@ -3,7 +3,7 @@
  * Implements FR-6.8: Game over animation and retry/exit handling
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import EventBus, { Events } from '../core/EventBus.js';
 
 /**

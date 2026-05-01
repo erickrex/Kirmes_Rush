@@ -6,7 +6,7 @@
  * Ported from source/funkin/Conductor.hx
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import * as Constants from './Constants.js';
 
 /**

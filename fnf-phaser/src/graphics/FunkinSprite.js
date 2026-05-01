@@ -5,7 +5,7 @@
  * Ported from source/funkin/graphics/FunkinSprite.hx and source/funkin/play/stage/Bopper.hx
  */
 
-/* global Phaser */
+import Phaser from '../phaser.js';
 
 /**
  * @typedef {Object} AnimationOffsets

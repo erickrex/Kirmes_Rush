@@ -3,7 +3,7 @@
  * Implements FR-4.5: Loading screen with progress display
  */
 
-import Phaser from 'phaser';
+import Phaser from '../phaser.js';
 import EventBus, { Events } from '../core/EventBus.js';
 
 /** @import { LoadingStatePayload } from '../types.js' */

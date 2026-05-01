@@ -125,6 +125,10 @@ global.Phaser = {
   }
 };
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Dynamic import AFTER Phaser mock is set up
 const { default: FunkinSprite } = await import('../src/graphics/FunkinSprite.js');
 

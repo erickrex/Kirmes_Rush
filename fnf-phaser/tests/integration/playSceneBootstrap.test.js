@@ -23,6 +23,7 @@ function createChainableObject(initial = {}) {
     setAlpha: vi.fn().mockReturnThis(),
     setScale: vi.fn().mockReturnThis(),
     setDepth: vi.fn().mockReturnThis(),
+    setScrollFactor: vi.fn().mockReturnThis(),
     setText: vi.fn().mockReturnThis(),
     destroy: vi.fn()
   };
@@ -155,6 +156,7 @@ vi.mock('../../src/audio/AudioManager.js', () => ({
   default: class MockAudioManager {
     constructor() {}
     setVoices() {}
+    applyOptionsFromSave() {}
   }
 }));
 

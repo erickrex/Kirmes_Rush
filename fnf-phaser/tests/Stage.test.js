@@ -151,6 +151,10 @@ global.Phaser = {
   }
 };
 
+vi.mock('phaser', () => ({
+  default: globalThis.Phaser
+}));
+
 // Dynamic import AFTER Phaser mock is set up
 const { default: Stage } = await import('../src/play/Stage.js');
 const { default: StageRegistry } = await import('../src/data/registries/StageRegistry.js');
