@@ -122,10 +122,16 @@ export default class TitleState extends Phaser.Scene {
     );
 
     // Title music
-    this.load.audio('title-music', 'assets/rythm-foundation.assets/preload/music/freakyMenu/freakyMenu.mp3');
+    this.load.audio(
+      'title-music',
+      'assets/rythm-foundation.assets/preload/music/freakyMenu/freakyMenu.mp3'
+    );
 
     // Confirm sound
-    this.load.audio('confirm-sound', 'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3');
+    this.load.audio(
+      'confirm-sound',
+      'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3'
+    );
   }
 
   /**
@@ -176,7 +182,7 @@ export default class TitleState extends Phaser.Scene {
       this.logo.setScale(0.5);
     } else {
       // Fallback: Create text-based logo
-      this.logo = this.add.text(centerX, centerY - 100, "Rythm Foundation", {
+      this.logo = this.add.text(centerX, centerY - 100, 'Rythm Foundation', {
         fontFamily: 'Arial Black',
         fontSize: '64px',
         color: '#31a2f2',

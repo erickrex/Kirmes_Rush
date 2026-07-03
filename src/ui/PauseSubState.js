@@ -126,7 +126,10 @@ export default class PauseSubState extends Phaser.Scene {
     this.load.setPath('assets/');
 
     if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'assets/rythm-foundation.assets/preload/sounds/scrollMenu.mp3');
+      this.load.audio(
+        'scroll-sound',
+        'assets/rythm-foundation.assets/preload/sounds/scrollMenu.mp3'
+      );
     }
   }
 

@@ -166,13 +166,22 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.load.setPath('assets/');
 
     if (!this.cache.audio.exists('scroll-sound')) {
-      this.load.audio('scroll-sound', 'assets/rythm-foundation.assets/preload/sounds/scrollMenu.mp3');
+      this.load.audio(
+        'scroll-sound',
+        'assets/rythm-foundation.assets/preload/sounds/scrollMenu.mp3'
+      );
     }
     if (!this.cache.audio.exists('confirm-sound')) {
-      this.load.audio('confirm-sound', 'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3');
+      this.load.audio(
+        'confirm-sound',
+        'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3'
+      );
     }
     if (!this.cache.audio.exists('cancel-sound')) {
-      this.load.audio('cancel-sound', 'assets/rythm-foundation.assets/preload/sounds/cancelMenu.mp3');
+      this.load.audio(
+        'cancel-sound',
+        'assets/rythm-foundation.assets/preload/sounds/cancelMenu.mp3'
+      );
     }
   }
 

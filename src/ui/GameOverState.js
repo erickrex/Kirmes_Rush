@@ -153,7 +153,10 @@ export default class GameOverState extends Phaser.Scene {
     );
 
     // Retry confirm sound
-    this.load.audio('retry-confirm', 'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3');
+    this.load.audio(
+      'retry-confirm',
+      'assets/rythm-foundation.assets/preload/sounds/confirmMenu.mp3'
+    );
   }
 
   /**
