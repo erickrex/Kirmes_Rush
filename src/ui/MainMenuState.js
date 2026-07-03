@@ -86,7 +86,10 @@ export default class MainMenuState extends BaseMenuState {
   preload() {
     this.load.image('menu-bg', 'assets/rythm-foundation.assets/preload/images/menuBG.png');
     if (!this.cache.audio.exists('menu-music')) {
-      this.load.audio('menu-music', 'assets/rythm-foundation.assets/preload/music/freakyMenu/freakyMenu.mp3');
+      this.load.audio(
+        'menu-music',
+        'assets/rythm-foundation.assets/preload/music/freakyMenu/freakyMenu.mp3'
+      );
     }
     this.preloadMenuSounds();
   }

@@ -8,7 +8,7 @@
 // ==============================
 
 /** The title of the game, for debug printing purposes. */
-export const TITLE = "Rythm Foundation";
+export const TITLE = 'Rythm Foundation';
 
 /** The current version number of the game. */
 export const VERSION = 'v0.1.0';
