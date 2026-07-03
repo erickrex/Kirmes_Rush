@@ -68,6 +68,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { createNoteProcessor } from '../src/play/NoteProcessor.js';
+import { createGameplayState } from '../src/play/GameplayState.js';
 import * as Constants from '../src/core/Constants.js';
 import EventBus, { Events } from '../src/core/EventBus.js';
 import Scoring from '../src/play/Scoring.js';
@@ -76,20 +77,44 @@ describe('NoteProcessor', () => {
   let np;
   let context;
   let playState;
+  let gs;
 
   beforeEach(() => {
     EventBus.reset();
 
+    // GameplayState_Module is the single source of truth for score/combo/health/tallies.
+    gs = createGameplayState({});
+    gs.tallies.totalNotes = 10;
+
     playState = {
       songPosition: 1000,
-      health: Constants.HEALTH_STARTING,
-      score: 0,
-      combo: 0,
-      maxCombo: 0,
-      tallies: {
-        sick: 0, good: 0, bad: 0, shit: 0,
-        missed: 0, combo: 0, maxCombo: 0,
-        totalNotesHit: 0, totalNotes: 10
+      // Read-through accessors mirror PlayState's single-owner contract over GameplayState.
+      get health() {
+        return gs.health;
+      },
+      set health(value) {
+        gs.health = value;
+      },
+      get score() {
+        return gs.score;
+      },
+      get combo() {
+        return gs.combo;
+      },
+      set combo(value) {
+        gs.combo = value;
+      },
+      get maxCombo() {
+        return gs.maxCombo;
+      },
+      set maxCombo(value) {
+        gs.maxCombo = value;
+      },
+      get tallies() {
+        return gs.tallies;
+      },
+      set tallies(value) {
+        gs.tallies = value;
       },
       playerStrumline: {
         notes: [],
@@ -116,7 +141,7 @@ describe('NoteProcessor', () => {
       conductor: {},
       eventBus: EventBus,
       scoring: Scoring,
-      gameplayState: null
+      gameplayState: gs
     };
 
     np = createNoteProcessor(context);
@@ -222,18 +247,18 @@ describe('NoteProcessor', () => {
       expect(playState.combo).toBe(0);
     });
 
-    it('should emit NOTE_HIT event', () => {
+    it('should emit NOTE_HIT event with extended payload', () => {
       const handler = vi.fn();
       EventBus.on(Events.NOTE_HIT, handler);
       const note = { direction: 0 };
       np.hitNote(note, 10);
-      // Handler is called twice: once from hitNote emit, once from the listener
-      // The first call is from our test handler
       expect(handler).toHaveBeenCalled();
       const callData = handler.mock.calls[0][0];
       expect(callData.note).toBe(note);
       expect(callData.judgement).toBeDefined();
       expect(callData.score).toBeDefined();
+      expect(callData.direction).toBe(0);
+      expect(callData).toHaveProperty('receptor');
       EventBus.off(Events.NOTE_HIT, handler);
     });
 
@@ -341,68 +366,45 @@ describe('NoteProcessor', () => {
   });
 
   describe('destroy', () => {
-    it('should remove EventBus listeners', () => {
-      const initialHitCount = EventBus.listenerCount(Events.NOTE_HIT);
-      const initialMissCount = EventBus.listenerCount(Events.NOTE_MISS);
-      np.destroy();
-      expect(EventBus.listenerCount(Events.NOTE_HIT)).toBe(initialHitCount - 1);
-      expect(EventBus.listenerCount(Events.NOTE_MISS)).toBe(initialMissCount - 1);
+    it('should not register NOTE_HIT/NOTE_MISS listeners (state is updated synchronously)', () => {
+      // The processor updates GameplayState directly in hitNote/missNote, so it does
+      // not register EventBus listeners that would need teardown.
+      expect(EventBus.listenerCount(Events.NOTE_HIT)).toBe(0);
+      expect(EventBus.listenerCount(Events.NOTE_MISS)).toBe(0);
+      expect(() => np.destroy()).not.toThrow();
     });
 
     it('should be idempotent', () => {
-      np.destroy();
-      const hitCount = EventBus.listenerCount(Events.NOTE_HIT);
-      const missCount = EventBus.listenerCount(Events.NOTE_MISS);
-      np.destroy(); // second call should be no-op
-      expect(EventBus.listenerCount(Events.NOTE_HIT)).toBe(hitCount);
-      expect(EventBus.listenerCount(Events.NOTE_MISS)).toBe(missCount);
+      expect(() => {
+        np.destroy();
+        np.destroy(); // second call should be a no-op
+      }).not.toThrow();
     });
   });
 
-  describe('EventBus GameplayState communication', () => {
-    it('should update GameplayState on NOTE_HIT when gameplayState is set', () => {
-      const gs = {
-        updateScore: vi.fn(),
-        updateCombo: vi.fn(),
-        updateTallies: vi.fn(),
-        getHealthBonus: vi.fn().mockReturnValue(0.02),
-        updateHealth: vi.fn()
-      };
-      context.gameplayState = gs;
+  describe('single source of truth (GameplayState)', () => {
+    it('should update gameplay state exactly once per hit (no double counting)', () => {
+      const note = { direction: 0 };
+      np.hitNote(note, 5); // sick/killer
 
-      EventBus.emit(Events.NOTE_HIT, {
-        judgement: 'sick',
-        score: 350,
-        timing: 10,
-        combo: 1
-      });
-
-      expect(gs.updateScore).toHaveBeenCalledWith(350);
-      expect(gs.updateCombo).toHaveBeenCalledWith('sick');
-      expect(gs.updateTallies).toHaveBeenCalledWith('sick', 350);
-      expect(gs.getHealthBonus).toHaveBeenCalledWith('sick');
-      expect(gs.updateHealth).toHaveBeenCalledWith(0.02);
+      // Score reflects a single application of the note score.
+      expect(gs.score).toBe(Scoring.scoreNote(5));
+      expect(gs.combo).toBe(1);
+      expect(gs.tallies.totalNotesHit).toBe(1);
+      // PlayState read accessors equal the GameplayState values.
+      expect(playState.score).toBe(gs.score);
+      expect(playState.combo).toBe(gs.combo);
+      expect(playState.tallies).toBe(gs.tallies);
     });
 
-    it('should update GameplayState on NOTE_MISS when gameplayState is set', () => {
-      const gs = {
-        combo: 5,
-        tallies: { missed: 0 },
-        updateHealth: vi.fn()
-      };
-      context.gameplayState = gs;
-
-      EventBus.emit(Events.NOTE_MISS, { note: {} });
+    it('should update gameplay state exactly once per miss (no double counting)', () => {
+      gs.combo = 5;
+      const note = { direction: 0, hasMissed: false, handledMiss: false };
+      np.missNote(note);
 
       expect(gs.combo).toBe(0);
       expect(gs.tallies.missed).toBe(1);
-      expect(gs.updateHealth).toHaveBeenCalledWith(Constants.HEALTH_MISS_PENALTY);
-    });
-
-    it('should not throw when gameplayState is null on events', () => {
-      context.gameplayState = null;
-      expect(() => EventBus.emit(Events.NOTE_HIT, { judgement: 'sick', score: 350 })).not.toThrow();
-      expect(() => EventBus.emit(Events.NOTE_MISS, { note: {} })).not.toThrow();
+      expect(playState.health).toBe(gs.health);
     });
   });
 });

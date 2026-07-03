@@ -13,6 +13,25 @@ vi.stubGlobal('Phaser', {
         this.y = 0;
         this.visible = true;
         this.alpha = 1;
+        this.angle = 0;
+        this.flipX = false;
+        this.displayWidth = 150;
+        this.displayHeight = 150;
+        this.scrollFactorX = 1;
+        this.scrollFactorY = 1;
+        this.anims = { currentAnim: null };
+        this._listeners = {};
+      }
+      on(event, fn) {
+        this._listeners[event] = this._listeners[event] || [];
+        this._listeners[event].push(fn);
+        return this;
+      }
+      off() {
+        return this;
+      }
+      emit() {
+        return this;
       }
       setOrigin() {
         return this;
@@ -20,13 +39,27 @@ vi.stubGlobal('Phaser', {
       setScale() {
         return this;
       }
-      setPosition() {
+      setPosition(x, y) {
+        this.x = x;
+        this.y = y;
         return this;
       }
-      setVisible() {
+      setVisible(v) {
+        this.visible = v;
         return this;
       }
-      setAlpha() {
+      setAlpha(a) {
+        this.alpha = a;
+        return this;
+      }
+      setScrollFactor(x, y) {
+        this.scrollFactorX = x;
+        this.scrollFactorY = y ?? x;
+        return this;
+      }
+      setDisplaySize(w, h) {
+        this.displayWidth = w;
+        this.displayHeight = h;
         return this;
       }
       destroy() {}
@@ -153,6 +186,7 @@ vi.mock('../src/input/TouchDeviceDetector.js', () => ({
 
 // Now import after mocks are set up
 const { default: PlayState } = await import('../src/play/PlayState.js');
+const { default: HealthIcon } = await import('../src/play/HealthIcon.js');
 const { default: Conductor } = await import('../src/core/Conductor.js');
 const { default: EventBus, Events } = await import('../src/core/EventBus.js');
 const Constants = await import('../src/core/Constants.js');
@@ -207,7 +241,8 @@ const createMockScene = () => ({
     off: vi.fn()
   },
   tweens: {
-    add: vi.fn()
+    add: vi.fn(),
+    killTweensOf: vi.fn()
   }
 });
 
@@ -590,13 +625,50 @@ describe('PlayState', () => {
     });
 
     it('should hit note if within hit window', () => {
-      const mockNote = { strumTime: 1000, hasBeenHit: false };
+      const mockNote = { strumTime: 1000, direction: 0, hasBeenHit: false };
       playState.playerStrumline.getClosestNote = vi.fn(() => mockNote);
       playState.songPosition = 1000;
 
       playState.handleNoteInput(0, 1000);
 
       expect(playState.playerStrumline.hitNote).toHaveBeenCalledWith(mockNote);
+    });
+
+    it('should judge live queued input at the original event timestamp', () => {
+      const mockNote = { strumTime: 1000, direction: 0, hasBeenHit: false };
+      playState.playerStrumline.getClosestNote = vi.fn(() => mockNote);
+      playState.songPosition = 1016;
+      vi.spyOn(performance, 'now').mockReturnValue(2016);
+
+      playState.handleNoteInput(0, 2000);
+
+      expect(EventBus.emit).toHaveBeenCalledWith(
+        Events.NOTE_HIT,
+        expect.objectContaining({
+          note: mockNote,
+          timing: 0
+        })
+      );
+    });
+
+    it('should buffer early input and consume it when the note enters the hit window', () => {
+      const mockNote = { strumTime: 1000, direction: 0, hasBeenHit: false };
+      playState.playerStrumline.getClosestNote = vi.fn(() => mockNote);
+      playState.setInputBufferEnabled(true, 60);
+      playState.songPosition = 790;
+
+      playState.handleNoteInput(0, 790, 'KeyA');
+
+      expect(playState.playerStrumline.hitNote).not.toHaveBeenCalled();
+      expect(playState.playerStrumline.playPress).not.toHaveBeenCalled();
+      expect(playState.inputBuffer.size).toBe(1);
+
+      vi.clearAllMocks();
+      playState.songPosition = 840;
+      playState.processInputQueue();
+
+      expect(playState.playerStrumline.hitNote).toHaveBeenCalledWith(mockNote);
+      expect(playState.inputBuffer.size).toBe(0);
     });
 
     it('should ghost miss if no note', () => {
@@ -632,6 +704,8 @@ describe('PlayState', () => {
       playState.hitNote(note, 0); // Perfect timing
 
       expect(playState.score).toBeGreaterThan(0);
+      // Single-owner contract: PlayState.score is read-through from GameplayState.
+      expect(playState.score).toBe(playState._gameplayState.score);
     });
 
     it('should update combo', () => {
@@ -640,6 +714,8 @@ describe('PlayState', () => {
       playState.hitNote(note, 0);
 
       expect(playState.combo).toBe(1);
+      // Single-owner contract: PlayState.combo is read-through from GameplayState.
+      expect(playState.combo).toBe(playState._gameplayState.combo);
     });
 
     it('should update max combo', () => {
@@ -650,6 +726,8 @@ describe('PlayState', () => {
       playState.hitNote(note, 0);
 
       expect(playState.maxCombo).toBe(3);
+      // Single-owner contract: PlayState.maxCombo is read-through from GameplayState.
+      expect(playState.maxCombo).toBe(playState._gameplayState.maxCombo);
     });
 
     it('should update tallies', () => {
@@ -659,6 +737,8 @@ describe('PlayState', () => {
 
       expect(playState.tallies.sick).toBe(1);
       expect(playState.tallies.totalNotesHit).toBe(1);
+      // Single-owner contract: PlayState.tallies is the GameplayState tallies object.
+      expect(playState.tallies).toBe(playState._gameplayState.tallies);
     });
 
     it('should update health', () => {
@@ -668,6 +748,8 @@ describe('PlayState', () => {
       playState.hitNote(note, 0);
 
       expect(playState.health).toBeGreaterThan(initialHealth);
+      // Single-owner contract: PlayState.health is read-through from GameplayState.
+      expect(playState.health).toBe(playState._gameplayState.health);
     });
 
     it('should emit NOTE_HIT event', () => {
@@ -709,12 +791,16 @@ describe('PlayState', () => {
       playState.missNote({ strumTime: 1000 });
 
       expect(playState.combo).toBe(0);
+      // Single-owner contract: PlayState.combo is read-through from GameplayState.
+      expect(playState.combo).toBe(playState._gameplayState.combo);
     });
 
     it('should update tallies', () => {
       playState.missNote({ strumTime: 1000 });
 
       expect(playState.tallies.missed).toBe(1);
+      // Single-owner contract: PlayState.tallies is the GameplayState tallies object.
+      expect(playState.tallies).toBe(playState._gameplayState.tallies);
     });
 
     it('should reduce health', () => {
@@ -723,6 +809,8 @@ describe('PlayState', () => {
       playState.missNote({ strumTime: 1000 });
 
       expect(playState.health).toBeLessThan(initialHealth);
+      // Single-owner contract: PlayState.health is read-through from GameplayState.
+      expect(playState.health).toBe(playState._gameplayState.health);
     });
 
     it('should mute player vocals', () => {
@@ -989,6 +1077,174 @@ describe('PlayState', () => {
 
     it('should return 0 for unknown judgement', () => {
       expect(playState.getHealthBonus('unknown')).toBe(0);
+    });
+  });
+
+  // Validates: Requirement 3.2
+  describe('note splash gating (Requirement 3.2)', () => {
+    let mockNoteSplash;
+
+    beforeEach(() => {
+      mockNoteSplash = { spawnAtReceptor: vi.fn(), destroy: vi.fn() };
+      playState.noteSplash = mockNoteSplash;
+    });
+
+    it('should spawn a splash on a sick hit', () => {
+      const receptor = { x: 100, y: 200 };
+      playState._onNoteHitForSplash({ judgement: 'sick', direction: 2, receptor });
+
+      expect(mockNoteSplash.spawnAtReceptor).toHaveBeenCalledTimes(1);
+      expect(mockNoteSplash.spawnAtReceptor).toHaveBeenCalledWith(receptor, 2);
+    });
+
+    it('should spawn a splash on a killer hit', () => {
+      const receptor = { x: 50, y: 60 };
+      playState._onNoteHitForSplash({ judgement: 'killer', direction: 0, receptor });
+
+      expect(mockNoteSplash.spawnAtReceptor).toHaveBeenCalledTimes(1);
+      expect(mockNoteSplash.spawnAtReceptor).toHaveBeenCalledWith(receptor, 0);
+    });
+
+    it('should NOT spawn a splash on good/bad/shit hits', () => {
+      const receptor = { x: 10, y: 20 };
+      for (const judgement of ['good', 'bad', 'shit']) {
+        playState._onNoteHitForSplash({ judgement, direction: 1, receptor });
+      }
+
+      expect(mockNoteSplash.spawnAtReceptor).not.toHaveBeenCalled();
+    });
+
+    it('should not spawn when there is no receptor in the payload', () => {
+      playState._onNoteHitForSplash({ judgement: 'sick', direction: 1, receptor: null });
+
+      expect(mockNoteSplash.spawnAtReceptor).not.toHaveBeenCalled();
+    });
+
+    it('should be a no-op when no noteSplash exists', () => {
+      playState.noteSplash = null;
+
+      expect(() =>
+        playState._onNoteHitForSplash({ judgement: 'sick', direction: 0, receptor: { x: 0, y: 0 } })
+      ).not.toThrow();
+    });
+  });
+
+  // ========================================
+  // HEALTH ICON WIRING TESTS (Task 5.3)
+  // Validates: Requirements 4.1, 4.2, 4.4, 4.6
+  // ========================================
+  describe('health icon wiring (Requirements 4.1, 4.2, 4.4, 4.6)', () => {
+    const playerIconData = { id: 'bf', scale: 1.2, isPixel: false, offsets: [10, -5], flipX: true };
+    const opponentIconData = { id: 'dad', scale: 0.9, isPixel: true, offsets: [3, 7], flipX: false };
+
+    /** Mock CharacterRegistry exposing getHealthIconData per the registry contract. */
+    const createMockCharacterRegistry = () => ({
+      getHealthIconData: vi.fn((charId) => (charId === 'bf' ? playerIconData : opponentIconData))
+    });
+
+    /** Minimal HealthBar stand-in used to drive updatePosition. */
+    const createMockHealthBar = () => ({
+      x: 100,
+      y: 200,
+      width: 600,
+      borderSize: 4,
+      getPercent: vi.fn(() => 0.5),
+      getTotalHeight: vi.fn(() => 28)
+    });
+
+    /** Wire both icons from the registry; returns the registry used. */
+    const wireIcons = (registry = createMockCharacterRegistry()) => {
+      playState.createHealthIcons({
+        characterRegistry: registry,
+        playerCharacterId: 'bf',
+        opponentCharacterId: 'dad'
+      });
+      return registry;
+    };
+
+    // Requirement 4.1: two icons (player + opponent) created and registered on the HUD camera.
+    it('should create two HealthIcons (player + opponent) and register them on the HUD camera', () => {
+      const registerSpy = vi.spyOn(playState, 'registerHudObject');
+
+      wireIcons();
+
+      expect(playState.playerHealthIcon).toBeInstanceOf(HealthIcon);
+      expect(playState.opponentHealthIcon).toBeInstanceOf(HealthIcon);
+      expect(playState.playerHealthIcon.playerId).toBe(0);
+      expect(playState.opponentHealthIcon.playerId).toBe(1);
+
+      expect(registerSpy).toHaveBeenCalledWith(playState.playerHealthIcon);
+      expect(registerSpy).toHaveBeenCalledWith(playState.opponentHealthIcon);
+    });
+
+    // Requirement 4.2: each icon is configured from CharacterRegistry.getHealthIconData(charId).
+    it('should configure each icon from CharacterRegistry.getHealthIconData', () => {
+      const registry = wireIcons();
+
+      expect(registry.getHealthIconData).toHaveBeenCalledWith('bf');
+      expect(registry.getHealthIconData).toHaveBeenCalledWith('dad');
+
+      // Player icon picked up the player's registry data.
+      expect(playState.playerHealthIcon.characterId).toBe('bf');
+      expect(playState.playerHealthIcon.size).toEqual({ x: 1.2, y: 1.2 });
+      expect(playState.playerHealthIcon.isPixel).toBe(false);
+      expect(playState.playerHealthIcon.iconOffset).toEqual({ x: 10, y: -5 });
+      expect(playState.playerHealthIcon.flipX).toBe(true);
+
+      // Opponent icon picked up the opponent's registry data.
+      expect(playState.opponentHealthIcon.characterId).toBe('dad');
+      expect(playState.opponentHealthIcon.size).toEqual({ x: 0.9, y: 0.9 });
+      expect(playState.opponentHealthIcon.isPixel).toBe(true);
+      expect(playState.opponentHealthIcon.iconOffset).toEqual({ x: 3, y: 7 });
+      expect(playState.opponentHealthIcon.flipX).toBe(false);
+    });
+
+    // Requirement 4.4: update() drives both icons with current health and positions
+    // them against the health bar when a bar is set.
+    it('should drive update(health) and updatePosition(healthBar) for both icons each frame', () => {
+      wireIcons();
+      const healthBar = createMockHealthBar();
+      playState.setHealthBar(healthBar);
+
+      const playerUpdate = vi.spyOn(playState.playerHealthIcon, 'update');
+      const playerPosition = vi.spyOn(playState.playerHealthIcon, 'updatePosition');
+      const opponentUpdate = vi.spyOn(playState.opponentHealthIcon, 'update');
+      const opponentPosition = vi.spyOn(playState.opponentHealthIcon, 'updatePosition');
+
+      playState.update(0, 16);
+
+      expect(playerUpdate).toHaveBeenCalledWith(16, playState.health);
+      expect(playerPosition).toHaveBeenCalledWith(healthBar);
+      expect(opponentUpdate).toHaveBeenCalledWith(16, playState.health);
+      expect(opponentPosition).toHaveBeenCalledWith(healthBar);
+    });
+
+    // Requirement 4.4: without a health bar, icons still update but are not repositioned.
+    it('should not call updatePosition when no health bar is set', () => {
+      wireIcons();
+
+      const playerPosition = vi.spyOn(playState.playerHealthIcon, 'updatePosition');
+      const opponentPosition = vi.spyOn(playState.opponentHealthIcon, 'updatePosition');
+
+      playState.update(0, 16);
+
+      expect(playerPosition).not.toHaveBeenCalled();
+      expect(opponentPosition).not.toHaveBeenCalled();
+    });
+
+    // Requirement 4.6: destroy() destroys both icons and clears the references.
+    it('should destroy both icons on shutdown', () => {
+      wireIcons();
+
+      const playerDestroy = vi.spyOn(playState.playerHealthIcon, 'destroy');
+      const opponentDestroy = vi.spyOn(playState.opponentHealthIcon, 'destroy');
+
+      playState.destroy();
+
+      expect(playerDestroy).toHaveBeenCalled();
+      expect(opponentDestroy).toHaveBeenCalled();
+      expect(playState.playerHealthIcon).toBeNull();
+      expect(playState.opponentHealthIcon).toBeNull();
     });
   });
 

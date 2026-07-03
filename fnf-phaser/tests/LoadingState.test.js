@@ -499,6 +499,16 @@ describe('LoadingState', () => {
         expect.any(Object)
       );
     });
+
+    it('should only create one retry button when shown repeatedly', () => {
+      state.add.text.mockClear();
+
+      state.showError();
+      state.showError();
+
+      const retryCalls = state.add.text.mock.calls.filter((call) => call[2] === 'Click to Retry');
+      expect(retryCalls).toHaveLength(1);
+    });
   });
 
   describe('shutdown', () => {

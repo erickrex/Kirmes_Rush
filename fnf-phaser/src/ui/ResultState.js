@@ -5,6 +5,7 @@
 
 import Phaser from '../phaser.js';
 import Scoring from '../play/Scoring.js';
+import Transitions, { TransitionType } from '../graphics/Transitions.js';
 
 /**
  * @typedef {import('../types.js').Tallies} Tallies
@@ -171,6 +172,26 @@ export default class ResultState extends Phaser.Scene {
      * @type {Phaser.GameObjects.Text[]}
      */
     this.timingJudgementTexts = [];
+
+    /**
+     * Shared scene-transition helper. Constructed lazily on first use
+     * (see `getTransitions`) and destroyed in `shutdown`.
+     * @type {Transitions | null}
+     */
+    this.transitions = null;
+  }
+
+  /**
+   * Lazily construct and return this scene's {@link Transitions} instance,
+   * routing scene changes through the shared fade contract instead of an
+   * ad-hoc `cameras.main.fadeOut(...)` duplication.
+   * @returns {Transitions}
+   */
+  getTransitions() {
+    if (!this.transitions) {
+      this.transitions = new Transitions(this);
+    }
+    return this.transitions;
   }
 
   /**
@@ -718,7 +739,7 @@ export default class ResultState extends Phaser.Scene {
   /**
    * Handle continue input
    */
-  onContinue() {
+  async onContinue() {
     if (this.transitioning) {
       return;
     }
@@ -741,13 +762,15 @@ export default class ResultState extends Phaser.Scene {
       this.resultMusic.stop();
     }
 
-    // Transition out
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      // Return to freeplay or story mode based on context
-      const returnScene = this.songData?.returnScene || 'FreeplayState';
-      this.scene.start(returnScene, this.songData?.returnSceneData);
-    });
+    // Transition out through the shared fade contract, preserving the
+    // return scene + data payload.
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE, duration: 500 });
+    if (!this.transitions) {
+      return;
+    }
+    // Return to freeplay or story mode based on context
+    const returnScene = this.songData?.returnScene || 'FreeplayState';
+    this.scene.start(returnScene, this.songData?.returnSceneData);
   }
 
   /**
@@ -798,5 +821,12 @@ export default class ResultState extends Phaser.Scene {
     this.timingJudgementTexts = [];
     this.songData = null;
     this.timingStats = null;
+
+    // Tear down the shared Transitions instance (cancels in-flight tween /
+    // overlay safely, even mid-transition).
+    if (this.transitions) {
+      this.transitions.destroy();
+      this.transitions = null;
+    }
   }
 }

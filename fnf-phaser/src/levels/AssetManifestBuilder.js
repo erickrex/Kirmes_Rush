@@ -313,18 +313,20 @@ export function buildPrepareCallback(levelInput, registries) {
     const noteStyleId = baseSession.songData?.noteStyle ?? null;
 
     if (scene) {
-      await Promise.all([
+      if (
         uniqueCharacters.length > 0 &&
         typeof registries.characterRegistry?.loadEntriesAsync === 'function'
-          ? registries.characterRegistry.loadEntriesAsync(scene, uniqueCharacters)
-          : Promise.resolve(),
-        stageId && typeof registries.stageRegistry?.loadEntriesAsync === 'function'
-          ? registries.stageRegistry.loadEntriesAsync(scene, [stageId])
-          : Promise.resolve(),
-        noteStyleId && typeof registries.noteStyleRegistry?.loadEntriesAsync === 'function'
-          ? registries.noteStyleRegistry.loadEntriesAsync(scene, [noteStyleId])
-          : Promise.resolve()
-      ]);
+      ) {
+        await registries.characterRegistry.loadEntriesAsync(scene, uniqueCharacters);
+      }
+
+      if (stageId && typeof registries.stageRegistry?.loadEntriesAsync === 'function') {
+        await registries.stageRegistry.loadEntriesAsync(scene, [stageId]);
+      }
+
+      if (noteStyleId && typeof registries.noteStyleRegistry?.loadEntriesAsync === 'function') {
+        await registries.noteStyleRegistry.loadEntriesAsync(scene, [noteStyleId]);
+      }
     }
 
     const manifestEntries = buildManifest(baseSession, registries);

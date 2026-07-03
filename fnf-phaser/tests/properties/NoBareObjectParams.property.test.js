@@ -18,12 +18,10 @@ const ROOT = join(import.meta.dirname, '..', '..');
 /** Data layer files to check for bare Object params. */
 const DATA_LAYER_FILES = [
   join(ROOT, 'src', 'data', 'parsers', 'ChartParser.js'),
-  join(ROOT, 'src', 'data', 'parsers', 'SparrowParser.js'),
   join(ROOT, 'src', 'data', 'SaveManager.js'),
   join(ROOT, 'src', 'data', 'registries', 'CharacterRegistry.js'),
   join(ROOT, 'src', 'data', 'registries', 'NoteStyleRegistry.js'),
   join(ROOT, 'src', 'data', 'registries', 'StageRegistry.js'),
-  join(ROOT, 'src', 'data', 'registries', 'SongRegistry.js'),
   join(ROOT, 'src', 'core', 'Registry.js'),
 ];
 

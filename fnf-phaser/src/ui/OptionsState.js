@@ -803,14 +803,20 @@ export default class OptionsState extends BaseMenuState {
    */
   _applyLiveVolumePreview() {
     const audioCategory = this.categories.find((c) => c.name === 'Audio');
-    if (!audioCategory) return;
+    if (!audioCategory) {
+      return;
+    }
 
     let masterVolume = 100;
     let musicVolume = 100;
 
     for (const item of audioCategory.items) {
-      if (item.key === 'masterVolume') masterVolume = item.value ?? 100;
-      if (item.key === 'musicVolume') musicVolume = item.value ?? 100;
+      if (item.key === 'masterVolume') {
+        masterVolume = item.value ?? 100;
+      }
+      if (item.key === 'musicVolume') {
+        musicVolume = item.value ?? 100;
+      }
     }
 
     const effectiveVolume = (masterVolume / 100) * (musicVolume / 100);

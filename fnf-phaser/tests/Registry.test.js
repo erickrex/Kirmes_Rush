@@ -41,6 +41,75 @@ class TestRegistry extends Registry {
   }
 }
 
+function createMockLoaderScene({ files = {}, initialCache = {}, autoComplete = true } = {}) {
+  const cacheData = new Map(Object.entries(initialCache));
+  const fileData = new Map(Object.entries(files));
+  const queuedFiles = [];
+  const listeners = new Map();
+
+  const getListeners = (event) => listeners.get(event) ?? [];
+  const addListener = (event, handler) => {
+    listeners.set(event, [...getListeners(event), handler]);
+  };
+  const removeListener = (event, handler) => {
+    listeners.set(
+      event,
+      getListeners(event).filter((candidate) => candidate !== handler)
+    );
+  };
+  const emit = (event, ...args) => {
+    for (const handler of [...getListeners(event)]) {
+      handler(...args);
+    }
+  };
+  const completeQueuedFiles = () => {
+    for (const { key } of queuedFiles) {
+      cacheData.set(key, fileData.get(key) ?? { id: key, name: key });
+      emit('filecomplete-json-' + key, { key });
+    }
+  };
+
+  const scene = {
+    cache: {
+      json: {
+        exists: vi.fn((key) => cacheData.has(key)),
+        get: vi.fn((key) => cacheData.get(key))
+      }
+    },
+    load: {
+      json: vi.fn((key, path) => {
+        queuedFiles.push({ key, path });
+        return scene.load;
+      }),
+      on: vi.fn((event, handler) => {
+        addListener(event, handler);
+        return scene.load;
+      }),
+      once: vi.fn((event, handler) => {
+        addListener(event, handler);
+        return scene.load;
+      }),
+      off: vi.fn((event, handler) => {
+        removeListener(event, handler);
+        return scene.load;
+      }),
+      start: vi.fn(() => {
+        if (autoComplete) {
+          completeQueuedFiles();
+        }
+      })
+    },
+    emit,
+    getListeners,
+    setJson(key, data) {
+      cacheData.set(key, data);
+    },
+    completeQueuedFiles
+  };
+
+  return scene;
+}
+
 describe('Registry', () => {
   let registry;
 
@@ -119,6 +188,65 @@ describe('Registry', () => {
       expect(registry.countEntries()).toBe(1);
       expect(registry.hasEntry('first')).toBe(false);
       expect(registry.hasEntry('second')).toBe(true);
+    });
+  });
+
+  describe('loadEntriesAsync', () => {
+    it('should queue missing JSON files and start the Phaser loader once', async () => {
+      const scene = createMockLoaderScene({
+        files: {
+          'data/test/entry1.json': { id: 'entry1', name: 'Entry One' },
+          'data/test/entry2.json': { id: 'entry2', name: 'Entry Two' }
+        }
+      });
+
+      await registry.loadEntriesAsync(scene, ['entry1', 'entry2']);
+
+      expect(scene.load.json).toHaveBeenCalledTimes(2);
+      expect(scene.load.json).toHaveBeenCalledWith(
+        'data/test/entry1.json',
+        'data/test/entry1.json'
+      );
+      expect(scene.load.json).toHaveBeenCalledWith(
+        'data/test/entry2.json',
+        'data/test/entry2.json'
+      );
+      expect(scene.load.start).toHaveBeenCalledTimes(1);
+      expect(registry.loaded).toBe(true);
+      expect(registry.listEntryIds()).toEqual(['entry1', 'entry2']);
+    });
+
+    it('should load cached JSON without starting the Phaser loader', async () => {
+      const scene = createMockLoaderScene({
+        initialCache: {
+          'data/test/cached.json': { id: 'cached', name: 'Cached Entry' }
+        }
+      });
+
+      await registry.loadEntriesAsync(scene, ['cached']);
+
+      expect(scene.load.json).not.toHaveBeenCalled();
+      expect(scene.load.start).not.toHaveBeenCalled();
+      expect(registry.fetchEntry('cached').name).toBe('Cached Entry');
+    });
+  });
+
+  describe('loadEntryDataAsync', () => {
+    it('should keep loaderror listeners active for unrelated files and remove them after success', async () => {
+      const scene = createMockLoaderScene({ autoComplete: false });
+      const filePath = 'data/test/entry.json';
+
+      const dataPromise = registry.loadEntryDataAsync(scene, 'entry');
+
+      expect(scene.getListeners('loaderror')).toHaveLength(1);
+      scene.emit('loaderror', { key: 'data/test/other.json' });
+      expect(scene.getListeners('loaderror')).toHaveLength(1);
+
+      scene.setJson(filePath, { id: 'entry', name: 'Entry' });
+      scene.emit('filecomplete-json-' + filePath, { key: filePath });
+
+      await expect(dataPromise).resolves.toEqual({ id: 'entry', name: 'Entry' });
+      expect(scene.getListeners('loaderror')).toHaveLength(0);
     });
   });
 

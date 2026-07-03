@@ -170,6 +170,18 @@ export default class LoadingState extends Phaser.Scene {
     this.transitionStarted = false;
 
     /**
+     * Guards against creating duplicate error UI every frame.
+     * @type {boolean}
+     */
+    this.errorShown = false;
+
+    /**
+     * Retry button shown when loading fails.
+     * @type {Phaser.GameObjects.Text | null}
+     */
+    this.retryText = null;
+
+    /**
      * Bound load event handlers for deterministic cleanup.
      * @type {{
      *   progress: ((value: number) => void) | null,
@@ -208,6 +220,7 @@ export default class LoadingState extends Phaser.Scene {
     this.preparing = false;
     this.transitionStarted = false;
     this.awaitingAssetLoadCompletion = false;
+    this.errorShown = false;
   }
 
   /**
@@ -624,6 +637,12 @@ export default class LoadingState extends Phaser.Scene {
    * Show error state
    */
   showError() {
+    if (this.errorShown) {
+      return;
+    }
+
+    this.errorShown = true;
+
     if (this.loadingText) {
       this.loadingText.setText('Loading Error');
       this.loadingText.setColor('#ff4444');
@@ -641,17 +660,17 @@ export default class LoadingState extends Phaser.Scene {
 
     // Add retry button
     const { width, height } = this.cameras.main;
-    const retryText = this.add.text(width / 2, height / 2 + 150, 'Click to Retry', {
+    this.retryText = this.add.text(width / 2, height / 2 + 150, 'Click to Retry', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#ffffff',
       backgroundColor: '#444444',
       padding: { x: 20, y: 10 }
     });
-    retryText.setOrigin(0.5, 0.5);
-    retryText.setInteractive({ useHandCursor: true });
+    this.retryText.setOrigin(0.5, 0.5);
+    this.retryText.setInteractive({ useHandCursor: true });
 
-    retryText.on('pointerdown', () => {
+    this.retryText.on('pointerdown', () => {
       this.scene.restart();
     });
   }
@@ -701,9 +720,14 @@ export default class LoadingState extends Phaser.Scene {
     this.percentText = null;
     this.assetText = null;
     this.spinner = null;
+    if (this.retryText) {
+      this.retryText.destroy();
+      this.retryText = null;
+    }
     this.loadCallback = null;
     this.prepareCallback = null;
     this.nextSceneData = null;
+    this.errorShown = false;
     this.loadEventHandlers = {
       progress: null,
       fileprogress: null,

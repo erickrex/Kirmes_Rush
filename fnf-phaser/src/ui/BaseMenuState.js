@@ -5,6 +5,7 @@
  */
 
 import Phaser from '../phaser.js';
+import Transitions, { TransitionType } from '../graphics/Transitions.js';
 /**
  * Base class for menu scenes. Handles common input binding,
  * sound effects, background rendering, scene transitions,
@@ -32,6 +33,16 @@ export default class BaseMenuState extends Phaser.Scene {
 
     /** @type {number} */
     this.selectedIndex = 0;
+
+    /**
+     * Shared scene-transition helper. Constructed lazily on first use
+     * (see `getTransitions`) and destroyed in `shutdown`.
+     * @type {Transitions | null}
+     */
+    this.transitions = null;
+
+    /** @type {{ target: HTMLCanvasElement, handler: EventListener } | null} */
+    this.audioUnlockListener = null;
   }
 
   // ========================================
@@ -168,20 +179,53 @@ export default class BaseMenuState extends Phaser.Scene {
   // ========================================
 
   /**
-   * Fade out and transition to another scene.
+   * Lazily construct and return this scene's shared {@link Transitions}
+   * instance. Centralizing the instance here means every menu scene routes
+   * its scene changes through a single transition mechanism.
+   * @returns {Transitions}
+   */
+  getTransitions() {
+    if (!this.transitions) {
+      this.transitions = new Transitions(this);
+    }
+    return this.transitions;
+  }
+
+  /**
+   * Transition to another scene. Plays a Transitions "out" animation
+   * (default: a 500ms fade, visually equivalent to the previous
+   * `cameras.main.fadeOut(500)`) and starts the target scene only after the
+   * animation completes. The target `sceneKey` and `data` payload are passed
+   * through unchanged, preserving the navigation contract.
+   *
+   * Safe against interruption: if the scene shuts down mid-transition (which
+   * destroys the Transitions instance), the target scene is not started and
+   * no error is thrown.
+   *
    * @param {string} sceneKey - Target scene key
    * @param {Object} [data] - Optional data to pass
+   * @returns {Promise<void>}
    */
-  transitionToScene(sceneKey, data) {
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start(sceneKey, data);
-    });
+  async transitionToScene(sceneKey, data) {
+    const transitions = this.getTransitions();
+    try {
+      await transitions.transitionOut({ type: TransitionType.FADE, duration: 500 });
+    } catch {
+      // An interrupted transition (e.g. scene shutdown) must not throw.
+      return;
+    }
+    // If the scene was torn down while the transition was in flight,
+    // `shutdown` will have destroyed and cleared the Transitions instance.
+    // Skip navigation in that case.
+    if (!this.transitions) {
+      return;
+    }
+    this.scene.start(sceneKey, data);
   }
 
   /** Fade the camera in (call in `create()`). */
   fadeIn() {
-    this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.getTransitions().transitionIn({ type: TransitionType.FADE, duration: 500 });
   }
 
   // ========================================
@@ -226,6 +270,7 @@ export default class BaseMenuState extends Phaser.Scene {
     // menus counts as a gesture and unlocks it before gameplay starts.
     const canvas = this.game?.canvas;
     if (canvas) {
+      this.teardownAudioUnlock();
       const unlock = () => {
         try {
           const mgr = /** @type {any} */ (this.sound);
@@ -236,9 +281,9 @@ export default class BaseMenuState extends Phaser.Scene {
         } catch {
           /* swallow */
         }
-        canvas.removeEventListener('touchstart', unlock);
-        canvas.removeEventListener('mousedown', unlock);
+        this.teardownAudioUnlock();
       };
+      this.audioUnlockListener = { target: canvas, handler: unlock };
       canvas.addEventListener('touchstart', unlock, { once: true, passive: true });
       canvas.addEventListener('mousedown', unlock, { once: true });
     }
@@ -258,6 +303,19 @@ export default class BaseMenuState extends Phaser.Scene {
         kb.off(key, handler, this);
       }
     }
+    this.teardownAudioUnlock();
+  }
+
+  /** Remove pending raw DOM Web Audio unlock listeners. */
+  teardownAudioUnlock() {
+    if (!this.audioUnlockListener) {
+      return;
+    }
+
+    const { target, handler } = this.audioUnlockListener;
+    target.removeEventListener('touchstart', handler);
+    target.removeEventListener('mousedown', handler);
+    this.audioUnlockListener = null;
   }
 
   // ========================================
@@ -295,12 +353,18 @@ export default class BaseMenuState extends Phaser.Scene {
   }
 
   /**
-   * Default shutdown cleans up input bindings.
+   * Default shutdown cleans up input bindings and tears down the shared
+   * Transitions instance. Destroying Transitions cancels any in-flight tween
+   * and removes its overlay without throwing, even mid-transition.
    * Subclasses should call `super.shutdown()` if they override.
    */
   shutdown() {
     this.events?.off('shutdown', this.shutdown, this);
     this.teardownInput();
+    if (this.transitions) {
+      this.transitions.destroy();
+      this.transitions = null;
+    }
   }
 
   // ========================================

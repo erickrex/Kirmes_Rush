@@ -116,9 +116,31 @@ class Registry {
 
     this._log(`Loading ${entryIds.length} entries asynchronously...`);
 
-    const loadPromises = entryIds.map(async (entryId) => {
+    const missingEntryIds = entryIds.filter((entryId) => {
+      const filePath = `${this.dataFilePath}/${entryId}.json`;
+      return !scene.cache.json.exists(filePath);
+    });
+    const loadPromises = entryIds.map((entryId) =>
+      this.loadEntryDataAsync(scene, entryId, { startLoader: false })
+    );
+
+    if (missingEntryIds.length > 0) {
+      scene.load.start();
+    }
+
+    const results = await Promise.allSettled(loadPromises);
+    results.forEach((result, index) => {
+      const entryId = entryIds[index];
+      if (!entryId) {
+        return;
+      }
+
       try {
-        const data = await this.loadEntryDataAsync(scene, entryId);
+        if (result.status === 'rejected') {
+          throw result.reason;
+        }
+
+        const data = result.value;
         if (data !== null) {
           const entry = this.createEntry(entryId, data);
           if (entry !== null && entry !== undefined && entry.id) {
@@ -131,8 +153,6 @@ class Registry {
       }
     });
 
-    await Promise.all(loadPromises);
-
     this.loaded = true;
     this._log(`Loaded ${this.entries.size} entries`);
   }
@@ -141,9 +161,11 @@ class Registry {
    * Load entry data asynchronously.
    * @param {Phaser.Scene} scene - The Phaser scene to use for loading
    * @param {string} id - The entry ID
+   * @param {{ startLoader?: boolean }} [options]
    * @returns {Promise<J | null>}
    */
-  async loadEntryDataAsync(scene, id) {
+  async loadEntryDataAsync(scene, id, options = {}) {
+    const { startLoader = true } = options;
     const filePath = `${this.dataFilePath}/${id}.json`;
 
     return new Promise((resolve, reject) => {
@@ -153,20 +175,38 @@ class Registry {
         return;
       }
 
+      const cleanup = () => {
+        scene.load.off('filecomplete-json-' + filePath, onComplete);
+        scene.load.off('loaderror', onError);
+      };
+
+      const onComplete = () => {
+        cleanup();
+        try {
+          const data = scene.cache.json.get(filePath);
+          resolve(this.parseEntryDataRaw(data, filePath));
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const onError = (/** @type {Phaser.Loader.File} */ file) => {
+        if (file.key !== filePath) {
+          return;
+        }
+
+        cleanup();
+        reject(new Error(`Failed to load: ${filePath}`));
+      };
+
       scene.load.json(filePath, filePath);
 
-      scene.load.once('filecomplete-json-' + filePath, () => {
-        const data = scene.cache.json.get(filePath);
-        resolve(this.parseEntryDataRaw(data, filePath));
-      });
+      scene.load.once('filecomplete-json-' + filePath, onComplete);
+      scene.load.on('loaderror', onError);
 
-      scene.load.once('loaderror', (/** @type {Phaser.Loader.File} */ file) => {
-        if (file.key === filePath) {
-          reject(new Error(`Failed to load: ${filePath}`));
-        }
-      });
-
-      scene.load.start();
+      if (startLoader) {
+        scene.load.start();
+      }
     });
   }
 

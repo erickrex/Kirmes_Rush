@@ -280,12 +280,14 @@ describe('ResultState', () => {
       expect(scene.transitioning).toBe(true);
     });
 
-    it('should not continue if already transitioning', () => {
+    it('should not continue if already transitioning', async () => {
       scene.transitioning = true;
       scene.scoreAnimationComplete = true;
-      const spy = vi.spyOn(scene.cameras.main, 'fadeOut');
-      scene.onContinue();
-      expect(spy).not.toHaveBeenCalled();
+      // When a transition is already in flight, onContinue must not navigate.
+      // Assert on the navigation outcome (no scene start) rather than the
+      // underlying fade mechanism (Requirement 5.5).
+      await scene.onContinue();
+      expect(scene.scene.start).not.toHaveBeenCalled();
     });
   });
 

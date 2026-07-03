@@ -21,12 +21,28 @@ vi.stubGlobal('Phaser', {
         this.y = 0;
         this.visible = true;
         this.alpha = 1;
+        this.flipX = false;
+        this.displayWidth = 150;
+        this.displayHeight = 150;
+        this.anims = { currentAnim: null };
+        this._listeners = {};
       }
+      on(event, fn) {
+        this._listeners[event] = this._listeners[event] || [];
+        this._listeners[event].push(fn);
+        return this;
+      }
+      off() { return this; }
+      emit() { return this; }
       setOrigin() { return this; }
       setScale() { return this; }
       setPosition() { return this; }
       setVisible() { return this; }
       setAlpha() { return this; }
+      setScrollFactor() { return this; }
+      setTexture() { return this; }
+      setFrame() { return this; }
+      setDisplaySize(w, h) { this.displayWidth = w; this.displayHeight = h; return this; }
       destroy() {}
     },
     Graphics: class MockGraphics {

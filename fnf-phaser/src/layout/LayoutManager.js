@@ -66,6 +66,9 @@ export const HEALTH_BAR_X = 40;
 /** @type {number} Y position of the score display (below health bar) */
 export const SCORE_DISPLAY_Y = 120;
 
+/** @type {number} X position of the combo popup (centered horizontally on the canvas) */
+export const COMBO_POPUP_X = PORTRAIT_WIDTH / 2;
+
 /** @type {number} Y position of the combo popup (between HUD and strumline) */
 export const COMBO_POPUP_Y = 500;
 

@@ -506,10 +506,7 @@ class Transitions {
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
       const angle = i * step - Math.PI / 2;
       path.push(
-        new Phaser.Math.Vector2(
-          cx + radius * Math.cos(angle),
-          cy + radius * Math.sin(angle)
-        )
+        new Phaser.Math.Vector2(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle))
       );
     }
 

@@ -3,7 +3,8 @@
  * opponent note processing, and ghost miss handling.
  * Extracted from PlayState to provide a focused module for note processing.
  *
- * Communicates with GameplayState via EventBus for score/health/combo updates.
+ * Updates gameplay state synchronously and exclusively through the GameplayState_Module
+ * (the single source of truth for score/combo/tallies/health).
  *
  * @module NoteProcessor
  */
@@ -55,6 +56,7 @@ import SaveManager from '../data/SaveManager.js';
 
 /**
  * @typedef {Object} NoteProcessorGameplayState
+ * @property {number} health - Current health
  * @property {number} combo - Current combo
  * @property {Tallies} tallies - Score tallies
  * @property {(points: number) => void} updateScore - Update score
@@ -94,41 +96,25 @@ export function createNoteProcessor(context) {
   let destroyed = false;
 
   /**
-   * Handle a note hit event from EventBus.
-   * Updates GameplayState score, combo, tallies, and health.
-   * @param {{ judgement: string, score: number }} data - Event data with judgement, score
+   * Resolve the absolute screen position of a player receptor for a direction.
+   * Used to position visual feedback (e.g. note splashes) at the hit receptor.
+   * @param {number} direction - Note direction (0-3)
+   * @returns {{ x: number, y: number } | null} The receptor position, or null if unavailable
    */
-  function onNoteHitEvent(data) {
-    const gs = context.gameplayState;
-    if (!gs) {
-      return;
+  function resolveReceptor(direction) {
+    const strum = /** @type {any} */ (context.playState.playerStrumline);
+    if (!strum || typeof strum.getByDirection !== 'function') {
+      return null;
     }
-
-    gs.updateScore(data.score);
-    gs.updateCombo(data.judgement);
-    gs.updateTallies(data.judgement, data.score);
-    const healthBonus = gs.getHealthBonus(data.judgement);
-    gs.updateHealth(healthBonus);
-  }
-
-  /**
-   * Handle a note miss event from EventBus.
-   * Updates GameplayState combo, tallies, and health.
-   */
-  function onNoteMissEvent() {
-    const gs = context.gameplayState;
-    if (!gs) {
-      return;
+    const receptor = strum.getByDirection(direction);
+    if (!receptor) {
+      return null;
     }
-
-    gs.combo = 0;
-    gs.tallies.missed++;
-    gs.updateHealth(Constants.HEALTH_MISS_PENALTY);
+    return {
+      x: (strum.x ?? 0) + (receptor.x ?? 0),
+      y: (strum.y ?? 0) + (receptor.y ?? 0)
+    };
   }
-
-  // Register EventBus listeners for GameplayState communication
-  eventBus.on(Events.NOTE_HIT, onNoteHitEvent);
-  eventBus.on(Events.NOTE_MISS, onNoteMissEvent);
 
   const processor = {
     /**
@@ -188,6 +174,7 @@ export function createNoteProcessor(context) {
      */
     hitNote(note, timing) {
       const { playState } = context;
+      const gs = context.gameplayState;
       const noteOffset = SaveManager.getInstance().getOption('noteOffset') ?? 0;
       const adjustedTiming = timing + noteOffset;
       const judgement = scoring.judgeNote(adjustedTiming);
@@ -196,39 +183,22 @@ export function createNoteProcessor(context) {
         ? playState.isFeatureEnabled('healthBar')
         : true;
 
-      // Update gameplay state via PlayState (preserving existing behavior)
-      playState.score += noteScore;
-
-      const breaksCombo = scoring.doesJudgementBreakCombo(judgement);
-      if (breaksCombo) {
-        playState.combo = 0;
-      } else {
-        playState.combo++;
-        playState.maxCombo = Math.max(playState.maxCombo, playState.combo);
+      // Update gameplay state exclusively through the single owner (GameplayState_Module).
+      // updateCombo applies the canonical combo-break decision (Scoring.doesJudgementBreakCombo)
+      // and must run before updateTallies, which snapshots the current combo/maxCombo.
+      if (gs) {
+        gs.updateScore(noteScore);
+        gs.updateCombo(judgement);
+        gs.updateTallies(judgement, noteScore);
+        if (healthEnabled) {
+          const healthBonus = playState.getHealthBonus
+            ? playState.getHealthBonus(judgement)
+            : gs.getHealthBonus(judgement);
+          gs.updateHealth(healthBonus);
+        }
       }
 
-      // Update tallies
-      const tallyKey = judgement === 'killer' ? 'sick' : judgement;
-      const talliesRecord = /** @type {Record<string, number>} */ (
-        /** @type {unknown} */ (playState.tallies)
-      );
-      if (talliesRecord[tallyKey] !== undefined) {
-        talliesRecord[tallyKey]++;
-      }
-      playState.tallies.totalNotesHit++;
-      playState.tallies.combo = playState.combo;
-      playState.tallies.maxCombo = playState.maxCombo;
-
-      // Update health
-      if (healthEnabled) {
-        const healthBonus = playState.getHealthBonus
-          ? playState.getHealthBonus(judgement)
-          : scoring.getHealthBonus(judgement);
-        playState.health = Math.max(
-          Constants.HEALTH_MIN,
-          Math.min(Constants.HEALTH_MAX, playState.health + healthBonus)
-        );
-      }
+      const combo = gs ? gs.combo : 0;
 
       // Play hitsound on sick/killer judgement when hitsounds enabled
       const hitsoundsEnabled = SaveManager.getInstance().getOption('hitsounds');
@@ -251,13 +221,15 @@ export function createNoteProcessor(context) {
         playState.voices.unmutePlayer();
       }
 
-      // Emit event
+      // Emit event (payload carries direction + receptor for visual feedback)
       eventBus.emit(Events.NOTE_HIT, {
         note,
         judgement,
         score: noteScore,
         timing,
-        combo: playState.combo
+        combo,
+        direction: note.direction,
+        receptor: resolveReceptor(note.direction)
       });
 
       // Callback
@@ -272,6 +244,7 @@ export function createNoteProcessor(context) {
      */
     missNote(note) {
       const { playState } = context;
+      const gs = context.gameplayState;
       const healthEnabled = playState.isFeatureEnabled
         ? playState.isFeatureEnabled('healthBar')
         : true;
@@ -280,18 +253,14 @@ export function createNoteProcessor(context) {
       note.hasMissed = true;
       note.handledMiss = true;
 
-      // Reset combo
-      playState.combo = 0;
-
-      // Update tallies
-      playState.tallies.missed++;
-
-      // Update health
-      if (healthEnabled) {
-        playState.health = Math.max(
-          Constants.HEALTH_MIN,
-          playState.health + Constants.HEALTH_MISS_PENALTY
-        );
+      // Update gameplay state exclusively through the single owner (GameplayState_Module).
+      // updateCombo('miss') applies the canonical combo-break decision.
+      if (gs) {
+        gs.updateCombo('miss');
+        gs.tallies.missed++;
+        if (healthEnabled) {
+          gs.updateHealth(Constants.HEALTH_MISS_PENALTY);
+        }
       }
 
       // Trigger player miss animation
@@ -312,8 +281,9 @@ export function createNoteProcessor(context) {
         playState.onNoteMiss(note);
       }
 
-      // Check for game over
-      if (healthEnabled && playState.health <= Constants.HEALTH_MIN && playState.gameOver) {
+      // Check for game over (read health from the single owner)
+      const health = gs ? gs.health : playState.health;
+      if (healthEnabled && health <= Constants.HEALTH_MIN && playState.gameOver) {
         playState.gameOver();
       }
     },
@@ -325,6 +295,7 @@ export function createNoteProcessor(context) {
      */
     ghostMiss(direction, applyPenalty = false) {
       const { playState } = context;
+      const gs = context.gameplayState;
       // Play press animation
       playState.playerStrumline?.playPress(direction);
 
@@ -333,18 +304,13 @@ export function createNoteProcessor(context) {
           ? playState.isFeatureEnabled('healthBar')
           : true;
 
-        // Reset combo
-        playState.combo = 0;
-
-        // Update tallies
-        playState.tallies.missed++;
-
-        // Apply health penalty
-        if (healthEnabled) {
-          playState.health = Math.max(
-            Constants.HEALTH_MIN,
-            playState.health + Constants.HEALTH_MISS_PENALTY
-          );
+        // Update gameplay state exclusively through the single owner (GameplayState_Module).
+        if (gs) {
+          gs.updateCombo('miss');
+          gs.tallies.missed++;
+          if (healthEnabled) {
+            gs.updateHealth(Constants.HEALTH_MISS_PENALTY);
+          }
         }
 
         // Trigger player miss animation
@@ -360,8 +326,9 @@ export function createNoteProcessor(context) {
         // Emit miss event
         eventBus.emit(Events.NOTE_MISS, { note: null, direction, isGhostTap: true });
 
-        // Check for game over
-        if (healthEnabled && playState.health <= Constants.HEALTH_MIN && playState.gameOver) {
+        // Check for game over (read health from the single owner)
+        const health = gs ? gs.health : playState.health;
+        if (healthEnabled && health <= Constants.HEALTH_MIN && playState.gameOver) {
           playState.gameOver();
         }
       }
@@ -406,16 +373,15 @@ export function createNoteProcessor(context) {
     },
 
     /**
-     * Clean up EventBus listeners. Idempotent — subsequent calls are no-ops.
+     * Clean up resources. Idempotent — subsequent calls are no-ops.
+     * GameplayState is now updated synchronously inside hitNote/missNote, so the
+     * processor no longer registers EventBus listeners that require teardown.
      */
     destroy() {
       if (destroyed) {
         return;
       }
       destroyed = true;
-
-      eventBus.off(Events.NOTE_HIT, onNoteHitEvent);
-      eventBus.off(Events.NOTE_MISS, onNoteMissEvent);
     }
   };
 

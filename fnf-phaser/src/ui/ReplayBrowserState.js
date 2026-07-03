@@ -15,6 +15,7 @@
 
 import Phaser from '../phaser.js';
 import { ReplayManager } from '../replay/ReplaySystem.js';
+import Transitions, { TransitionType } from '../graphics/Transitions.js';
 
 /**
  * @typedef {import('../replay/ReplaySystem.js').ReplayListEntry} ReplayListEntry
@@ -136,6 +137,26 @@ export default class ReplayBrowserState extends Phaser.Scene {
       accuracyText: null,
       dateText: null
     };
+
+    /**
+     * Shared scene-transition helper. Constructed lazily on first use
+     * (see `getTransitions`) and destroyed in `shutdown`.
+     * @type {Transitions | null}
+     */
+    this.transitions = null;
+  }
+
+  /**
+   * Lazily construct and return this scene's {@link Transitions} instance,
+   * routing scene changes through the shared fade contract instead of an
+   * ad-hoc `cameras.main.fadeOut(...)` duplication.
+   * @returns {Transitions}
+   */
+  getTransitions() {
+    if (!this.transitions) {
+      this.transitions = new Transitions(this);
+    }
+    return this.transitions;
   }
 
   /**
@@ -756,7 +777,7 @@ export default class ReplayBrowserState extends Phaser.Scene {
   /**
    * Go back
    */
-  onBack() {
+  async onBack() {
     if (this.showingDeleteConfirm) {
       this.cancelDelete();
       return;
@@ -769,10 +790,11 @@ export default class ReplayBrowserState extends Phaser.Scene {
     this.transitioning = true;
     this.playCancelSound();
 
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('MainMenuState');
-    });
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE, duration: 500 });
+    if (!this.transitions) {
+      return;
+    }
+    this.scene.start('MainMenuState');
   }
 
   /**
@@ -935,15 +957,16 @@ export default class ReplayBrowserState extends Phaser.Scene {
    * Start replay playback
    * @param {ReplayListEntry} replay - Replay to play
    */
-  startReplayPlayback(replay) {
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('PlayState', {
-        songId: replay.songId,
-        difficulty: replay.difficulty,
-        replayId: replay.id,
-        isReplay: true
-      });
+  async startReplayPlayback(replay) {
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE, duration: 500 });
+    if (!this.transitions) {
+      return;
+    }
+    this.scene.start('PlayState', {
+      songId: replay.songId,
+      difficulty: replay.difficulty,
+      replayId: replay.id,
+      isReplay: true
     });
   }
 
@@ -1005,6 +1028,13 @@ export default class ReplayBrowserState extends Phaser.Scene {
     // Kill all tweens
     if (this.tweens?.killAll) {
       this.tweens.killAll();
+    }
+
+    // Tear down the shared Transitions instance (cancels in-flight tween /
+    // overlay safely, even mid-transition).
+    if (this.transitions) {
+      this.transitions.destroy();
+      this.transitions = null;
     }
 
     // Null owned game object references

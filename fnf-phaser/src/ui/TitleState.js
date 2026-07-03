@@ -6,6 +6,7 @@
 import Phaser from '../phaser.js';
 import * as Constants from '../core/Constants.js';
 import EventBus, { Events } from '../core/EventBus.js';
+import Transitions, { TransitionType } from '../graphics/Transitions.js';
 
 /**
  * TitleState - The game's title screen
@@ -80,6 +81,26 @@ export default class TitleState extends Phaser.Scene {
      * @type {Phaser.Tweens.Tween | null}
      */
     this.logoBumpTween = null;
+
+    /**
+     * Shared scene-transition helper. Constructed lazily on first use
+     * (see `getTransitions`) and destroyed in `shutdown`.
+     * @type {Transitions | null}
+     */
+    this.transitions = null;
+  }
+
+  /**
+   * Lazily construct and return this scene's {@link Transitions} instance,
+   * routing scene changes through the shared fade contract instead of an
+   * ad-hoc `cameras.main.fadeOut(...)` duplication.
+   * @returns {Transitions}
+   */
+  getTransitions() {
+    if (!this.transitions) {
+      this.transitions = new Transitions(this);
+    }
+    return this.transitions;
   }
 
   /**
@@ -381,17 +402,23 @@ export default class TitleState extends Phaser.Scene {
   /**
    * Transition to the main menu
    */
-  transitionToMainMenu() {
-    // Fade out
-    this.cameras.main.fadeOut(500, 0, 0, 0);
+  async transitionToMainMenu() {
+    // Play the shared fade-out (visually equivalent to the previous
+    // `cameras.main.fadeOut(500)`) and start the target scene only after it
+    // completes, preserving the navigation target.
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE, duration: 500 });
 
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      // Stop music
-      this.stopTitleMusic();
+    // If the scene was torn down mid-transition, `shutdown` destroyed and
+    // cleared the Transitions instance; skip navigation in that case.
+    if (!this.transitions) {
+      return;
+    }
 
-      // Start main menu scene
-      this.scene.start('MainMenuState');
-    });
+    // Stop music
+    this.stopTitleMusic();
+
+    // Start main menu scene
+    this.scene.start('MainMenuState');
   }
 
   /**
@@ -483,5 +510,13 @@ export default class TitleState extends Phaser.Scene {
     this.gfDance = null;
     this.titleMusic = null;
     this.logoBumpTween = null;
+
+    // Tear down the shared Transitions instance. Destroying it cancels any
+    // in-flight tween and removes its overlay without throwing, even
+    // mid-transition.
+    if (this.transitions) {
+      this.transitions.destroy();
+      this.transitions = null;
+    }
   }
 }

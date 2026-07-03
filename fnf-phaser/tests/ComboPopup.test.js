@@ -7,8 +7,56 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Import after mocks (no Phaser dependency for this class)
 const { default: ComboPopup, JudgementType } = await import('../src/play/ComboPopup.js');
 
-// Mock scene
+// Mock scene (headless: no `add`, so no game objects are created)
 const createMockScene = () => ({});
+
+/**
+ * Create a mock Phaser game object exposing every method ComboPopup touches.
+ * All setters are chainable and `destroy` is tracked so teardown can be asserted.
+ */
+const createMockGameObject = (kind, props = {}) => ({
+  kind,
+  ...props,
+  destroyed: false,
+  setOrigin: vi.fn().mockReturnThis(),
+  setDepth: vi.fn().mockReturnThis(),
+  setPosition: vi.fn().mockReturnThis(),
+  setAlpha: vi.fn().mockReturnThis(),
+  setScale: vi.fn().mockReturnThis(),
+  setVisible: vi.fn().mockReturnThis(),
+  setText: vi.fn().mockReturnThis(),
+  setColor: vi.fn().mockReturnThis(),
+  destroy: vi.fn(function destroy() {
+    this.destroyed = true;
+  })
+});
+
+/**
+ * Create a mock scene that backs popups with real (mock) game objects.
+ * Tracks every created object so creation and destruction can be asserted.
+ * @param {{ texturesExist?: boolean }} [opts]
+ */
+const createRenderingScene = ({ texturesExist = false } = {}) => {
+  const created = [];
+  return {
+    created,
+    textures: {
+      exists: vi.fn(() => texturesExist)
+    },
+    add: {
+      text: vi.fn((x, y, text) => {
+        const obj = createMockGameObject('text', { x, y, text });
+        created.push(obj);
+        return obj;
+      }),
+      image: vi.fn((x, y, texture) => {
+        const obj = createMockGameObject('image', { x, y, texture });
+        created.push(obj);
+        return obj;
+      })
+    }
+  };
+};
 
 describe('ComboPopup', () => {
   let comboPopup;
@@ -422,6 +470,157 @@ describe('ComboPopup', () => {
       expect(comboPopup.judgementPool.length).toBe(0);
       expect(comboPopup.numberPool.length).toBe(0);
       expect(comboPopup.scene).toBeNull();
+    });
+  });
+
+  // Validates: Requirements 2.3, 2.4, 2.7
+  describe('rendering with a scene (Requirements 2.3, 2.4, 2.7)', () => {
+    it('should create real game objects on showJudgement for judgement and combo numbers', () => {
+      const scene = createRenderingScene();
+      const popup = new ComboPopup(scene, { showComboNumbers: true });
+
+      popup.showJudgement(JudgementType.SICK, 25);
+
+      // 1 judgement label + 2 combo digits = 3 game objects
+      expect(scene.created.length).toBe(3);
+      expect(scene.add.text).toHaveBeenCalledTimes(3);
+
+      // Each active record is backed by a real game object
+      const sprites = popup.getActiveSprites();
+      expect(sprites.length).toBe(3);
+      for (const sprite of sprites) {
+        expect(sprite.gameObject).toBeTruthy();
+        expect(sprite.gameObject.setOrigin).toHaveBeenCalled();
+        expect(sprite.gameObject.setDepth).toHaveBeenCalledWith(popup.depth);
+      }
+
+      popup.destroy();
+    });
+
+    it('should use loaded combo-number textures via add.image when available', () => {
+      const scene = createRenderingScene({ texturesExist: true });
+      const popup = new ComboPopup(scene, { showComboNumbers: true });
+
+      popup.showJudgement(JudgementType.GOOD, 5);
+
+      // Judgement still uses text; the single digit uses an image texture
+      expect(scene.add.text).toHaveBeenCalledTimes(1);
+      expect(scene.add.image).toHaveBeenCalledTimes(1);
+
+      popup.destroy();
+    });
+
+    it('should apply tracked state to game objects every update (Requirement 2.3)', () => {
+      const scene = createRenderingScene();
+      const popup = new ComboPopup(scene);
+
+      popup.showJudgement(JudgementType.SICK);
+      const record = popup.activeJudgements[0];
+      const gameObject = record.gameObject;
+
+      gameObject.setPosition.mockClear();
+      gameObject.setAlpha.mockClear();
+      gameObject.setScale.mockClear();
+      gameObject.setVisible.mockClear();
+
+      popup.update(16.67);
+
+      expect(gameObject.setPosition).toHaveBeenCalledWith(record.x, record.y);
+      expect(gameObject.setAlpha).toHaveBeenCalledWith(record.alpha);
+      expect(gameObject.setScale).toHaveBeenCalledWith(record.scale);
+      expect(gameObject.setVisible).toHaveBeenCalledWith(record.visible);
+
+      popup.destroy();
+    });
+
+    it('should hide the game object when a popup is recycled to the pool (Requirement 2.4)', () => {
+      const scene = createRenderingScene();
+      const popup = new ComboPopup(scene);
+
+      popup.showJudgement(JudgementType.SICK);
+      const record = popup.activeJudgements[0];
+      const gameObject = record.gameObject;
+
+      // Force lifetime past max so the record is recycled
+      record.lifetime = record.maxLifetime + 100;
+      gameObject.setVisible.mockClear();
+
+      popup.update(16.67);
+
+      expect(popup.activeJudgements.length).toBe(0);
+      expect(popup.judgementPool.length).toBe(1);
+      // Recycled record was hidden, not destroyed
+      expect(gameObject.setVisible).toHaveBeenCalledWith(false);
+      expect(gameObject.destroyed).toBe(false);
+
+      popup.destroy();
+    });
+
+    it('should destroy all active and pooled game objects on destroy (Requirement 2.7)', () => {
+      const scene = createRenderingScene();
+      const popup = new ComboPopup(scene);
+
+      // Active judgement + combo numbers
+      popup.showJudgement(JudgementType.SICK, 12);
+      // Recycle one sprite into the pool so destroy must cover pooled objects too
+      popup.showJudgement(JudgementType.GOOD);
+      const recycled = popup.activeJudgements[popup.activeJudgements.length - 1];
+      recycled.lifetime = recycled.maxLifetime + 100;
+      popup.update(16.67);
+      expect(popup.judgementPool.length).toBeGreaterThan(0);
+
+      const allCreated = [...scene.created];
+      expect(allCreated.length).toBeGreaterThan(0);
+
+      popup.destroy();
+
+      // Every game object ever created is destroyed
+      for (const obj of allCreated) {
+        expect(obj.destroy).toHaveBeenCalled();
+        expect(obj.destroyed).toBe(true);
+      }
+    });
+  });
+
+  // Validates: Requirements 2.3, 2.4, 2.7
+  describe('headless data path without a scene', () => {
+    it('should not create game objects and not throw when scene lacks add', () => {
+      const popup = new ComboPopup(createMockScene(), { showComboNumbers: true });
+
+      expect(() => popup.showJudgement(JudgementType.SICK, 25)).not.toThrow();
+
+      // Data path still tracks records...
+      expect(popup.getActiveJudgementCount()).toBe(1);
+      expect(popup.getActiveNumberCount()).toBe(2);
+      // ...but no game objects were attached
+      for (const sprite of popup.getActiveSprites()) {
+        expect(sprite.gameObject).toBeFalsy();
+      }
+
+      popup.destroy();
+    });
+
+    it('should keep pooling and lifetime logic intact headless', () => {
+      const popup = new ComboPopup(createMockScene());
+
+      popup.showJudgement(JudgementType.SICK);
+      const sprite = popup.activeJudgements[0];
+      sprite.lifetime = sprite.maxLifetime + 100;
+
+      expect(() => popup.update(16.67)).not.toThrow();
+
+      expect(popup.activeJudgements.length).toBe(0);
+      expect(popup.judgementPool.length).toBe(1);
+
+      popup.destroy();
+    });
+
+    it('should not throw on destroy with no scene', () => {
+      const popup = new ComboPopup(null);
+      popup.showJudgement(JudgementType.GOOD, 3);
+
+      expect(() => popup.destroy()).not.toThrow();
+      expect(popup.scene).toBeNull();
     });
   });
 });

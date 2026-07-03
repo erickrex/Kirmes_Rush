@@ -1,0 +1,25 @@
+name: fnf-phaser CI
+on:
+  push:
+    paths: ['fnf-phaser/**']
+  pull_request:
+    paths: ['fnf-phaser/**']
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fnf-phaser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: fnf-phaser/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run test:integration
+      - run: npm run build

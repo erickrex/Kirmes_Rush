@@ -24,12 +24,28 @@ vi.stubGlobal('Phaser', {
         this.y = 0;
         this.visible = true;
         this.alpha = 1;
+        this.flipX = false;
+        this.displayWidth = 150;
+        this.displayHeight = 150;
+        this.anims = { currentAnim: null };
+        this._listeners = {};
       }
+      on(event, fn) {
+        this._listeners[event] = this._listeners[event] || [];
+        this._listeners[event].push(fn);
+        return this;
+      }
+      off() { return this; }
+      emit() { return this; }
       setOrigin() { return this; }
       setScale() { return this; }
       setPosition() { return this; }
       setVisible() { return this; }
       setAlpha() { return this; }
+      setScrollFactor() { return this; }
+      setTexture() { return this; }
+      setFrame() { return this; }
+      setDisplaySize(w, h) { this.displayWidth = w; this.displayHeight = h; return this; }
       destroy() {}
     },
     Graphics: class MockGraphics {
@@ -233,6 +249,7 @@ import AudioManager from '../src/audio/AudioManager.js';
 import SaveManager from '../src/data/SaveManager.js';
 import { createNoteProcessor } from '../src/play/NoteProcessor.js';
 import { createInputManager } from '../src/play/InputManager.js';
+import { createGameplayState } from '../src/play/GameplayState.js';
 
 // ========================================
 // HELPERS
@@ -443,13 +460,31 @@ describe('Property 1: Bug Condition - Saved Options Are Never Applied', () => {
   it('ghostTapping=false should cause ghost taps to apply a penalty', () => {
     setupSaveManagerWithOption('ghostTapping', false);
 
+    // GameplayState_Module is the single source of truth; PlayState reads through to it.
+    const gs = createGameplayState({});
+    gs.combo = 10;
+    gs.maxCombo = 10;
+    gs.health = 1.0;
+    gs.tallies.combo = 10;
+    gs.tallies.maxCombo = 10;
+
     const playState = {
       songPosition: 1000,
-      score: 0,
-      combo: 10,
-      maxCombo: 10,
-      health: 1.0,
-      tallies: { sick: 0, good: 0, bad: 0, shit: 0, missed: 0, totalNotesHit: 0, combo: 10, maxCombo: 10 },
+      get score() {
+        return gs.score;
+      },
+      get combo() {
+        return gs.combo;
+      },
+      get maxCombo() {
+        return gs.maxCombo;
+      },
+      get health() {
+        return gs.health;
+      },
+      get tallies() {
+        return gs.tallies;
+      },
       playerStrumline: {
         notes: [],
         hitNote: vi.fn(),
@@ -486,7 +521,7 @@ describe('Property 1: Bug Condition - Saved Options Are Never Applied', () => {
       conductor: mockConductor,
       eventBus: mockEventBus,
       scoring: mockScoring,
-      gameplayState: null
+      gameplayState: gs
     });
 
     const inputManager = createInputManager({
@@ -495,7 +530,7 @@ describe('Property 1: Bug Condition - Saved Options Are Never Applied', () => {
       conductor: mockConductor,
       eventBus: mockEventBus,
       scoring: mockScoring,
-      gameplayState: null,
+      gameplayState: gs,
       noteProcessor
     });
 

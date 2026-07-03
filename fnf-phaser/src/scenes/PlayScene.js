@@ -152,6 +152,9 @@ export default class PlayScene extends Phaser.Scene {
 
     /** @type {Phaser.GameObjects.Text | null} */
     this.fpsText = null;
+
+    /** @type {{ target: HTMLCanvasElement, handler: EventListener } | null} */
+    this.audioUnlockListener = null;
   }
 
   /**
@@ -291,7 +294,9 @@ export default class PlayScene extends Phaser.Scene {
 
   shutdown() {
     this.events?.off('shutdown', this.shutdown, this);
-    this.input.keyboard?.off('keydown-ESC', this._exitToLevelSelect, this);
+    if (typeof this.input.keyboard?.off === 'function') {
+      this.input.keyboard.off('keydown-ESC', this._exitToLevelSelect, this);
+    }
     EventBus.off(Events.SONG_END, this.handleSongEnd, this);
     EventBus.off(Events.GAME_OVER, this.handleGameOver, this);
 
@@ -340,9 +345,18 @@ export default class PlayScene extends Phaser.Scene {
       this.playState = null;
     }
 
+    this._removeAudioUnlockListeners();
+
+    if (this.audioManager) {
+      this.audioManager.destroy();
+      this.audioManager = null;
+      this.voices = null;
+    } else if (this.voices) {
+      this.voices.destroy();
+      this.voices = null;
+    }
+
     this.levelSystem = null;
-    this.audioManager = null;
-    this.voices = null;
     this.session = null;
     this.initData = null;
   }
@@ -489,12 +503,7 @@ export default class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const removeListeners = () => {
-      canvas.removeEventListener('touchstart', handler);
-      canvas.removeEventListener('touchend', handler);
-      canvas.removeEventListener('mousedown', handler);
-      canvas.removeEventListener('click', handler);
-    };
+    this._removeAudioUnlockListeners();
 
     const handler = () => {
       const ctx = /** @type {{ state: string, resume: () => Promise<void> } | undefined} */ (
@@ -512,20 +521,38 @@ export default class PlayScene extends Phaser.Scene {
               this.audioManager.play(this.playState.songPosition);
             }
             // Context is now running — safe to remove listeners
-            removeListeners();
+            this._removeAudioUnlockListeners();
           })
           .catch(() => {});
       } else if (ctx && ctx.state === 'running') {
         // Already running — remove listeners immediately
-        removeListeners();
+        this._removeAudioUnlockListeners();
       }
     };
+    this.audioUnlockListener = { target: canvas, handler };
     // touchend is more reliable than touchstart for the "user gesture"
     // requirement on some mobile browsers (notably iOS Safari 17+).
     canvas.addEventListener('touchstart', handler, { passive: true });
     canvas.addEventListener('touchend', handler, { passive: true });
     canvas.addEventListener('mousedown', handler);
     canvas.addEventListener('click', handler);
+  }
+
+  /**
+   * Remove any pending raw DOM listener used to unlock mobile Web Audio.
+   * @private
+   */
+  _removeAudioUnlockListeners() {
+    if (!this.audioUnlockListener) {
+      return;
+    }
+
+    const { target, handler } = this.audioUnlockListener;
+    target.removeEventListener('touchstart', handler);
+    target.removeEventListener('touchend', handler);
+    target.removeEventListener('mousedown', handler);
+    target.removeEventListener('click', handler);
+    this.audioUnlockListener = null;
   }
 
   setupRegistries() {
@@ -695,6 +722,9 @@ export default class PlayScene extends Phaser.Scene {
     const level = this.session?.level;
     const ui = level?.ui || {};
 
+    const noteStyleId = this.session?.songData?.noteStyle ?? null;
+    const splashTextureKey = noteStyleId ? `notestyle-${noteStyleId}-noteSplash` : null;
+
     // Task 9.3: Position score display using LayoutManager constants, centered horizontally
     this.playState.createHUDDisplay(
       /** @type {any} */ ({
@@ -704,7 +734,13 @@ export default class PlayScene extends Phaser.Scene {
         fontSize: 20,
         showCombo: ui.showCombo ?? true,
         showAccuracy: ui.showAccuracy ?? false,
-        showMisses: ui.showMisses ?? false
+        showMisses: ui.showMisses ?? false,
+        splashTextureKey,
+        noteStyleId,
+        noteStyleRegistry: this.noteStyleRegistry,
+        characterRegistry: this.characterRegistry,
+        playerCharacterId: this.playState.player?.characterId ?? null,
+        opponentCharacterId: this.playState.opponent?.characterId ?? null
       })
     );
     this.scoreDisplay = this.playState.scoreDisplay;
@@ -721,6 +757,9 @@ export default class PlayScene extends Phaser.Scene {
     this.healthBar.setHealthImmediate(this.playState.health);
     this.registerHudObject(this.healthBar.backgroundGraphics);
     this.registerHudObject(this.healthBar.barGraphics);
+
+    // Hand the bar to PlayState so the health icons position against its fill.
+    this.playState.setHealthBar(this.healthBar);
   }
 
   setupCameraLayers() {

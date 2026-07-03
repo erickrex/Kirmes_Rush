@@ -16,7 +16,7 @@ export const DEFAULT_MANIFEST_IDS = [
   'weekend1'
 ];
 
-export const MANIFEST_BASE_PATH = APP_MANIFESTS_PATH;
+const MANIFEST_BASE_PATH = APP_MANIFESTS_PATH;
 
 /**
  * Fetch JSON with a small error wrapper so scene code gets actionable failures.

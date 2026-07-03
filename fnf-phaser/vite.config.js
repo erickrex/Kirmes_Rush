@@ -89,8 +89,7 @@ export default defineConfig({
       '@data': resolve(__dirname, 'src/data'),
       '@audio': resolve(__dirname, 'src/audio'),
       '@input': resolve(__dirname, 'src/input'),
-      '@graphics': resolve(__dirname, 'src/graphics'),
-      '@util': resolve(__dirname, 'src/util')
+      '@graphics': resolve(__dirname, 'src/graphics')
     }
   },
   // Configure public directory for static assets
@@ -103,8 +102,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          phaser: ['phaser']
+        // Isolate the Phaser engine into its own chunk so the application
+        // chunk stays below the chunk-size warning threshold and the engine
+        // can be cached separately from app code.
+        manualChunks(id) {
+          if (id.includes('node_modules/phaser')) return 'phaser';
         },
         // Configure asset file naming
         assetFileNames: (assetInfo) => {

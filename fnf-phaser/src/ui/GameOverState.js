@@ -5,6 +5,7 @@
 
 import Phaser from '../phaser.js';
 import EventBus, { Events } from '../core/EventBus.js';
+import Transitions, { TransitionType } from '../graphics/Transitions.js';
 
 /**
  * @typedef {{
@@ -97,6 +98,26 @@ export default class GameOverState extends Phaser.Scene {
      * @type {Phaser.GameObjects.Text | null}
      */
     this.gameOverText = null;
+
+    /**
+     * Shared scene-transition helper. Constructed lazily on first use
+     * (see `getTransitions`) and destroyed in `shutdown`.
+     * @type {Transitions | null}
+     */
+    this.transitions = null;
+  }
+
+  /**
+   * Lazily construct and return this scene's {@link Transitions} instance,
+   * routing scene changes through the shared fade contract instead of an
+   * ad-hoc `cameras.main.fadeOut(...)` duplication.
+   * @returns {Transitions}
+   */
+  getTransitions() {
+    if (!this.transitions) {
+      this.transitions = new Transitions(this);
+    }
+    return this.transitions;
   }
 
   /**
@@ -414,7 +435,7 @@ export default class GameOverState extends Phaser.Scene {
   /**
    * Handle exit input
    */
-  onExit() {
+  async onExit() {
     if (this.transitioning || this.phase === 'initial') {
       return;
     }
@@ -426,26 +447,28 @@ export default class GameOverState extends Phaser.Scene {
       this.gameOverMusic.stop();
     }
 
-    // Fade out and exit
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start(
-        this.songData?.returnScene || 'MainMenuState',
-        this.songData?.returnSceneData
-      );
-    });
+    // Fade out and exit through the shared fade contract, preserving the
+    // return scene + data payload.
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE, duration: 500 });
+    if (!this.transitions) {
+      return;
+    }
+    this.scene.start(this.songData?.returnScene || 'MainMenuState', this.songData?.returnSceneData);
   }
 
   /**
    * Restart the song
    */
-  restartSong() {
+  async restartSong() {
     this.transitioning = true;
 
-    this.cameras.main.fadeOut(500, 255, 255, 255);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('PlayState', this.songData ?? undefined);
-    });
+    // White fade preserved via the FADE_WHITE transition type (visually
+    // equivalent to the previous `cameras.main.fadeOut(500, 255, 255, 255)`).
+    await this.getTransitions().transitionOut({ type: TransitionType.FADE_WHITE, duration: 500 });
+    if (!this.transitions) {
+      return;
+    }
+    this.scene.start('PlayState', this.songData ?? undefined);
   }
 
   /**
@@ -496,5 +519,12 @@ export default class GameOverState extends Phaser.Scene {
     this.retryText = null;
     this.exitText = null;
     this.songData = null;
+
+    // Tear down the shared Transitions instance (cancels in-flight tween /
+    // overlay safely, even mid-transition).
+    if (this.transitions) {
+      this.transitions.destroy();
+      this.transitions = null;
+    }
   }
 }

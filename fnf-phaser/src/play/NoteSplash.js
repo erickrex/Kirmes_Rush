@@ -14,6 +14,11 @@ import * as Constants from '../core/Constants.js';
  * @property {number} [lifetime=300] - Splash lifetime in ms
  * @property {boolean} [randomRotation=true] - Whether to randomize rotation
  * @property {boolean} [randomVariation=true] - Whether to randomize variation
+ * @property {string} [splashTextureKey] - Texture key of a loaded note-style splash asset.
+ *   When this texture exists in the scene it is used instead of the generated burst.
+ * @property {number} [depth=90] - Depth assigned to splash game objects
+ * @property {((gameObject: any) => void) | null} [registerObject] - Optional hook invoked with each
+ *   newly created Phaser game object so the owner can assign it to a camera layer (e.g. the HUD camera)
  */
 
 /**
@@ -111,6 +116,34 @@ class NoteSplash {
   directionColors = Constants.COLOR_NOTES;
 
   /**
+   * Texture key of a loaded note-style splash asset. When this texture exists
+   * in the scene it is preferred over the generated burst placeholder.
+   * @type {string | null}
+   */
+  splashTextureKey = null;
+
+  /**
+   * Texture key for the generated burst placeholder created via the
+   * Generated_Texture_Pattern when no loaded splash asset is available.
+   * @type {string}
+   */
+  generatedTextureKey = 'generated-note-splash';
+
+  /**
+   * Depth assigned to splash game objects so they render above receptors.
+   * @type {number}
+   */
+  depth = 90;
+
+  /**
+   * Optional hook invoked with each newly created Phaser game object. Lets the
+   * owner (e.g. PlayState) register splashes on the HUD/receptor camera layer.
+   * Null in headless mode.
+   * @type {((gameObject: any) => void) | null}
+   */
+  registerObject = null;
+
+  /**
    * Create a new NoteSplash manager
    * @param {Phaser.Scene} scene - The Phaser scene
    * @param {NoteSplashConfig} [config={}] - Configuration options
@@ -124,6 +157,11 @@ class NoteSplash {
     this.lifetime = config.lifetime ?? 300;
     this.randomRotation = config.randomRotation ?? true;
     this.randomVariation = config.randomVariation ?? true;
+    this.splashTextureKey = config.splashTextureKey ?? null;
+    if (config.depth !== undefined) {
+      this.depth = config.depth;
+    }
+    this.registerObject = config.registerObject ?? null;
   }
 
   /**
@@ -179,6 +217,10 @@ class NoteSplash {
     // Add to active list
     this.activeSplashes.push(splash);
 
+    // Attach/refresh the real game object (no-op in headless mode)
+    this.ensureGameObject(splash);
+    this.syncGameObject(splash);
+
     // Cleanup if too many
     this.cleanupOldSplashes();
 
@@ -215,8 +257,172 @@ class NoteSplash {
       rotation: 0,
       variation: 0,
       color: 0xffffff,
-      frame: 0
+      frame: 0,
+      gameObject: null
     };
+  }
+
+  /**
+   * Resolve the texture key to use for splash game objects. Prefers a loaded
+   * note-style splash asset when present in the scene; otherwise lazily
+   * generates a burst placeholder via the Generated_Texture_Pattern and returns
+   * its key. Returns null when no scene/texture manager is available.
+   * @returns {string | null}
+   */
+  acquireSplashTexture() {
+    if (!this.scene?.textures) {
+      return null;
+    }
+
+    // Prefer a real loaded splash asset when one exists.
+    if (this.splashTextureKey && this.scene.textures.exists?.(this.splashTextureKey)) {
+      return this.splashTextureKey;
+    }
+
+    // Otherwise fall back to a generated burst placeholder.
+    this.ensureGeneratedTexture();
+    if (this.scene.textures.exists?.(this.generatedTextureKey)) {
+      return this.generatedTextureKey;
+    }
+    return null;
+  }
+
+  /**
+   * Generate a white burst placeholder texture (radiating star) once, following
+   * the Generated_Texture_Pattern used by GeneratedGameplaySkin. White fill so
+   * per-direction tinting via `setTint` produces the correct color. No-op when
+   * the scene cannot create graphics or the texture already exists.
+   */
+  ensureGeneratedTexture() {
+    if (!this.scene?.add?.graphics || !this.scene.textures) {
+      return;
+    }
+    if (this.scene.textures.exists?.(this.generatedTextureKey)) {
+      return;
+    }
+
+    const size = 96;
+    const center = size / 2;
+    const outer = 44;
+    const inner = 18;
+    const points = 8;
+
+    const graphics = this.scene.add.graphics();
+    graphics.clear();
+    graphics.fillStyle(0xffffff, 1);
+
+    /** @type {Array<{x: number, y: number}>} */
+    const star = [];
+    for (let i = 0; i < points * 2; i++) {
+      const radius = i % 2 === 0 ? outer : inner;
+      const angle = (Math.PI * i) / points - Math.PI / 2;
+      star.push({ x: center + Math.cos(angle) * radius, y: center + Math.sin(angle) * radius });
+    }
+
+    if (typeof graphics.fillPoints === 'function') {
+      graphics.fillPoints(/** @type {any} */ (star), true);
+    } else {
+      // Fallback for environments without polygon fill support.
+      graphics.fillCircle(center, center, inner);
+    }
+    graphics.fillCircle(center, center, inner);
+    graphics.generateTexture(this.generatedTextureKey, size, size);
+    graphics.destroy();
+  }
+
+  /**
+   * Lazily create the real Phaser game object backing a splash record. Creation
+   * is guarded behind `this.scene?.add` so headless environments (and teardown
+   * races) never throw. Reuses an already-attached game object.
+   * @param {SplashSprite} splash - The splash record to back with a game object
+   * @returns {Phaser.GameObjects.Sprite | Phaser.GameObjects.Image | null}
+   */
+  ensureGameObject(splash) {
+    if (!splash) {
+      return null;
+    }
+    if (splash.gameObject) {
+      return splash.gameObject;
+    }
+    if (!this.scene?.add) {
+      return null;
+    }
+
+    const textureKey = this.acquireSplashTexture();
+    /** @type {any} */
+    let gameObject = null;
+    if (textureKey && typeof this.scene.add.image === 'function') {
+      gameObject = this.scene.add.image(splash.x, splash.y, textureKey);
+    } else if (textureKey && typeof this.scene.add.sprite === 'function') {
+      gameObject = this.scene.add.sprite(splash.x, splash.y, textureKey);
+    }
+
+    if (!gameObject) {
+      return null;
+    }
+
+    if (typeof gameObject.setOrigin === 'function') {
+      gameObject.setOrigin(0.5, 0.5);
+    }
+    if (typeof gameObject.setDepth === 'function') {
+      gameObject.setDepth(this.depth);
+    }
+    if (typeof gameObject.setTint === 'function') {
+      gameObject.setTint(splash.color);
+    }
+
+    splash.gameObject = gameObject;
+    if (typeof this.registerObject === 'function') {
+      this.registerObject(gameObject);
+    }
+    this.syncGameObject(splash);
+    return gameObject;
+  }
+
+  /**
+   * Apply the tracked render state (`x`, `y`, `alpha`, `scale`, `rotation`,
+   * `visible`) of a splash record onto its backing game object. No-op when there
+   * is no game object (headless mode).
+   * @param {SplashSprite} splash - The splash record to sync
+   */
+  syncGameObject(splash) {
+    const gameObject = splash?.gameObject;
+    if (!gameObject) {
+      return;
+    }
+    if (typeof gameObject.setPosition === 'function') {
+      gameObject.setPosition(splash.x, splash.y);
+    }
+    if (typeof gameObject.setAlpha === 'function') {
+      gameObject.setAlpha(splash.alpha);
+    }
+    if (typeof gameObject.setScale === 'function') {
+      gameObject.setScale(splash.scale);
+    }
+    if (typeof gameObject.setRotation === 'function') {
+      gameObject.setRotation(splash.rotation);
+    }
+    if (typeof gameObject.setVisible === 'function') {
+      gameObject.setVisible(splash.visible);
+    }
+    if (typeof gameObject.setTint === 'function') {
+      gameObject.setTint(splash.color);
+    }
+  }
+
+  /**
+   * Destroy the backing game object of a splash record (if any) and clear the
+   * link so it can be lazily recreated on reuse.
+   * @param {SplashSprite} splash - The splash record whose game object to destroy
+   */
+  destroyGameObject(splash) {
+    if (!splash) {
+      return;
+    }
+    if (splash.gameObject && typeof splash.gameObject.destroy === 'function') {
+      splash.gameObject.destroy();
+    }
+    splash.gameObject = null;
   }
 
   /**
@@ -240,8 +446,11 @@ class NoteSplash {
       // Remove if lifetime exceeded
       if (splash.lifetime >= splash.maxLifetime) {
         splash.visible = false;
+        this.syncGameObject(splash);
         this.activeSplashes.splice(i, 1);
         this.splashPool.push(splash);
+      } else {
+        this.syncGameObject(splash);
       }
     }
   }
@@ -254,6 +463,7 @@ class NoteSplash {
       const splash = this.activeSplashes.shift();
       if (splash) {
         splash.visible = false;
+        this.syncGameObject(splash);
         this.splashPool.push(splash);
       }
     }
@@ -343,6 +553,7 @@ class NoteSplash {
       const splash = this.activeSplashes.pop();
       if (splash) {
         splash.visible = false;
+        this.syncGameObject(splash);
         this.splashPool.push(splash);
       }
     }
@@ -362,6 +573,11 @@ class NoteSplash {
    * Destroy the splash manager
    */
   destroy() {
+    // Destroy every backing game object across active and pooled records.
+    for (const splash of [...this.activeSplashes, ...this.splashPool]) {
+      this.destroyGameObject(splash);
+    }
+
     this.clear();
     this.splashPool = [];
     this.scene = null;

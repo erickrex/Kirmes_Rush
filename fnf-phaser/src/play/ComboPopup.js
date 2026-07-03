@@ -26,6 +26,9 @@ export const JudgementType = {
  * @property {number} [riseSpeed=0.5] - Rise speed
  * @property {number} [gravity=0.02] - Gravity for falling
  * @property {boolean} [showComboNumbers=true] - Whether to show combo numbers
+ * @property {string} [comboNumberTexturePrefix] - Texture-key prefix for loaded combo-number assets
+ * @property {((gameObject: any) => void) | null} [registerObject] - Optional hook invoked with each
+ *   newly created Phaser game object so the owner can assign it to a camera layer (e.g. the HUD camera)
  */
 
 /**
@@ -138,6 +141,28 @@ class ComboPopup {
   comboOffset = { x: 0, y: 100 };
 
   /**
+   * Depth assigned to popup game objects so they render above HUD background.
+   * @type {number}
+   */
+  depth = 100;
+
+  /**
+   * Texture-key prefix used to look up loaded note-style combo-number assets.
+   * When a texture named `${prefix}-${digit}` exists in the scene it is used
+   * instead of a Phaser Text label.
+   * @type {string}
+   */
+  comboNumberTexturePrefix = 'combo-num';
+
+  /**
+   * Optional hook invoked with each newly created Phaser game object. Lets the
+   * owner (e.g. PlayState) register popups on the HUD camera so they render
+   * fixed to the screen. Null in headless mode.
+   * @type {((gameObject: any) => void) | null}
+   */
+  registerObject = null;
+
+  /**
    * Create a new ComboPopup manager
    * @param {Phaser.Scene} scene - The Phaser scene
    * @param {ComboPopupConfig} [config={}] - Configuration options
@@ -153,6 +178,143 @@ class ComboPopup {
     this.riseSpeed = config.riseSpeed ?? 0.5;
     this.gravity = config.gravity ?? 0.02;
     this.showComboNumbers = config.showComboNumbers ?? true;
+    if (config.comboNumberTexturePrefix) {
+      this.comboNumberTexturePrefix = config.comboNumberTexturePrefix;
+    }
+    this.registerObject = config.registerObject ?? null;
+  }
+
+  /**
+   * Lazily create the real Phaser game object backing a popup record.
+   *
+   * Judgement records render as a colored Phaser Text label; combo-number
+   * records use a loaded note-style combo-number texture when available,
+   * otherwise a Phaser Text digit. All creation is guarded behind
+   * `this.scene?.add` so headless environments (and teardown races) never throw.
+   *
+   * @param {PopupSprite} record - The popup record to back with a game object
+   * @returns {Phaser.GameObjects.Sprite | Phaser.GameObjects.Text | null}
+   */
+  ensureGameObject(record) {
+    if (!record) {
+      return null;
+    }
+    if (record.gameObject) {
+      this.refreshGameObjectContent(record);
+      return record.gameObject;
+    }
+    if (!this.scene?.add) {
+      return null;
+    }
+
+    /** @type {any} */
+    let gameObject = null;
+
+    if (record.judgement !== undefined) {
+      const name = ComboPopup.getJudgementName(record.judgement);
+      const color = ComboPopup.getJudgementColor(record.judgement);
+      gameObject = this.scene.add.text(record.x, record.y, name, {
+        fontFamily: 'VCR, Arial, sans-serif',
+        fontSize: '48px',
+        color: `#${color.toString(16).padStart(6, '0')}`,
+        align: 'center'
+      });
+    } else if (record.digit !== undefined) {
+      const textureKey = `${this.comboNumberTexturePrefix}-${record.digit}`;
+      if (this.scene.textures?.exists?.(textureKey) && this.scene.add.image) {
+        gameObject = this.scene.add.image(record.x, record.y, textureKey);
+      } else {
+        gameObject = this.scene.add.text(record.x, record.y, String(record.digit), {
+          fontFamily: 'VCR, Arial, sans-serif',
+          fontSize: '64px',
+          color: '#ffffff',
+          align: 'center'
+        });
+      }
+    }
+
+    if (!gameObject) {
+      return null;
+    }
+
+    if (typeof gameObject.setOrigin === 'function') {
+      gameObject.setOrigin(0.5, 0.5);
+    }
+    if (typeof gameObject.setDepth === 'function') {
+      gameObject.setDepth(this.depth);
+    }
+
+    record.gameObject = gameObject;
+    if (typeof this.registerObject === 'function') {
+      this.registerObject(gameObject);
+    }
+    this.syncGameObject(record);
+    return gameObject;
+  }
+
+  /**
+   * Refresh the textual content/color of a reused game object so a recycled
+   * record does not display stale judgement text or digits. Only applies to
+   * Phaser Text objects; image-backed combo numbers are reused as-is (their
+   * digit identity is fixed by the spawned value, so callers spawn fresh
+   * records per digit).
+   * @param {PopupSprite} record - The popup record being reused
+   */
+  refreshGameObjectContent(record) {
+    /** @type {any} */
+    const gameObject = record?.gameObject;
+    if (!gameObject || typeof gameObject.setText !== 'function') {
+      return;
+    }
+    if (record.judgement !== undefined) {
+      gameObject.setText(ComboPopup.getJudgementName(record.judgement));
+      if (typeof gameObject.setColor === 'function') {
+        const color = ComboPopup.getJudgementColor(record.judgement);
+        gameObject.setColor(`#${color.toString(16).padStart(6, '0')}`);
+      }
+    } else if (record.digit !== undefined) {
+      gameObject.setText(String(record.digit));
+    }
+  }
+
+  /**
+   * Apply the tracked render state (`x`, `y`, `alpha`, `scale`, `visible`) of a
+   * popup record onto its backing game object. No-op when there is no game
+   * object (headless mode).
+   *
+   * @param {PopupSprite} record - The popup record to sync
+   */
+  syncGameObject(record) {
+    const gameObject = record?.gameObject;
+    if (!gameObject) {
+      return;
+    }
+    if (typeof gameObject.setPosition === 'function') {
+      gameObject.setPosition(record.x, record.y);
+    }
+    if (typeof gameObject.setAlpha === 'function') {
+      gameObject.setAlpha(record.alpha);
+    }
+    if (typeof gameObject.setScale === 'function') {
+      gameObject.setScale(record.scale);
+    }
+    if (typeof gameObject.setVisible === 'function') {
+      gameObject.setVisible(record.visible);
+    }
+  }
+
+  /**
+   * Destroy the backing game object of a record (if any) and clear the link.
+   * @param {PopupSprite} record - The popup record whose game object to destroy
+   */
+  destroyGameObject(record) {
+    if (!record) {
+      return;
+    }
+    if (record.gameObject && typeof record.gameObject.destroy === 'function') {
+      record.gameObject.destroy();
+    }
+    record.gameObject = null;
   }
 
   /**
@@ -212,6 +374,9 @@ class ComboPopup {
     sprite.visible = true;
     sprite.scale = this.scale;
 
+    // Attach/refresh the real game object (no-op in headless mode)
+    this.ensureGameObject(sprite);
+
     return sprite;
   }
 
@@ -265,6 +430,9 @@ class ComboPopup {
     sprite.digit = digit;
     sprite.visible = true;
     sprite.scale = this.scale;
+
+    // Attach/refresh the real game object (no-op in headless mode)
+    this.ensureGameObject(sprite);
 
     return sprite;
   }
@@ -327,8 +495,11 @@ class ComboPopup {
       // Remove if lifetime exceeded
       if (sprite.lifetime >= sprite.maxLifetime) {
         sprite.visible = false;
+        this.syncGameObject(sprite);
         active.splice(i, 1);
         pool.push(sprite);
+      } else {
+        this.syncGameObject(sprite);
       }
     }
   }
@@ -341,6 +512,7 @@ class ComboPopup {
       const sprite = this.activeJudgements.shift();
       if (sprite) {
         sprite.visible = false;
+        this.syncGameObject(sprite);
         this.judgementPool.push(sprite);
       }
     }
@@ -349,6 +521,7 @@ class ComboPopup {
       const sprite = this.activeNumbers.shift();
       if (sprite) {
         sprite.visible = false;
+        this.syncGameObject(sprite);
         this.numberPool.push(sprite);
       }
     }
@@ -419,6 +592,7 @@ class ComboPopup {
       const sprite = this.activeJudgements.pop();
       if (sprite) {
         sprite.visible = false;
+        this.syncGameObject(sprite);
         this.judgementPool.push(sprite);
       }
     }
@@ -427,6 +601,7 @@ class ComboPopup {
       const sprite = this.activeNumbers.pop();
       if (sprite) {
         sprite.visible = false;
+        this.syncGameObject(sprite);
         this.numberPool.push(sprite);
       }
     }
@@ -480,6 +655,16 @@ class ComboPopup {
    * Destroy the combo popup manager
    */
   destroy() {
+    // Destroy every backing game object across active and pooled records.
+    for (const record of [
+      ...this.activeJudgements,
+      ...this.activeNumbers,
+      ...this.judgementPool,
+      ...this.numberPool
+    ]) {
+      this.destroyGameObject(record);
+    }
+
     this.clear();
     this.judgementPool = [];
     this.numberPool = [];

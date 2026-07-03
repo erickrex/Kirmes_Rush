@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode", // JSON formatting
+    "redhat.vscode-xml" // XML formatting
+  ]
+}

@@ -16,7 +16,16 @@ import InputStatistics from '../input/InputStatistics.js';
 import ExpandedStatsDisplay from './ExpandedStatsDisplay.js';
 import ScoreDisplay from './ScoreDisplay.js';
 import OpponentIndicator from './OpponentIndicator.js';
-import { PLAYER_STRUMLINE_X, PLAYER_STRUMLINE_Y } from '../layout/LayoutManager.js';
+import ComboPopup from './ComboPopup.js';
+import NoteSplash from './NoteSplash.js';
+import HealthIcon from './HealthIcon.js';
+import { acquireHealthIconTexture } from './HealthIconTextures.js';
+import {
+  PLAYER_STRUMLINE_X,
+  PLAYER_STRUMLINE_Y,
+  COMBO_POPUP_X,
+  COMBO_POPUP_Y
+} from '../layout/LayoutManager.js';
 import { ReplayRecorder, ReplayPlayer } from '../replay/ReplaySystem.js';
 import { InputBuffer } from '../input/InputSystem.js';
 import TouchDeviceDetector from '../input/TouchDeviceDetector.js';
@@ -42,7 +51,7 @@ import { createSongFlowController } from './SongFlowController.js';
  * @typedef {import('../graphics/FunkinCamera.js').default} FunkinCamera
  * @typedef {import('../audio/AudioManager.js').default} AudioManager
  * @typedef {import('../audio/VoicesGroup.js').default} VoicesGroup
- * @typedef {{ direction: number, timestamp: number }} QueuedInput
+ * @typedef {{ direction: number, timestamp: number, keyCode?: string }} QueuedInput
  * @typedef {{
  *   x?: number,
  *   y?: number,
@@ -53,7 +62,13 @@ import { createSongFlowController } from './SongFlowController.js';
  *   showNPS?: boolean,
  *   showGrade?: boolean,
  *   showComboBreaks?: boolean,
- *   showJudgements?: boolean
+ *   showJudgements?: boolean,
+ *   splashTextureKey?: string | null,
+ *   noteStyleId?: string | null,
+ *   noteStyleRegistry?: { areSplashesEnabled?: (styleId: string | null) => boolean } | null,
+ *   characterRegistry?: { getHealthIconData?: (charId: string) => Record<string, any> | null } | null,
+ *   playerCharacterId?: string | null,
+ *   opponentCharacterId?: string | null
  * }} HUDDisplayConfig
  */
 
@@ -127,8 +142,9 @@ import { createSongFlowController } from './SongFlowController.js';
 /**
  * @typedef {Object} InputManagerModule
  * @property {() => void} processInputQueue
- * @property {(direction: number, timestamp: number) => void} handleNoteInput
+ * @property {(direction: number, timestamp: number, keyCode?: string) => void} handleNoteInput
  * @property {(direction: number, timestamp: number) => void} handleNoteRelease
+ * @property {() => void} processBufferedInputs
  * @property {() => void} destroy
  */
 
@@ -176,27 +192,10 @@ class PlayState {
   /** @type {Conductor | null} */
   conductor = null;
 
-  // Gameplay state (kept on PlayState for backward compatibility)
-  /** @type {number} */
-  health = Constants.HEALTH_STARTING;
-  /** @type {number} */
-  score = 0;
-  /** @type {number} */
-  combo = 0;
-  /** @type {number} */
-  maxCombo = 0;
-  /** @type {Tallies} */
-  tallies = {
-    sick: 0,
-    good: 0,
-    bad: 0,
-    shit: 0,
-    missed: 0,
-    combo: 0,
-    maxCombo: 0,
-    totalNotesHit: 0,
-    totalNotes: 0
-  };
+  // Gameplay state is owned by the GameplayState_Module (`_gameplayState`), the single
+  // source of truth for health/score/combo/maxCombo/tallies. The accessors below preserve
+  // the public read/write API used by the HUD, results flow, and tests while delegating
+  // all storage to `_gameplayState` (see getters/setters near the end of the class).
 
   // Timing
   /** @type {number} */
@@ -241,6 +240,24 @@ class PlayState {
   competitiveStatsEnabled = false;
   /** @type {ScoreDisplay | ExpandedStatsDisplay | null} */
   scoreDisplay = null;
+
+  // Combo popup (judgement + combo-number HUD feedback)
+  /** @type {ComboPopup | null} */
+  comboPopup = null;
+
+  // Note splash (perfect-hit splash effect at the player receptors)
+  /** @type {NoteSplash | null} */
+  noteSplash = null;
+
+  // Health icons (player + opponent), driven against the scene-owned HealthBar.
+  /** @type {HealthIcon | null} */
+  playerHealthIcon = null;
+  /** @type {HealthIcon | null} */
+  opponentHealthIcon = null;
+  // The HealthBar is owned by the scene (PlayScene). PlayState only needs a
+  // read reference so it can position the icons against the bar fill each frame.
+  /** @type {Record<string, any> | null} */
+  healthBar = null;
 
   // Replay
   /** @type {ReplayRecorder | null} */
@@ -320,6 +337,10 @@ class PlayState {
   _onNoteHitForStats = null;
   /** @type {(() => void) | null} */
   _onComboBreakForStats = null;
+  /** @type {((data: { judgement: string, combo?: number }) => void) | null} */
+  _onNoteHitForCombo = null;
+  /** @type {((data: { judgement: string, direction?: number, receptor?: { x: number, y: number } | null }) => void) | null} */
+  _onNoteHitForSplash = null;
 
   /**
    * @param {Phaser.Scene & { registerHudObject?: (obj: any) => any }} scene
@@ -365,8 +386,98 @@ class PlayState {
         this.scoreDisplay.recordComboBreak();
       }
     };
+    // Drive the combo popup where note hits are handled. The NOTE_HIT payload
+    // carries the authoritative judgement and current combo (from GameplayState),
+    // so the popup always reflects the single-source-of-truth combo value.
+    this._onNoteHitForCombo = (data) => {
+      if (this.comboPopup && data?.judgement) {
+        this.comboPopup.showJudgement(
+          data.judgement,
+          data.combo ?? 0,
+          COMBO_POPUP_X,
+          COMBO_POPUP_Y
+        );
+      }
+    };
     EventBus.on(Events.NOTE_HIT, this._onNoteHitForStats);
     EventBus.on(Events.COMBO_BREAK, this._onComboBreakForStats);
+    EventBus.on(Events.NOTE_HIT, this._onNoteHitForCombo);
+    // Drive note splashes on perfect hits. The NOTE_HIT payload carries the hit
+    // `direction` and the resolved player `receptor` position (added with the
+    // single-owner refactor), so splashes spawn at the correct receptor without
+    // PlayState having to recompute strumline geometry. Only `sick`/`killer`
+    // judgements produce a splash; NoteSplash itself is a no-op when disabled.
+    this._onNoteHitForSplash = (data) => {
+      if (!this.noteSplash || !data) {
+        return;
+      }
+      if (data.judgement !== 'sick' && data.judgement !== 'killer') {
+        return;
+      }
+      if (data.receptor) {
+        this.noteSplash.spawnAtReceptor(data.receptor, data.direction ?? 0);
+      }
+    };
+    EventBus.on(Events.NOTE_HIT, this._onNoteHitForSplash);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gameplay-state read-through accessors (single source of truth: _gameplayState)
+  // ---------------------------------------------------------------------------
+
+  /** @returns {number} */
+  get health() {
+    return this._gameplayState?.health ?? Constants.HEALTH_STARTING;
+  }
+  /** @param {number} value */
+  set health(value) {
+    if (this._gameplayState) {
+      this._gameplayState.health = value;
+    }
+  }
+
+  /** @returns {number} */
+  get score() {
+    return this._gameplayState?.score ?? 0;
+  }
+  /** @param {number} value */
+  set score(value) {
+    if (this._gameplayState) {
+      this._gameplayState.score = value;
+    }
+  }
+
+  /** @returns {number} */
+  get combo() {
+    return this._gameplayState?.combo ?? 0;
+  }
+  /** @param {number} value */
+  set combo(value) {
+    if (this._gameplayState) {
+      this._gameplayState.combo = value;
+    }
+  }
+
+  /** @returns {number} */
+  get maxCombo() {
+    return this._gameplayState?.maxCombo ?? 0;
+  }
+  /** @param {number} value */
+  set maxCombo(value) {
+    if (this._gameplayState) {
+      this._gameplayState.maxCombo = value;
+    }
+  }
+
+  /** @returns {Tallies} */
+  get tallies() {
+    return /** @type {Tallies} */ (this._gameplayState?.tallies ?? Scoring.createTallies());
+  }
+  /** @param {Tallies} value */
+  set tallies(value) {
+    if (this._gameplayState) {
+      this._gameplayState.tallies = value;
+    }
   }
 
   /**
@@ -415,25 +526,13 @@ class PlayState {
   }
 
   resetState() {
-    this.health = Constants.HEALTH_STARTING;
-    this.score = 0;
-    this.combo = 0;
-    this.maxCombo = 0;
+    if (this._gameplayState) {
+      this._gameplayState.reset();
+    }
     this.songPosition = 0;
     this.songStarted = false;
     this.countdownActive = false;
     this.countdownStep = 0;
-    this.tallies = {
-      sick: 0,
-      good: 0,
-      bad: 0,
-      shit: 0,
-      missed: 0,
-      combo: 0,
-      maxCombo: 0,
-      totalNotesHit: 0,
-      totalNotes: 0
-    };
     this.inputPressQueue = [];
     this.inputReleaseQueue = [];
     if (this.inputStatistics) {
@@ -756,6 +855,143 @@ class PlayState {
     } else {
       this.scoreDisplay = new ScoreDisplay(this.scene, config);
     }
+
+    // Combo popup — judgement text + combo numbers, registered on the HUD camera
+    // so popups render fixed to the screen. Game objects are created lazily on the
+    // first hit; the registerObject hook assigns each to the HUD layer as it appears.
+    this.comboPopup = new ComboPopup(this.scene, {
+      x: COMBO_POPUP_X,
+      y: COMBO_POPUP_Y,
+      showComboNumbers: this.comboDisplayEnabled,
+      registerObject: (obj) => this.registerHudObject(obj)
+    });
+    // Respect the `comboDisplay` save option for combo numbers.
+    this.comboPopup.setShowComboNumbers(this.comboDisplayEnabled);
+
+    // Note splash — spawned at the player receptors on perfect (sick/killer)
+    // hits, registered on the HUD camera so it renders fixed on the receptor
+    // layer. Prefers a loaded note-style splash atlas; NoteSplash falls back to
+    // a generated burst when that texture is present but unresolved.
+    const splashTextureKey = config.splashTextureKey ?? null;
+    this.noteSplash = new NoteSplash(this.scene, {
+      splashTextureKey: splashTextureKey ?? undefined,
+      registerObject: (obj) => this.registerHudObject(obj)
+    });
+    // Gate splashes off when the note style reports them disabled, or when no
+    // splash asset is loaded for the active style (Requirement 3.4). A disabled
+    // NoteSplash spawns no game objects.
+    const noteStyleRegistry = config.noteStyleRegistry ?? null;
+    const splashesAllowedByStyle =
+      noteStyleRegistry && typeof noteStyleRegistry.areSplashesEnabled === 'function'
+        ? noteStyleRegistry.areSplashesEnabled(config.noteStyleId ?? null)
+        : true;
+    const splashAssetAvailable = Boolean(
+      splashTextureKey && this.scene.textures?.exists?.(splashTextureKey)
+    );
+    if (!splashesAllowedByStyle || !splashAssetAvailable) {
+      this.noteSplash.setEnabled(false);
+    }
+
+    // Health icons — one for the player, one for the opponent. Both render fixed
+    // to the screen on the HUD camera and react to the single-source-of-truth
+    // health each frame. Created here in HUD setup; positioned against the
+    // scene-owned HealthBar in the update loop once `setHealthBar` is wired.
+    this.createHealthIcons(config);
+  }
+
+  /**
+   * Create the player and opponent health icons from the active characters.
+   * Always creates two visible icons (placeholder texture when no real icon
+   * asset is loaded), registered on the HUD camera. No-ops in headless scenes.
+   * @param {HUDDisplayConfig} [config={}]
+   */
+  createHealthIcons(config = {}) {
+    if (!this.scene?.add) {
+      return;
+    }
+    const registry = config.characterRegistry ?? null;
+    const playerCharId =
+      config.playerCharacterId ?? this.player?.characterId ?? Constants.DEFAULT_HEALTH_ICON;
+    const opponentCharId =
+      config.opponentCharacterId ?? this.opponent?.characterId ?? Constants.DEFAULT_HEALTH_ICON;
+
+    this.playerHealthIcon = this.createHealthIcon(playerCharId, 0, registry);
+    this.opponentHealthIcon = this.createHealthIcon(opponentCharId, 1, registry);
+  }
+
+  /**
+   * Create a single health icon: configure it from the character registry,
+   * assign a texture (real icon when present, else a generated placeholder),
+   * add it to the scene display list, and register it on the HUD camera.
+   * @param {string} characterId - Character ID for the icon
+   * @param {number} playerId - 0 = player, 1 = opponent
+   * @param {{ getHealthIconData?: (charId: string) => Record<string, any> | null } | null} registry
+   * @returns {HealthIcon | null}
+   */
+  createHealthIcon(characterId, playerId, registry) {
+    if (!this.scene) {
+      return null;
+    }
+    const icon = new HealthIcon(this.scene, 0, 0, characterId, playerId);
+
+    // Configure scale/offsets/flip/pixel from the registry (Requirement 4.2).
+    const iconData =
+      registry && typeof registry.getHealthIconData === 'function'
+        ? registry.getHealthIconData(characterId)
+        : null;
+    if (iconData) {
+      icon.configure(iconData);
+    }
+
+    // Guarantee a visible texture: real icon when loaded, else generated
+    // placeholder (Requirement 4.3). Reads characterId/playerId off the icon.
+    acquireHealthIconTexture(this.scene, icon, { playerId });
+
+    // Snap to the configured target size so the icon is correctly sized before
+    // the first bop/lerp frame.
+    if (typeof icon.snapToTargetSize === 'function') {
+      icon.snapToTargetSize();
+    }
+
+    this.scene.add?.existing?.(/** @type {any} */ (icon));
+    this.registerHudObject(icon);
+    return icon;
+  }
+
+  /**
+   * Provide the scene-owned HealthBar so the icons can be positioned against
+   * its fill each frame. Called by PlayScene after the bar is created.
+   * @param {Record<string, any> | null} healthBar - HealthBar instance
+   */
+  setHealthBar(healthBar) {
+    this.healthBar = healthBar ?? null;
+  }
+
+  /**
+   * Register a Phaser game object on the HUD camera layer so it renders fixed to
+   * the screen. Mirrors the scene's HUD registration when available, otherwise
+   * falls back to pinning scroll factor and ignoring on the game camera.
+   * @param {any} obj - The game object to register
+   * @returns {any}
+   */
+  registerHudObject(obj) {
+    if (!obj) {
+      return obj;
+    }
+    if (typeof this.scene?.registerHudObject === 'function') {
+      return this.scene.registerHudObject(obj);
+    }
+    if (typeof obj.setScrollFactor === 'function') {
+      obj.setScrollFactor(0);
+    }
+    if (this.camGame && typeof this.camGame.ignore === 'function') {
+      try {
+        this.camGame.ignore(obj);
+      } catch {
+        // Ignore objects that cannot be assigned to a camera layer.
+      }
+    }
+    return obj;
   }
 
   /**
@@ -948,6 +1184,24 @@ class PlayState {
     if (this.scoreDisplay) {
       this.scoreDisplay.update(delta, this.songPosition);
     }
+    if (this.comboPopup) {
+      this.comboPopup.update(delta);
+    }
+    if (this.noteSplash) {
+      this.noteSplash.update(delta);
+    }
+    if (this.playerHealthIcon) {
+      this.playerHealthIcon.update(delta, this.health);
+      if (this.healthBar) {
+        this.playerHealthIcon.updatePosition(this.healthBar);
+      }
+    }
+    if (this.opponentHealthIcon) {
+      this.opponentHealthIcon.update(delta, this.health);
+      if (this.healthBar) {
+        this.opponentHealthIcon.updatePosition(this.healthBar);
+      }
+    }
     if (this.opponentIndicator) {
       this.opponentIndicator.update(delta);
     }
@@ -1008,6 +1262,13 @@ class PlayState {
     if (this.girlfriend) {
       this.girlfriend.onStepHit(step);
     }
+    // Health icons bop on their internal step cadence (one beat by default).
+    if (this.playerHealthIcon) {
+      this.playerHealthIcon.onStepHit(step);
+    }
+    if (this.opponentHealthIcon) {
+      this.opponentHealthIcon.onStepHit(step);
+    }
   }
 
   /**
@@ -1029,6 +1290,14 @@ class PlayState {
     if (this.girlfriend) {
       this.girlfriend.onBeatHit(beat);
     }
+    // Forward beat to health icons (default is a no-op; step-driven bop covers
+    // the one-beat cadence, but this keeps beat-based icon overrides working).
+    if (this.playerHealthIcon) {
+      this.playerHealthIcon.onBeatHit(beat);
+    }
+    if (this.opponentHealthIcon) {
+      this.opponentHealthIcon.onBeatHit(beat);
+    }
   }
 
   // Input/note delegation to modules
@@ -1040,10 +1309,11 @@ class PlayState {
   /**
    * @param {number} direction - Note direction (0-3)
    * @param {number} timestamp - Input timestamp
+   * @param {string} [keyCode] - Key code that produced the input
    */
-  handleNoteInput(direction, timestamp) {
+  handleNoteInput(direction, timestamp, keyCode) {
     if (this._inputManager) {
-      this._inputManager.handleNoteInput(direction, timestamp);
+      this._inputManager.handleNoteInput(direction, timestamp, keyCode);
     }
   }
   /**
@@ -1352,11 +1622,34 @@ class PlayState {
     if (this._onComboBreakForStats) {
       EventBus.off(Events.COMBO_BREAK, this._onComboBreakForStats);
     }
+    if (this._onNoteHitForCombo) {
+      EventBus.off(Events.NOTE_HIT, this._onNoteHitForCombo);
+    }
+    if (this._onNoteHitForSplash) {
+      EventBus.off(Events.NOTE_HIT, this._onNoteHitForSplash);
+    }
     this.inputStatistics = null;
     if (this.scoreDisplay) {
       this.scoreDisplay.destroy();
       this.scoreDisplay = null;
     }
+    if (this.comboPopup) {
+      this.comboPopup.destroy();
+      this.comboPopup = null;
+    }
+    if (this.noteSplash) {
+      this.noteSplash.destroy();
+      this.noteSplash = null;
+    }
+    if (this.playerHealthIcon) {
+      this.playerHealthIcon.destroy();
+      this.playerHealthIcon = null;
+    }
+    if (this.opponentHealthIcon) {
+      this.opponentHealthIcon.destroy();
+      this.opponentHealthIcon = null;
+    }
+    this.healthBar = null;
   }
 }
 

@@ -644,12 +644,14 @@ describe('ReplayBrowserState', () => {
       scene.loadReplays();
     });
 
-    it('should start replay playback with correct parameters', () => {
+    it('should start replay playback with correct parameters', async () => {
       const replay = scene.filteredReplays[0];
-      scene.startReplayPlayback(replay);
+      // Navigation now routes through a Transitions fade-out before the scene
+      // starts, so the navigation method is async. Await it, then assert on the
+      // navigation outcome (target scene + exact payload) rather than the
+      // underlying fade mechanism (Requirement 5.5).
+      await scene.startReplayPlayback(replay);
 
-      // Camera fade out triggers scene start
-      expect(scene.cameras.main.fadeOut).toHaveBeenCalled();
       expect(scene.scene.start).toHaveBeenCalledWith('PlayState', {
         songId: replay.songId,
         difficulty: replay.difficulty,

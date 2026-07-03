@@ -9,7 +9,7 @@
 
 /**
  * Represents a BPM/time signature change in a song.
- * Supports both canonical field names (used by Conductor) and raw chart field names (used by ChartParser/SongRegistry).
+ * Supports both canonical field names (used by Conductor) and raw chart field names (used by ChartParser).
  * @typedef {Object} SongTimeChange
  * @property {number} [timeStamp] - Time in milliseconds when this change occurs (canonical)
  * @property {number} [t] - Time in milliseconds (raw chart format alias for timeStamp)

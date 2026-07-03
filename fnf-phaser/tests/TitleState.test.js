@@ -359,9 +359,13 @@ describe('TitleState', () => {
       scene.create();
     });
 
-    it('should transition to main menu', () => {
-      scene.transitionToMainMenu();
-      expect(scene.cameras.main.fadeOut).toHaveBeenCalled();
+    it('should transition to main menu', async () => {
+      // Navigation now routes through a Transitions fade-out before the scene
+      // starts, so the method is async. Await it and assert on the navigation
+      // outcome (target scene) rather than the underlying fade mechanism
+      // (Requirement 5.5).
+      await scene.transitionToMainMenu();
+      expect(scene.scene.start).toHaveBeenCalledWith('MainMenuState');
     });
   });
 

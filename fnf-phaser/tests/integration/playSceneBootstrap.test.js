@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const integrationState = vi.hoisted(() => ({
   playStates: [],
+  audioManagers: [],
+  voicesGroups: [],
   saveManager: {
     loaded: true,
     getInputBufferWindow: vi.fn(() => 42),
@@ -63,7 +65,8 @@ vi.mock('phaser', () => ({
         };
         this.input = {
           keyboard: {
-            on: vi.fn()
+            on: vi.fn(),
+            off: vi.fn()
           }
         };
         this.scene = {
@@ -135,6 +138,7 @@ vi.mock('../../src/play/PlayState.js', () => ({
           destroy: vi.fn()
         };
       });
+      this.setHealthBar = vi.fn();
       this.generateNotes = vi.fn();
       this.startCountdown = vi.fn();
       this.destroy = vi.fn();
@@ -154,7 +158,10 @@ vi.mock('../../src/input/InputSystem.js', () => ({
 
 vi.mock('../../src/audio/AudioManager.js', () => ({
   default: class MockAudioManager {
-    constructor() {}
+    constructor() {
+      this.destroy = vi.fn();
+      integrationState.audioManagers.push(this);
+    }
     setVoices() {}
     applyOptionsFromSave() {}
   }
@@ -162,7 +169,10 @@ vi.mock('../../src/audio/AudioManager.js', () => ({
 
 vi.mock('../../src/audio/VoicesGroup.js', () => ({
   default: class MockVoicesGroup {
-    constructor() {}
+    constructor() {
+      this.destroy = vi.fn();
+      integrationState.voicesGroups.push(this);
+    }
   }
 }));
 
@@ -302,6 +312,8 @@ function createSession({ levelId, features, ui = {}, stage = null, characters = 
 describe('PlayScene release bootstrap', () => {
   beforeEach(() => {
     integrationState.playStates.length = 0;
+    integrationState.audioManagers.length = 0;
+    integrationState.voicesGroups.length = 0;
     integrationState.saveManager.getInputBufferWindow.mockClear();
     integrationState.saveManager.getOption.mockClear();
     integrationState.saveManager.recordSongResult.mockClear();
@@ -405,5 +417,47 @@ describe('PlayScene release bootstrap', () => {
         newHighScore: true
       })
     );
+  });
+
+  it('destroys scene-owned audio objects on shutdown', () => {
+    const scene = new PlayScene();
+    scene.init({
+      session: createSession({
+        levelId: 'level-1-basics'
+      })
+    });
+
+    scene.create();
+    const audioManager = integrationState.audioManagers.at(-1);
+
+    scene.shutdown();
+
+    expect(audioManager.destroy).toHaveBeenCalledTimes(1);
+    expect(scene.audioManager).toBeNull();
+    expect(scene.voices).toBeNull();
+  });
+
+  it('removes pending raw canvas audio unlock listeners on shutdown', () => {
+    const scene = new PlayScene();
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    };
+    scene.game = { canvas };
+    scene.sound.context = {
+      state: 'suspended',
+      resume: vi.fn()
+    };
+
+    scene._unlockAudioOnTouch();
+    const clickHandler = canvas.addEventListener.mock.calls.find((call) => call[0] === 'click')[1];
+
+    scene.shutdown();
+
+    expect(canvas.removeEventListener).toHaveBeenCalledWith('touchstart', clickHandler);
+    expect(canvas.removeEventListener).toHaveBeenCalledWith('touchend', clickHandler);
+    expect(canvas.removeEventListener).toHaveBeenCalledWith('mousedown', clickHandler);
+    expect(canvas.removeEventListener).toHaveBeenCalledWith('click', clickHandler);
+    expect(scene.audioUnlockListener).toBeNull();
   });
 });
