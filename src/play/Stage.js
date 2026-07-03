@@ -1,0 +1,537 @@
+/**
+ * @fileoverview Stage - Background and props for gameplay
+ * Handles stage loading, prop creation, and character positioning.
+ *
+ * Ported from source/rythm/play/stage/Stage.hx
+ */
+
+import RythmSprite from '../graphics/RythmSprite.js';
+import StageRegistry from '../data/registries/StageRegistry.js';
+import { PORTRAIT_WIDTH, PORTRAIT_HEIGHT, PLAYER_CHAR_Y_RANGE } from '../layout/LayoutManager.js';
+
+/**
+ * @typedef {Object} StageConfig
+ * @property {string} stageId - Stage ID from registry
+ * @property {Phaser.Scene} scene - The Phaser scene
+ */
+
+/**
+ * @typedef {Object} StageDataDef
+ * @property {string} [name] - Display name
+ * @property {string} [directory] - Asset directory
+ * @property {number} [cameraZoom] - Default camera zoom
+ * @property {Record<string, {position?: number[], zIndex?: number, cameraOffsets?: number[], scale?: number}>} [characters] - Character positions
+ * @property {Array<{name: string, position?: number[], scale?: number[], zIndex?: number, scroll?: number[], alpha?: number, isPixel?: boolean, danceEvery?: number, assetPath?: string}>} [props] - Stage props
+ */
+
+/**
+ * Stage background and props for Rythm Foundation gameplay.
+ * Handles:
+ * - Loading stage data from registry
+ * - Creating background props with parallax
+ * - Character positioning
+ * - Camera zoom settings
+ */
+class Stage {
+  /**
+   * The Phaser scene
+   * @type {Phaser.Scene | null}
+   */
+  scene = null;
+
+  /**
+   * Stage ID
+   * @type {string}
+   */
+  stageId = '';
+
+  /**
+   * Stage data from registry
+   * @type {StageDataDef | null}
+   */
+  stageData = null;
+
+  /**
+   * Map of prop sprites by name
+   * @type {Map<string, RythmSprite>}
+   */
+  props = new Map();
+
+  /**
+   * Array of all prop sprites (for iteration)
+   * @type {RythmSprite[]}
+   */
+  propSprites = [];
+
+  /**
+   * Default camera zoom for this stage
+   * @type {number}
+   */
+  cameraZoom = 1.0;
+
+  /**
+   * Character positions
+   * @type {Record<string, {x: number, y: number, zIndex: number, cameraOffsets?: number[], scale?: number}>}
+   */
+  characterPositions = {
+    bf: { x: 0, y: 0, zIndex: 0 },
+    dad: { x: 0, y: 0, zIndex: 0 },
+    gf: { x: 0, y: 0, zIndex: 0 }
+  };
+
+  /**
+   * Whether the stage has been created
+   * @type {boolean}
+   */
+  isCreated = false;
+
+  /**
+   * Create a new Stage
+   * @param {Phaser.Scene} scene - The Phaser scene
+   * @param {string} [stageId='mainStage'] - Stage ID
+   */
+  constructor(scene, stageId = 'mainStage') {
+    this.scene = scene;
+    this.stageId = stageId;
+  }
+
+  // ========================================
+  // INITIALIZATION
+  // ========================================
+
+  /**
+   * Load stage data from registry
+   * @param {StageRegistry} [registry] - Optional registry instance
+   * @returns {boolean} Whether loading succeeded
+   */
+  loadFromRegistry(registry) {
+    const reg = registry || StageRegistry.getInstance();
+    const data = /** @type {StageDataDef | null} */ (
+      /** @type {any} */ (reg).getStageData?.(this.stageId) || null
+    );
+
+    if (!data) {
+      console.error(`[Stage] Stage not found: ${this.stageId}`);
+      return false;
+    }
+
+    this.stageData = data;
+    this.applyStageData(data);
+    return true;
+  }
+
+  /**
+   * Apply stage data, adjusting positions for portrait (720×1280) framing.
+   * @param {StageDataDef} data - Stage data
+   */
+  applyStageData(data) {
+    this.cameraZoom = data.cameraZoom || 1.0;
+
+    // Store character positions with portrait adjustments
+    if (data.characters) {
+      for (const charType of ['bf', 'dad', 'gf']) {
+        if (data.characters[charType]) {
+          const pos = data.characters[charType];
+          const baseX = pos.position?.[0] || 0;
+          const baseY = pos.position?.[1] || 0;
+
+          let adjustedX = baseX;
+          let adjustedY = baseY;
+
+          if (charType === 'bf') {
+            // Center player character horizontally in the portrait canvas
+            adjustedX = PORTRAIT_WIDTH / 2;
+            // Center vertically between HUD area and strumline (PLAYER_CHAR_Y_RANGE)
+            adjustedY = (PLAYER_CHAR_Y_RANGE[0] + PLAYER_CHAR_Y_RANGE[1]) / 2;
+          } else if (charType === 'dad') {
+            // Shift opponent to the right side, partially off-screen
+            adjustedX = PORTRAIT_WIDTH + 100;
+            adjustedY = baseY;
+          }
+          // gf keeps original position (or could be adjusted later)
+
+          this.characterPositions[charType] = {
+            x: adjustedX,
+            y: adjustedY,
+            zIndex: pos.zIndex || 0,
+            cameraOffsets: pos.cameraOffsets || [0, 0],
+            scale: pos.scale || 1
+          };
+        }
+      }
+    }
+  }
+
+  /**
+   * Create all stage props
+   */
+  create() {
+    if (!this.stageData) {
+      console.warn('[Stage] No stage data loaded');
+      return;
+    }
+
+    // Sort props by z-index for proper layering
+    const sortedProps = [...(this.stageData.props || [])].sort(
+      (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+    );
+
+    for (const propData of sortedProps) {
+      const prop = this.createProp(propData);
+      if (prop) {
+        this.props.set(propData.name, prop);
+        this.propSprites.push(prop);
+      }
+    }
+
+    this.isCreated = true;
+  }
+
+  /**
+   * Create a single prop sprite.
+   * @param {{name?: string, position?: number[], scale?: number[], zIndex?: number, scroll?: number[], alpha?: number, isPixel?: boolean, danceEvery?: number, assetPath?: string}} propData - Prop data from stage definition
+   * @returns {RythmSprite | null}
+   */
+  createProp(propData) {
+    if (!this.scene) {
+      return null;
+    }
+
+    const x = propData.position?.[0] || 0;
+    const y = propData.position?.[1] || 0;
+
+    const prop = new RythmSprite(this.scene, x, y);
+
+    // Apply scale — for background props, ensure they cover the portrait canvas
+    if (propData.scale) {
+      let scaleX = propData.scale[0] || 1;
+      let scaleY = propData.scale[1] || 1;
+
+      if ((propData.zIndex || 0) < 0 && prop.width > 0 && prop.height > 0) {
+        const coverScaleX = PORTRAIT_WIDTH / (prop.width * scaleX);
+        const coverScaleY = PORTRAIT_HEIGHT / (prop.height * scaleY);
+        const coverScale = Math.max(coverScaleX, coverScaleY);
+        if (coverScale > 1) {
+          scaleX *= coverScale;
+          scaleY *= coverScale;
+        }
+      }
+
+      prop.setScale(scaleX, scaleY);
+    } else if ((propData.zIndex || 0) < 0 && prop.width > 0 && prop.height > 0) {
+      // No explicit scale on a background prop — scale to cover
+      const coverScale = Math.max(PORTRAIT_WIDTH / prop.width, PORTRAIT_HEIGHT / prop.height);
+      if (coverScale > 1) {
+        prop.setScale(coverScale, coverScale);
+      }
+    }
+
+    // Apply scroll factor (parallax)
+    if (propData.scroll && prop.setScrollFactor) {
+      prop.setScrollFactor(propData.scroll[0] || 1, propData.scroll[1] || 1);
+    }
+
+    // Apply z-index
+    prop.setZIndex(propData.zIndex || 0);
+
+    // Apply alpha
+    if (propData.alpha !== undefined) {
+      prop.setAlpha(propData.alpha);
+    }
+
+    // Apply pixel art setting
+    if (propData.isPixel) {
+      prop.setPixelArt(true);
+    }
+
+    // Apply dance every setting
+    prop.danceEvery = propData.danceEvery || 0;
+
+    // Store prop data for later use
+    /** @type {any} */ (prop)._propData = propData;
+
+    // Add to scene
+    this.scene.add.existing(prop);
+
+    return prop;
+  }
+
+  // ========================================
+  // PROP ACCESS
+  // ========================================
+
+  /**
+   * Get a prop by name
+   * @param {string} name - Prop name
+   * @returns {RythmSprite | null}
+   */
+  getProp(name) {
+    return this.props.get(name) || null;
+  }
+
+  /**
+   * Check if stage has a prop
+   * @param {string} name - Prop name
+   * @returns {boolean}
+   */
+  hasProp(name) {
+    return this.props.has(name);
+  }
+
+  /**
+   * Get all props
+   * @returns {RythmSprite[]}
+   */
+  getAllProps() {
+    return [...this.propSprites];
+  }
+
+  /**
+   * Get props by z-index range
+   * @param {number} minZ - Minimum z-index (inclusive)
+   * @param {number} maxZ - Maximum z-index (inclusive)
+   * @returns {RythmSprite[]}
+   */
+  getPropsByZIndex(minZ, maxZ) {
+    return this.propSprites.filter((prop) => {
+      const z = prop.getZIndex();
+      return z >= minZ && z <= maxZ;
+    });
+  }
+
+  /**
+   * Get props behind characters (negative z-index)
+   * @returns {RythmSprite[]}
+   */
+  getBackgroundProps() {
+    return this.propSprites.filter((prop) => prop.getZIndex() < 0);
+  }
+
+  /**
+   * Get props in front of characters (positive z-index)
+   * @returns {RythmSprite[]}
+   */
+  getForegroundProps() {
+    return this.propSprites.filter((prop) => prop.getZIndex() > 0);
+  }
+
+  // ========================================
+  // CHARACTER POSITIONING
+  // ========================================
+
+  /**
+   * Get character position
+   * @param {string} charType - Character type ('bf', 'dad', 'gf')
+   * @returns {{x: number, y: number, zIndex: number, cameraOffsets?: number[], scale?: number}}
+   */
+  getCharacterPosition(charType) {
+    return (
+      this.characterPositions[charType] || {
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        cameraOffsets: [0, 0],
+        scale: 1
+      }
+    );
+  }
+
+  /**
+   * Position a character on the stage
+   * @param {{setPosition?: Function, x?: number, y?: number, setZIndex?: Function, setDepth?: Function, setScale?: Function}} character - Character sprite
+   * @param {string} charType - Character type ('bf', 'dad', 'gf')
+   */
+  positionCharacter(character, charType) {
+    const pos = this.getCharacterPosition(charType);
+
+    if (character.setPosition) {
+      character.setPosition(pos.x, pos.y);
+    } else {
+      character.x = pos.x;
+      character.y = pos.y;
+    }
+
+    if (character.setZIndex) {
+      character.setZIndex(pos.zIndex);
+    } else if (character.setDepth) {
+      character.setDepth(pos.zIndex);
+    }
+
+    // Apply scale override if specified
+    if (pos.scale !== 1 && character.setScale) {
+      character.setScale(pos.scale);
+    }
+  }
+
+  /**
+   * Get camera offset for a character
+   * @param {string} charType - Character type
+   * @returns {{x: number, y: number}}
+   */
+  getCameraOffset(charType) {
+    const pos = this.getCharacterPosition(charType);
+    return {
+      x: pos.cameraOffsets?.[0] || 0,
+      y: pos.cameraOffsets?.[1] || 0
+    };
+  }
+
+  // ========================================
+  // UPDATE
+  // ========================================
+
+  /**
+   * Update stage props
+   * @param {number} elapsed - Elapsed time in ms
+   */
+  update(elapsed) {
+    // Update animated props if needed
+    for (const prop of this.propSprites) {
+      if (prop.update) {
+        prop.update(elapsed);
+      }
+    }
+  }
+
+  /**
+   * Called on beat hit - update dancing props
+   * @param {number} beat - Current beat
+   */
+  onBeatHit(beat) {
+    for (const prop of this.propSprites) {
+      if (prop.danceEvery > 0 && beat % prop.danceEvery === 0) {
+        if (prop.dance) {
+          prop.dance();
+        }
+      }
+    }
+  }
+
+  /**
+   * Called on step hit
+   * @param {number} step - Current step
+   */
+  onStepHit(step) {
+    for (const prop of this.propSprites) {
+      if (prop.onStepHit) {
+        prop.onStepHit(step);
+      }
+    }
+  }
+
+  // ========================================
+  // VISIBILITY
+  // ========================================
+
+  /**
+   * Set visibility of all props
+   * @param {boolean} visible - Whether props should be visible
+   */
+  setVisible(visible) {
+    for (const prop of this.propSprites) {
+      if (prop.setVisible) {
+        prop.setVisible(visible);
+      }
+    }
+  }
+
+  /**
+   * Set visibility of a specific prop
+   * @param {string} name - Prop name
+   * @param {boolean} visible - Whether prop should be visible
+   */
+  setPropVisible(name, visible) {
+    const prop = this.getProp(name);
+    if (prop && prop.setVisible) {
+      prop.setVisible(visible);
+    }
+  }
+
+  // ========================================
+  // UTILITY
+  // ========================================
+
+  /**
+   * Get stage display name
+   * @returns {string}
+   */
+  getDisplayName() {
+    return this.stageData?.name || this.stageId;
+  }
+
+  /**
+   * Get the asset directory for this stage
+   * @returns {string | null}
+   */
+  getDirectory() {
+    return this.stageData?.directory || null;
+  }
+
+  /**
+   * Get all asset paths needed for this stage
+   * @returns {string[]}
+   */
+  getAssetPaths() {
+    if (!this.stageData) {
+      return [];
+    }
+
+    const paths = [];
+    const directory = this.stageData.directory;
+
+    for (const prop of this.stageData.props || []) {
+      if (prop.assetPath) {
+        const path = directory
+          ? `images/${directory}/${prop.assetPath}`
+          : `images/${prop.assetPath}`;
+        paths.push(path);
+      }
+    }
+
+    return paths;
+  }
+
+  // ========================================
+  // STATIC FACTORY
+  // ========================================
+
+  /**
+   * Create a stage from registry data
+   * @param {Phaser.Scene} scene - The scene
+   * @param {string} stageId - Stage ID
+   * @returns {Stage | null}
+   */
+  static create(scene, stageId) {
+    const stage = new Stage(scene, stageId);
+
+    if (!stage.loadFromRegistry()) {
+      return null;
+    }
+
+    stage.create();
+    return stage;
+  }
+
+  // ========================================
+  // CLEANUP
+  // ========================================
+
+  /**
+   * Destroy the stage and all props
+   */
+  destroy() {
+    for (const prop of this.propSprites) {
+      if (prop.destroy) {
+        prop.destroy();
+      }
+    }
+
+    this.props.clear();
+    this.propSprites = [];
+    this.stageData = null;
+    this.scene = null;
+    this.isCreated = false;
+  }
+}
+
+export default Stage;

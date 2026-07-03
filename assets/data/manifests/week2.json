@@ -1,0 +1,69 @@
+{
+  "id": "week2",
+  "name": "Spooky Month",
+  "songs": [
+    {
+      "id": "spookeez",
+      "name": "Spookeez",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/spookeez/spookeez-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/spookeez/spookeez-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/spookeez/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/spookeez/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/spookeez/Voices-spooky.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "spooky",
+        "girlfriend": "gf"
+      },
+      "stage": "spooky"
+    },
+    {
+      "id": "south",
+      "name": "South",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/south/south-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/south/south-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/south/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/south/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/south/Voices-spooky.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "spooky",
+        "girlfriend": "gf"
+      },
+      "stage": "spooky"
+    },
+    {
+      "id": "monster",
+      "name": "Monster",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/monster/monster-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/monster/monster-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/monster/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/monster/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/monster/Voices-monster.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "monster",
+        "girlfriend": "gf"
+      },
+      "stage": "spooky"
+    }
+  ]
+}

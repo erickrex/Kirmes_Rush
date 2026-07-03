@@ -1,0 +1,69 @@
+{
+  "id": "week1",
+  "name": "Daddy Dearest",
+  "songs": [
+    {
+      "id": "bopeebo",
+      "name": "Bopeebo",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/bopeebo/bopeebo-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/bopeebo/bopeebo-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/bopeebo/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/bopeebo/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/bopeebo/Voices-dad.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "dad",
+        "girlfriend": "gf"
+      },
+      "stage": "stage"
+    },
+    {
+      "id": "fresh",
+      "name": "Fresh",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/fresh/fresh-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/fresh/fresh-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/fresh/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/fresh/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/fresh/Voices-dad.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "dad",
+        "girlfriend": "gf"
+      },
+      "stage": "stage"
+    },
+    {
+      "id": "dadbattle",
+      "name": "Dad Battle",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/dadbattle/dadbattle-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/dadbattle/dadbattle-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/dadbattle/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/dadbattle/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/dadbattle/Voices-dad.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "dad",
+        "girlfriend": "gf"
+      },
+      "stage": "stage"
+    }
+  ]
+}

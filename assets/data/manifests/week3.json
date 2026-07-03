@@ -1,0 +1,69 @@
+{
+  "id": "week3",
+  "name": "Pico",
+  "songs": [
+    {
+      "id": "pico",
+      "name": "Pico",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/pico/pico-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/pico/pico-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/pico/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/pico/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/pico/Voices-pico.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "pico",
+        "girlfriend": "gf"
+      },
+      "stage": "philly"
+    },
+    {
+      "id": "philly-nice",
+      "name": "Philly Nice",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/philly-nice/philly-nice-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/philly-nice/philly-nice-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/philly-nice/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/philly-nice/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/philly-nice/Voices-pico.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "pico",
+        "girlfriend": "gf"
+      },
+      "stage": "philly"
+    },
+    {
+      "id": "blammed",
+      "name": "Blammed",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/blammed/blammed-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/blammed/blammed-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/blammed/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/blammed/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/blammed/Voices-pico.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "pico",
+        "girlfriend": "gf"
+      },
+      "stage": "philly"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "id": "week5",
+  "name": "Red Snow",
+  "songs": [
+    {
+      "id": "cocoa",
+      "name": "Cocoa",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/cocoa/cocoa-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/cocoa/cocoa-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/cocoa/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/cocoa/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/cocoa/Voices-parents-christmas.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "parents-christmas",
+        "girlfriend": "gf"
+      },
+      "stage": "mall"
+    },
+    {
+      "id": "eggnog",
+      "name": "Eggnog",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/eggnog/eggnog-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/eggnog/eggnog-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/eggnog/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/eggnog/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/eggnog/Voices-parents-christmas.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "parents-christmas",
+        "girlfriend": "gf"
+      },
+      "stage": "mall"
+    },
+    {
+      "id": "winter-horrorland",
+      "name": "Winter Horrorland",
+      "artist": "Kawai Sprite",
+      "difficulties": ["easy", "normal", "hard"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/winter-horrorland/winter-horrorland-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/winter-horrorland/winter-horrorland-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/winter-horrorland/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/winter-horrorland/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/winter-horrorland/Voices-monster.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "monster",
+        "girlfriend": "gf"
+      },
+      "stage": "mall-evil"
+    }
+  ]
+}

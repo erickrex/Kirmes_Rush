@@ -1,0 +1,28 @@
+{
+  "id": "tutorial",
+  "name": "Tutorial",
+  "songs": [
+    {
+      "id": "tutorial",
+      "name": "Tutorial",
+      "artist": "Kawai Sprite",
+      "charter": "ninjamuffin99",
+      "difficulties": ["normal"],
+      "assets": {
+        "chart": "assets/rythm-foundation.assets/preload/data/songs/tutorial/tutorial-chart.json",
+        "metadata": "assets/rythm-foundation.assets/preload/data/songs/tutorial/tutorial-metadata.json",
+        "instrumental": "assets/rythm-foundation.assets/songs/tutorial/Inst.ogg",
+        "vocals": {
+          "player": "assets/rythm-foundation.assets/songs/tutorial/Voices-bf.ogg",
+          "opponent": "assets/rythm-foundation.assets/songs/tutorial/Voices-gf.ogg"
+        }
+      },
+      "characters": {
+        "player": "bf",
+        "opponent": "gf",
+        "girlfriend": "gf"
+      },
+      "stage": "stage"
+    }
+  ]
+}

@@ -1,26 +1,9 @@
-.DS_STORE
-.vs/
-dump/
-temp/
-docs/temp/
-export/
-RECOVER_*.fla
-shitAudio/
-.build_time
-.swp
-docs/
-art/
-assets/
-# Mobile signing stuff
-.apple/
+.DS_Store
 .env
-*.keystore
-
-# Exclude JS stuff
-node_modules/
-package.json
-package-lock.json
 .aider*
 
-# Build output
+node_modules/
 dist/
+coverage/
+
+assets/rythm-foundation.assets/
