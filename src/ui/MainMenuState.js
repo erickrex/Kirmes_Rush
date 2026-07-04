@@ -26,6 +26,7 @@ export default class MainMenuState extends BaseMenuState {
     /** @type {MenuItem[]} */
     this.menuItems = [
       { name: 'Levels', scene: 'LevelSelectState' },
+      { name: 'Minigames', scene: 'MinigameSelectState' },
       { name: 'Options', scene: 'OptionsState' }
     ];
 

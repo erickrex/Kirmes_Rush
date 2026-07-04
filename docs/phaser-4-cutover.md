@@ -8,10 +8,10 @@
 - Low-risk tuning included in the cutover:
   - removed the unused Arcade Physics boot config from `src/main.js`
   - removed ambient-global Phaser runtime dependencies in favor of explicit module imports
-- Validation after cutover:
-  - `npm run typecheck`: passes
-  - `npm run test:all`: passes
-  - `npm run build`: passes
+- Validation after cutover (this project uses `pnpm`, not `npm`; see `AGENTS.md`):
+  - `pnpm run typecheck`: passes
+  - `pnpm run test:all`: passes
+  - `pnpm build`: passes
 - Current build output:
   - `dist/assets/phaser-*.js`: 1,657.34 kB raw / 372.87 kB gzip
   - This is larger than the previous Phaser 3 baseline, so future optimization work should focus on whether Phaser 4 can be imported more selectively without breaking the current API surface.

@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "id": "fill-bot",
+  "name": "Fill Bot",
+  "movementType": "hold",
+  "orientation": "portrait",
+  "song": { "id": "fresh" },
+  "bpm": 120,
+  "assets": [
+    {
+      "type": "atlas",
+      "key": "bf",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.xml"
+    },
+    {
+      "type": "atlas",
+      "key": "dad",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/daddyDearest.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/daddyDearest.xml"
+    },
+    {
+      "type": "image",
+      "key": "popup-sick",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/sick.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-good",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/good.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-bad",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/bad.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-shit",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/shit.png"
+    }
+  ],
+  "input": {
+    "allowedGestures": ["hold", "release"],
+    "flickDirections": []
+  },
+  "scoring": {
+    "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+    "bands": { "superb": 0.9, "ok": 0.6 }
+  },
+  "timeline": [
+    { "id": "fill-cue-1", "type": "cue", "beat": 3, "action": "fillCue" },
+    {
+      "id": "fill-1", "type": "expect", "beat": 4, "gesture": "hold", "targetBeat": 4,
+      "targetSpanBeats": 4,
+      "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+      "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
+    },
+    { "id": "fill-cue-2", "type": "cue", "beat": 9, "action": "fillCue" },
+    {
+      "id": "fill-2", "type": "expect", "beat": 10, "gesture": "hold", "targetBeat": 10,
+      "targetSpanBeats": 2,
+      "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+      "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
+    }
+  ]
+}

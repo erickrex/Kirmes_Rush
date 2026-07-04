@@ -628,6 +628,9 @@ describe('PlayState', () => {
       const mockNote = { strumTime: 1000, direction: 0, hasBeenHit: false };
       playState.playerStrumline.getClosestNote = vi.fn(() => mockNote);
       playState.songPosition = 1000;
+      // Pin the wall clock so the synthetic input timestamp is treated as stale
+      // (age > 1000ms) and maps to the current song position deterministically.
+      vi.spyOn(performance, 'now').mockReturnValue(1_000_000);
 
       playState.handleNoteInput(0, 1000);
 
@@ -656,6 +659,9 @@ describe('PlayState', () => {
       playState.playerStrumline.getClosestNote = vi.fn(() => mockNote);
       playState.setInputBufferEnabled(true, 60);
       playState.songPosition = 790;
+      // Pin the wall clock so the synthetic input timestamp is treated as stale
+      // (age > 1000ms) and maps to the current song position deterministically.
+      vi.spyOn(performance, 'now').mockReturnValue(1_000_000);
 
       playState.handleNoteInput(0, 790, 'KeyA');
 

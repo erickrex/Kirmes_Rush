@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "id": "release-cue",
+  "name": "Release Cue",
+  "movementType": "release",
+  "orientation": "portrait",
+  "song": { "id": "bopeebo" },
+  "bpm": 100,
+  "assets": [
+    {
+      "type": "atlas",
+      "key": "bf",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.xml"
+    },
+    {
+      "type": "atlas",
+      "key": "dad",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/daddyDearest.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/daddyDearest.xml"
+    },
+    {
+      "type": "image",
+      "key": "popup-sick",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/sick.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-good",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/good.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-bad",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/bad.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-shit",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/shit.png"
+    }
+  ],
+  "input": {
+    "allowedGestures": ["hold", "release"],
+    "flickDirections": []
+  },
+  "scoring": {
+    "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+    "bands": { "superb": 0.9, "ok": 0.6 }
+  },
+  "timeline": [
+    { "id": "charge-cue-1", "type": "cue", "beat": 2, "action": "chargeCue" },
+    {
+      "id": "release-1", "type": "expect", "beat": 4, "gesture": "release", "targetBeat": 4,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    },
+    { "id": "charge-cue-2", "type": "cue", "beat": 6, "action": "chargeCue" },
+    {
+      "id": "release-2", "type": "expect", "beat": 8, "gesture": "release", "targetBeat": 8,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    }
+  ]
+}

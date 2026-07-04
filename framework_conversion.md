@@ -1,8 +1,41 @@
 # Rhythm Minigame Framework Conversion Plan
 
+> **Repository note (read first).** This plan predates the repo reorganization. The
+> project is now `rythm-foundation` living at the repository root (not `fnf-phaser/`).
+> Reused assets live under `assets/rythm-foundation.assets/...`, not
+> `assets/funkin.assets/...`. New framework code goes under `src/rhythm/...` at the
+> repo root. Wherever this document still says `fnf-phaser/` or `funkin.assets`, read
+> the corrected root/paths above. Path references have been corrected inline where
+> practical.
+
+## Feasibility Summary (grounded in the current codebase)
+
+An audit of the existing systems shows this conversion is **highly feasible**, and
+better positioned than a from-scratch effort, because the hard-to-estimate parts are
+already built and covered by ~2400 passing tests. The reuse verdicts:
+
+| System | Current file(s) | Reality | Reuse verdict |
+| --- | --- | --- | --- |
+| Timing | `src/core/Conductor.js` | Already converts ms↔steps↔beats; exposes `bpm`, `beatLengthMs`, `stepLengthMs`, `getBeatTimeInMs`, `getTimeInSteps`, `update(songPos)`, offsets, time signatures. | Very high — `RhythmClock` is a thin wrapper. |
+| Audio | `src/audio/AudioManager.js` | `currentTime` (song position), `play/seek/pause/resume`, SFX, volumes, and **mobile Web Audio unlock already solved** (context resume on `touchstart/touchend`, iOS/Android workarounds in `PlayScene`/`BaseMenuState`). | High — de-risks the top mobile risk. |
+| Scoring | `src/play/Scoring.js` | `judgeNote(msTiming)`, timing windows, tallies, ranks. Timing-window core is exactly what a judger needs, but it is FNF-flavored (PBOT1, health/combo). | Partial — extract windows into neutral `RhythmScoring`. |
+| Loading | `src/ui/LoadingState.js` | `init(config)`, async `prepareAssets()`, `prepareCallback` delegation is the documented pattern. | High — `RhythmScene` uses it directly. |
+| Registry / manifests | `src/core/Registry.js`, `src/levels/AssetManifestBuilder.js`, `src/levels/LevelSystem.js` | Manifest validation + asset queueing patterns exist. | High — mirror into `MinigameRegistry`. |
+| Touch input | `src/input/InputSystem.js`, `src/input/TouchInputController.js` | `PreciseInput` is **keyboard-only**; `TouchInputController` has pointer plumbing but is **4-zone lane input** with no tap/hold/flick classification or velocity. `InputBuffer` is a reusable timestamped buffer. | **Main gap — mostly net-new.** |
+
+**Where the real risk lives:** touch gesture recognition and reconciling the two clocks
+(input `performance.now()` vs audio `AudioManager.currentTime`). Everything else is
+assembly on top of proven, tested parts. Build the gesture recognizer plus a debug
+timing overlay first (week 1) to retire that risk early.
+
+See "Known Gaps To Close" below for the specific under-specified items surfaced by the
+audit.
+
 ## Goal
 
-Transform the current `fnf-phaser` project from a Friday Night Funkin-style lane rhythm game into a mobile-first browser framework for Rhythm Heaven-style minigames.
+Transform the current project (formerly a `fnf-phaser` Friday Night Funkin-style lane
+rhythm game, now `rythm-foundation`) into a mobile-first browser framework for Rhythm
+Heaven-style minigames.
 
 The new foundation should support many short rhythm minigames that share timing, audio, input, loading, scoring, saves, menus, and result flow, while each minigame owns its own animation, rules, visual language, and cue meaning.
 
@@ -183,14 +216,93 @@ These mechanics are enough to cover a large set of Rhythm Heaven-inspired miniga
 | FNF charts | `ChartParser`, FNF chart assets | Stop using for new gameplay. Keep a few audio files, not the charts. |
 | Week/story/freeplay assumptions | `StoryMenuState`, `FreeplayState`, pieces of `SaveManager` | Replace with playlists, minigame select, challenge sets, medals. |
 
+## Known Gaps To Close (from codebase audit)
+
+These are the under-specified or missing pieces the original plan glossed. Treat them as
+first-class design tasks, not polish.
+
+1. **Touch gesture recognition is net-new.** No existing module classifies
+   tap/hold/release/flick or computes velocity/direction. `TouchInputController` only
+   provides 4-zone lane pointer plumbing and `PreciseInput` is keyboard-only. Lift the
+   pointer-listener setup and Web-Audio-unlock code from `TouchInputController`/`PlayScene`,
+   but write the classifier from scratch. This is the single biggest risk (gesture
+   ambiguity: tap-vs-flick, hold-vs-tap).
+
+2. **Reconcile two clocks.** Gestures are timestamped with `performance.now()`; song
+   position comes from `AudioManager.currentTime` (Web Audio clock). Define one mapping
+   from input time → song position, apply the `SaveManager` input-delay offset there, and
+   keep it in one place. This is where "feels a frame off" bugs originate.
+
+3. **Decide which timestamp is judged.** A tap is not confirmed until `pointerup`, and a
+   flick is not known until velocity crosses threshold — but the judged moment should be
+   `pointerdown`/gesture-start. Specify this explicitly in `TouchGestureRecognizer` and
+   `CueJudger` so recognition latency does not corrupt timing.
+
+4. **Beat↔ms authoring contract.** Timelines are authored in `beat:` units; everything
+   downstream is ms, and the committed FNF song metadata carries variable-BPM
+   `timeChanges`. Bake beats→ms once at load via `RhythmClock`. Start with constant BPM,
+   but the conversion layer must exist because the retained songs do have `timeChanges`.
+
+5. **Pause/resume + audio drift.** `AudioManager` exposes `resync`/`forceResync`. The
+   scheduler must stay pinned to `currentTime` across pause/resume and drift correction,
+   feeding `Conductor.update(songPos)` each frame rather than integrating its own clock.
+
+6. **Cue-action dispatch is undefined.** Timeline entries name string handlers
+   (`opponentServe`, `returnPerfect`). Specify how a cue `action`/`onPerfect` string maps
+   to a controller method, and how "animation commands" execute. Per-minigame dispatch is
+   acceptable for the MVP; formalize once two or three minigames reveal the pattern.
+
+7. **Mobile canvas guards.** `index.html` already sets no-zoom, `overflow: hidden`, and a
+   portrait `FIT` 720×1280 canvas, and audio-unlock is handled. Remaining task is adding
+   `touch-action: none` to the canvas during gameplay (and restoring it after).
+
+8. **Gesture test harness.** jsdom has no real pointer physics. Recognizer tests must feed
+   synthetic pointer-event sequences with fake `performance.now()` timestamps. The suite
+   already injects `fetchImpl` and mock scenes, so extend that pattern with a pointer
+   sequence helper.
+
+9. **Stale references.** Throughout this document, `fnf-phaser/` → repo root,
+   `assets/funkin.assets/...` → `assets/rythm-foundation.assets/...`. The example minigame
+   JSON below uses the corrected paths.
+
+## Asset Reuse For The Prototype
+
+The audit confirms a **Tap Clap** vertical slice can be built with **zero new art or
+audio** — a real accelerator the original plan did not call out.
+
+**Audio (committed under `assets/rythm-foundation.assets/`):**
+
+- Five real songs — `tutorial`, `bopeebo`, `fresh`, `blammed`, `stress` — each with
+  `Inst.ogg/mp3` and `Voices-*`. Their committed metadata
+  (`preload/data/songs/<id>/<id>-metadata.json`) carries BPM/`timeChanges`, giving
+  beat-accurate cue timing for free. `tutorial` is the natural first pick.
+- Flow audio: menu SFX (`preload/sounds/confirmMenu|scrollMenu|cancelMenu`), results music
+  (`shared/music/results{EXCELLENT,NORMAL,PERFECT}`), gameover music/SFX, `freakyMenu`.
+
+**Graphics (committed):**
+
+- Character Sparrow atlases — `BOYFRIEND`, `GF_assets`, `daddyDearest` (plus Pico/tankman)
+  under `shared/images/characters/` — are animated sheets with named pose frames
+  (idle/sing). A "clap on the beat" minigame can drive those poses directly, so animation
+  is effectively free.
+- Feedback assets already match a rhythm game's needs: countdown `ready/set/go`
+  (`preload/images/ui/countdown/rythm/`), judgement popups `sick/good/bad/shit` and combo
+  digits `num0-9` (`preload/images/ui/popup/rythm/`), `noteSplashes` as perfect-hit bursts.
+- Backgrounds: `shared/images/stageback|stagecurtains|stagefront`, philly (`week3`), tank
+  (`week7`), and menu BGs.
+
+**Licensing caveat.** These are Friday Night Funkin assets. Fine for an internal
+prototype; a shipped product should replace them with original art/audio. Make this a
+deliberate decision now, not a late surprise.
+
 ## Target Architecture
 
 Add a new neutral rhythm framework beside the current code first. Once it is proven, route the app to it and remove old FNF gameplay.
 
-Proposed source layout:
+Proposed source layout (repo root):
 
 ```txt
-fnf-phaser/src/
+src/
   rhythm/
     core/
       RhythmClock.js
@@ -221,10 +333,10 @@ fnf-phaser/src/
       RhythmAssetManifestBuilder.js
 ```
 
-Proposed asset/data layout:
+Proposed asset/data layout (repo root):
 
 ```txt
-fnf-phaser/assets/
+assets/
   data/
     rhythm/
       minigames/
@@ -235,15 +347,16 @@ fnf-phaser/assets/
         demo.json
       songs/
         tutorial-loop.json
-  rhythm/
-    minigames/
-      tap-clap/
-      fill-bot/
-      flick-rally/
-    shared/
-      ui/
-      sounds/
-      backgrounds/
+  rythm-foundation.assets/
+    rhythm/
+      minigames/
+        tap-clap/
+        fill-bot/
+        flick-rally/
+      shared/
+        ui/
+        sounds/
+        backgrounds/
 ```
 
 ## Runtime Flow
@@ -463,13 +576,13 @@ Example file: `assets/data/rhythm/minigames/flick-rally.json`
   "bpm": 120,
   "music": {
     "key": "song-tutorial-inst",
-    "path": "assets/funkin.assets/songs/tutorial/Inst.ogg"
+    "path": "assets/rythm-foundation.assets/songs/tutorial/Inst.ogg"
   },
   "assets": [
     {
       "type": "image",
       "key": "rally-bg",
-      "path": "assets/rhythm/minigames/flick-rally/bg.png"
+      "path": "assets/rythm-foundation.assets/rhythm/minigames/flick-rally/bg.png"
     }
   ],
   "input": {
@@ -872,11 +985,15 @@ Risk:
 
 - Mobile browsers vary in audio start latency and output latency.
 
+Status: **partially mitigated already.** `AudioManager` handles Web Audio unlock on the
+first user gesture (`touchstart/touchend`, with iOS/Android workarounds in `PlayScene` and
+`BaseMenuState`) and exposes `currentTime` plus `resync`/`forceResync` for drift.
+
 Plan:
 
 - Keep `performance.now()` timestamping.
-- Convert input event time to song position.
-- Keep input delay compensation option.
+- Convert input event time to song position through the single mapping in gap #2.
+- Keep input delay compensation option (`SaveManager`).
 - Add calibration screen.
 
 ### Gesture Ambiguity
@@ -1049,9 +1166,9 @@ src/data/registries/NoteStyleRegistry.js
 ```txt
 assets/data/manifests/tutorial.json
 assets/data/manifests/week1.json
-assets/funkin.assets/songs/tutorial/Inst.ogg
-assets/funkin.assets/songs/bopeebo/Inst.ogg
-assets/funkin.assets/songs/fresh/Inst.ogg
+assets/rythm-foundation.assets/songs/tutorial/Inst.ogg
+assets/rythm-foundation.assets/songs/bopeebo/Inst.ogg
+assets/rythm-foundation.assets/songs/fresh/Inst.ogg
 ```
 
 Use those only as backing tracks while the new rhythm framework comes online.

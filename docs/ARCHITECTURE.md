@@ -52,6 +52,40 @@ Scenes that do not extend `BaseMenuState` — `TitleState`, `ResultState`, `Game
 - `NoteProcessor` (`src/play/NoteProcessor.js`) routes all state mutations exclusively through `GameplayState` methods (`updateScore`, `updateCombo`, `updateTallies`, `updateHealth`). It performs no direct mutation of parallel `playState.score/combo/maxCombo/tallies/health` fields, so each hit/miss updates state exactly once.
 - The combo-break decision lives in exactly one place: `Scoring.doesJudgementBreakCombo` (`src/play/Scoring.js`), consumed only by `GameplayState.updateCombo`. There is no duplicate inline combo-break logic in the play modules.
 
+## Rhythm Framework (`src/rhythm/`)
+
+The `src/rhythm/` module is a self-contained, data-driven framework for running one rhythm minigame per scene. It is separate from the `src/play/` gameplay path documented above: `src/play/` runs the scrolling-note gameplay (`PlayState`/`NoteProcessor`), while `src/rhythm/` runs discrete, cue-based minigames (tap, hold, release, flick). Both are registered as scenes in `src/main.js`.
+
+### Composition Root
+
+`RhythmScene` (`src/rhythm/scene/RhythmScene.js`) is the composition root and the only Phaser scene in the framework. It receives a per-run `RhythmSession` via `scene.start('RhythmScene', { session })`, then in `create()` instantiates and wires every framework component:
+
+- `RhythmClock` (`src/rhythm/core/RhythmClock.js`) — converts beats to Song_Position (ms) using the session's BPM/offset/timeChanges.
+- `CueTimeline` (`src/rhythm/core/CueTimeline.js`) — bakes the session's timeline entries into resolved cues and Expectations against the clock.
+- `CueScheduler` (`src/rhythm/core/CueScheduler.js`) — fires presentation cues and opens/closes judgement windows, emitting on a per-run `Phaser.Events.EventEmitter` (not the global EventBus) so subscriptions are isolated and removable on teardown.
+- `CueJudger` (`src/rhythm/core/CueJudger.js`) — judges buffered gestures against open windows and records resolving judgements into scoring.
+- `RhythmScoring` (`src/rhythm/core/RhythmScoring.js`) — accumulates counts/accuracy and produces the end-of-run summary.
+- `TouchGestureRecognizer` (`src/rhythm/input/TouchGestureRecognizer.js`) + `RhythmInputManager` (`src/rhythm/input/RhythmInputManager.js`) — capture canvas pointer gestures and anchor each to a Song_Position.
+- The resolved Minigame controller (see below).
+
+### Per-frame Loop
+
+Each frame, `update()` derives Song_Position from `AudioManager.currentTime` (never an integrated clock, so pause/resume and resync are respected), then: `clock.update()` → `inputManager.syncClock()` → `recognizer.poll()` → `scheduler.update()` → judge each buffered gesture → `controller.update()` → run-end detection. On run end (audio complete or all timeline events consumed), it starts `ResultState` with the `RhythmScoring` summary.
+
+### Data-driven Minigames
+
+`RhythmSession` (`src/rhythm/core/RhythmSession.js`) is an immutable per-run value object resolved once by `LoadingState`'s `prepareCallback`. It carries the validated `MinigameDefinition`, timeline, clock config, resolved audio keys, scoring config, and the controller class. It instantiates no framework objects itself.
+
+`MinigameRegistry` (`src/rhythm/minigames/MinigameRegistry.js`) maps a definition `id` to its controller class and validates definition JSON (`assets/data/rhythm/minigames/*.json`) before use, rejecting invalid definitions with field-level errors. `defaultMinigameRegistry.js` provides the populated registry. `dispatchCueAction` resolves a cue/judgement `action` string to a controller method and throws a descriptive error naming the missing method rather than failing silently.
+
+`RhythmMinigame` (`src/rhythm/minigames/RhythmMinigame.js`) is the base controller class. Concrete controllers (`TapClapGame`, `FillBotGame`, `ReleaseGame`, `FlickRallyGame`) subclass it and declare only presentation and gesture meaning — the framework owns all timing and judgement. Controllers track every game object they create via `own()` so `destroy()` releases them on scene shutdown, mirroring the `create()`/`shutdown()` ownership contract used elsewhere.
+
+`MinigameSelectState` (`src/rhythm/ui/MinigameSelectState.js`) is the selection UI that routes into a run.
+
+### Teardown and Mobile Canvas
+
+`RhythmScene.shutdown()` is idempotent and registered on Phaser's `shutdown` event. It detaches the recognizer (zero remaining pointer listeners), removes the per-run emitter subscriptions, cancels timers/tweens, restores the canvas `touch-action` captured on `create()`, removes the raw DOM audio-unlock listeners, destroys the controller and clock, stops/destroys audio, and nulls every owned reference. The scene sets the canvas `touch-action: none` for the run and reuses `AudioManager` unlock handling to resume a suspended Web Audio context on the first user gesture. It runs in the portrait 720x1280 canvas configured in `src/main.js`.
+
 ## Shared Type Layer
 
 `src/types.js` is the single canonical location for all cross-module JSDoc typedefs. No other source file should define a `@typedef` with the same name as one in `types.js`. Modules import shared types via `/** @import { TypeName } from '../types.js' */`.
@@ -62,10 +96,12 @@ Hidden-mode scenes (StoryMenuState, FreeplayState, ReplayBrowserState) exist in 
 
 ## Verification Commands
 
+This project uses `pnpm` (not `npm`; see `AGENTS.md`).
+
 ```bash
-npm run test            # Unit tests (vitest)
-npm run test:integration # Integration tests
-npm run lint            # ESLint (zero errors, zero warnings)
-npm run typecheck       # TypeScript --noEmit (zero diagnostics)
-npm run build           # Production build (vite)
+pnpm test               # Unit tests (vitest)
+pnpm run test:integration # Integration tests
+pnpm run lint           # ESLint (zero errors, zero warnings)
+pnpm run typecheck      # TypeScript --noEmit (zero diagnostics)
+pnpm build              # Production build (vite)
 ```
