@@ -496,5 +496,177 @@
  * @property {number} volume - Global volume
  */
 
+// ============================================================================
+// RHYTHM MINIGAME TYPES
+// ============================================================================
+
+/**
+ * A normalized touch action produced by the Touch_Gesture_Recognizer.
+ * `startTime` is the `performance.now()` value captured at `pointerdown` and is
+ * the moment used for judging (never the confirmation/`pointerup` time).
+ * @typedef {Object} Gesture
+ * @property {'tap' | 'holdStart' | 'holdTick' | 'release' | 'flick'} type - Normalized gesture type
+ * @property {number} startTime - performance.now() at pointerdown (the judged moment)
+ * @property {number} timestamp - performance.now() at the event that produced this gesture
+ * @property {{ x: number, y: number }} position - Pointer position at the emitting event
+ * @property {{ x: number, y: number }} startPosition - Pointer position at gesture-start (pointerdown)
+ * @property {number} durationMs - Elapsed time since gesture-start in milliseconds
+ * @property {number} distancePx - Distance from start position to current position in pixels
+ * @property {number} velocityPxPerMs - Movement velocity in pixels per millisecond
+ * @property {('up' | 'down' | 'left' | 'right' | null)} direction - Flick direction, or null when not directional
+ */
+
+/**
+ * Configurable thresholds used by the Touch_Gesture_Recognizer to classify interactions.
+ * @typedef {Object} GestureThresholds
+ * @property {number} maxTapDurationMs - Maximum press duration still classified as a tap
+ * @property {number} maxTapMovePx - Maximum movement still classified as a tap
+ * @property {number} holdThresholdMs - Press duration after which a hold (holdStart) is emitted
+ * @property {number} holdTickIntervalMs - Interval between emitted holdTick gestures while held
+ * @property {number} flickDistancePx - Minimum movement distance to classify a flick
+ * @property {number} flickVelocityPxPerMs - Minimum velocity to classify a flick
+ */
+
+/**
+ * Per-Expectation set of millisecond tolerances around a target beat used to derive a Judgement.
+ * @typedef {Object} TimingWindow
+ * @property {number} perfect - Maximum absolute offset (ms) for a `perfect` judgement
+ * @property {number} good - Maximum absolute offset (ms) for a `good` judgement
+ * @property {number} barely - Maximum absolute offset (ms) for a `barely` judgement
+ */
+
+/**
+ * A single authored entry in a Minigame_Definition timeline. An entry is either a
+ * presentation cue (`type: "cue"`) or an expected input (`type: "expect"`).
+ * @typedef {Object} TimelineEntry
+ * @property {string} id - Unique identifier for the entry within the timeline
+ * @property {'cue' | 'expect'} type - Whether this is a presentation cue or an expected input
+ * @property {number} beat - Target beat at which the entry occurs
+ * @property {string} [action] - Cue_Action_Dispatch method name for a presentation cue
+ * @property {('tap' | 'hold' | 'release' | 'flick')} [gesture] - Required gesture for an expect entry
+ * @property {number} [targetBeat] - Beat the gesture should land on (defaults to `beat`)
+ * @property {number} [targetSpanBeats] - For hold expectations, the target hold span in beats
+ * @property {('up' | 'down' | 'left' | 'right')} [direction] - Required flick direction, when applicable
+ * @property {TimingWindow} [windowMs] - Per-entry timing window overriding the definition default
+ * @property {boolean} [allowMultiple] - Whether the expectation may be matched by more than one gesture
+ * @property {string} [onPerfect] - Controller method dispatched on a `perfect` judgement
+ * @property {string} [onGood] - Controller method dispatched on a `good` judgement
+ * @property {string} [onBarely] - Controller method dispatched on a `barely` judgement
+ * @property {string} [onMiss] - Controller method dispatched on a `miss` judgement
+ */
+
+/**
+ * A resolved expected-input event with beats baked to Song_Position milliseconds.
+ * Produced by CueTimeline from an `expect` TimelineEntry.
+ * @typedef {Object} Expectation
+ * @property {string} id - Identifier carried from the source TimelineEntry
+ * @property {('tap' | 'hold' | 'release' | 'flick')} gesture - Required gesture type
+ * @property {('up' | 'down' | 'left' | 'right' | null)} direction - Required flick direction, or null
+ * @property {number} targetMs - Target Song_Position (ms) the gesture should land on
+ * @property {number} windowOpenMs - Song_Position (ms) at which the input window opens
+ * @property {number} windowCloseMs - Song_Position (ms) at which the input window closes
+ * @property {TimingWindow} windowMs - Timing tolerances used to derive the Judgement
+ * @property {number} [targetSpanMs] - For hold expectations, the target hold span in milliseconds
+ * @property {boolean} allowMultiple - Whether the expectation may be matched more than once
+ * @property {Object<string, string>} actions - Judgement category → controller method name map
+ */
+
+/**
+ * A resolved presentation cue with its beat baked to a Song_Position in milliseconds.
+ * @typedef {Object} ResolvedCue
+ * @property {string} id - Identifier carried from the source TimelineEntry
+ * @property {string} action - Cue_Action_Dispatch method name
+ * @property {number} atMs - Song_Position (ms) at which the cue fires
+ */
+
+/**
+ * The outcome of judging a Gesture against an Expectation.
+ * @typedef {'perfect' | 'good' | 'barely' | 'miss' | 'wrong'} RhythmJudgement
+ */
+
+/**
+ * A summary rating of a completed run derived from accuracy.
+ * @typedef {'Superb' | 'OK' | 'Try Again'} ResultBand
+ */
+
+/**
+ * The result returned by CueJudger when judging a Gesture against active Expectations.
+ * @typedef {Object} JudgementResult
+ * @property {RhythmJudgement} judgement - The judged outcome
+ * @property {(string | null)} expectationId - The matched expectation id, or null when none matched
+ * @property {number} timingOffsetMs - Judged Song_Position minus target (negative = early, positive = late)
+ * @property {Gesture} gesture - The gesture that was judged
+ * @property {boolean} resolved - Whether this judgement resolved the matched expectation
+ */
+
+/**
+ * Asset descriptor referenced by a Minigame_Definition.
+ * @typedef {Object} MinigameAsset
+ * @property {string} type - Asset type (e.g. 'atlas', 'image', 'audio')
+ * @property {string} key - Cache key used at runtime
+ * @property {string} [texture] - Texture path for atlas/image assets
+ * @property {string} [atlas] - Atlas XML/JSON path for atlas assets
+ * @property {string} [path] - Generic asset path
+ */
+
+/**
+ * Input configuration block of a Minigame_Definition.
+ * @typedef {Object} MinigameInputConfig
+ * @property {Array<'tap' | 'hold' | 'release' | 'flick'>} allowedGestures - Gestures this minigame accepts
+ * @property {Array<'up' | 'down' | 'left' | 'right'>} [flickDirections] - Required flick directions, when applicable
+ */
+
+/**
+ * Scoring configuration block of a Minigame_Definition.
+ * @typedef {Object} MinigameScoringConfig
+ * @property {TimingWindow} [windowMs] - Default timing window applied to expectations
+ * @property {{ superb: number, ok: number }} [bands] - Accuracy thresholds for result bands
+ */
+
+/**
+ * A JSON document describing one data-driven minigame.
+ * @typedef {Object} MinigameDefinition
+ * @property {string} version - Definition schema version
+ * @property {string} id - Unique minigame identifier
+ * @property {string} name - Display name
+ * @property {('tap' | 'hold' | 'release' | 'flick')} movementType - Primary movement type
+ * @property {('portrait' | 'landscape')} [orientation] - Preferred orientation
+ * @property {{ id: string }} song - Backing song reference (resolves audio + BPM/timeChanges)
+ * @property {number} [bpm] - Optional BPM override; otherwise read from song metadata
+ * @property {MinigameAsset[]} [assets] - Assets to preload for the run
+ * @property {MinigameInputConfig} input - Allowed gestures and directions
+ * @property {MinigameScoringConfig} [scoring] - Scoring windows and result bands
+ * @property {TimelineEntry[]} timeline - Ordered cue/expect entries
+ */
+
+/**
+ * Per-category Judgement counts accumulated by RhythmScoring during a run.
+ * @typedef {Object} JudgementCounts
+ * @property {number} perfect - Count of `perfect` judgements
+ * @property {number} good - Count of `good` judgements
+ * @property {number} barely - Count of `barely` judgements
+ * @property {number} miss - Count of `miss` judgements
+ * @property {number} wrong - Count of `wrong` judgements
+ */
+
+/**
+ * The result summary produced by RhythmScoring when a run ends.
+ * @typedef {Object} RhythmResultSummary
+ * @property {number} score - Score computed from accuracy and judgement counts
+ * @property {number} accuracy - Overall accuracy value (0-1)
+ * @property {JudgementCounts} counts - Per-category judgement counts
+ * @property {ResultBand} resultBand - Summary rating derived from accuracy
+ */
+
+/**
+ * A Gesture buffered by RhythmInputManager together with the Song_Position it was
+ * mapped to. Preserves the original Input_Time (`gesture.startTime`) alongside the
+ * mapped Song_Position so the CueJudger is judged on gesture-start (R7, R8.4).
+ * @typedef {Object} BufferedGesture
+ * @property {Gesture} gesture - The original normalized gesture (carries its Input_Time as `startTime`)
+ * @property {number} inputTime - The original Input_Time judged (equals `gesture.startTime`), in performance.now() ms
+ * @property {number} songPositionMs - The mapped Song_Position (ms) for `inputTime` via the single Input_Time_Mapping
+ */
+
 // Export empty object to make this a module
 export {};

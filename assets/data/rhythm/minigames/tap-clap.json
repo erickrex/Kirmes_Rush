@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "id": "tap-clap",
+  "name": "Tap Clap",
+  "movementType": "tap",
+  "orientation": "portrait",
+  "song": { "id": "tutorial" },
+  "bpm": 100,
+  "assets": [
+    {
+      "type": "atlas",
+      "key": "bf",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/BOYFRIEND.xml"
+    },
+    {
+      "type": "atlas",
+      "key": "gf",
+      "texture": "assets/rythm-foundation.assets/shared/images/characters/GF_assets.png",
+      "atlas": "assets/rythm-foundation.assets/shared/images/characters/GF_assets.xml"
+    },
+    {
+      "type": "image",
+      "key": "popup-sick",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/sick.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-good",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/good.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-bad",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/bad.png"
+    },
+    {
+      "type": "image",
+      "key": "popup-shit",
+      "path": "assets/rythm-foundation.assets/preload/images/ui/popup/rythm/shit.png"
+    }
+  ],
+  "input": {
+    "allowedGestures": ["tap"],
+    "flickDirections": []
+  },
+  "scoring": {
+    "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+    "bands": { "superb": 0.9, "ok": 0.6 }
+  },
+  "timeline": [
+    { "id": "clap-cue-1", "type": "cue", "beat": 3, "action": "leaderClap" },
+    {
+      "id": "clap-1", "type": "expect", "beat": 4, "gesture": "tap", "targetBeat": 4,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    { "id": "clap-cue-2", "type": "cue", "beat": 5, "action": "leaderClap" },
+    {
+      "id": "clap-2", "type": "expect", "beat": 6, "gesture": "tap", "targetBeat": 6,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-3", "type": "expect", "beat": 7, "gesture": "tap", "targetBeat": 7,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-4", "type": "expect", "beat": 8, "gesture": "tap", "targetBeat": 8,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    }
+  ]
+}

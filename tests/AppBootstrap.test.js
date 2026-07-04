@@ -63,6 +63,10 @@ vi.mock('../src/ui/GameOverState.js', () => ({ default: class GameOverState {} }
 vi.mock('../src/ui/ResultState.js', () => ({ default: class ResultState {} }));
 vi.mock('../src/ui/LoadingState.js', () => ({ default: class LoadingState {} }));
 vi.mock('../src/ui/ReplayBrowserState.js', () => ({ default: class ReplayBrowserState {} }));
+vi.mock('../src/rhythm/ui/MinigameSelectState.js', () => ({
+  default: class MinigameSelectState {}
+}));
+vi.mock('../src/rhythm/scene/RhythmScene.js', () => ({ default: class RhythmScene {} }));
 
 describe('AppBootstrap (main.js)', () => {
   beforeEach(() => {

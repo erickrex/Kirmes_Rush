@@ -15,6 +15,8 @@ import GameOverState from './ui/GameOverState.js';
 import ResultState from './ui/ResultState.js';
 import LoadingState from './ui/LoadingState.js';
 import ReplayBrowserState from './ui/ReplayBrowserState.js';
+import MinigameSelectState from './rhythm/ui/MinigameSelectState.js';
+import RhythmScene from './rhythm/scene/RhythmScene.js';
 import SaveManager from './data/SaveManager.js';
 import TouchDeviceDetector from './input/TouchDeviceDetector.js';
 import OrientationOverlay from './ui/OrientationOverlay.js';
@@ -56,7 +58,9 @@ const config = {
     GameOverState,
     ResultState,
     LoadingState,
-    ReplayBrowserState
+    ReplayBrowserState,
+    MinigameSelectState,
+    RhythmScene
   ]
 };
 

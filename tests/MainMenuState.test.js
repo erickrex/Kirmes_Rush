@@ -132,11 +132,12 @@ describe('MainMenuState', () => {
       expect(scene.menuItems.length).toBeGreaterThan(0);
     });
 
-    it('should expose only Levels and Options', () => {
+    it('should expose Levels, Minigames, and Options', () => {
       const names = scene.menuItems.map(item => item.name);
       expect(names).toContain('Levels');
+      expect(names).toContain('Minigames');
       expect(names).toContain('Options');
-      expect(names).toHaveLength(2);
+      expect(names).toHaveLength(3);
     });
 
     it('should initialize with selectedIndex at 0', () => {
