@@ -102,11 +102,23 @@ class TapClapGame extends RhythmMinigame {
     const width = this._sceneWidth();
     const height = this._sceneHeight();
 
-    this.leader = this._addSprite(width * 0.35, height * 0.6, TAP_CLAP_ASSETS.leaderAtlas);
-    this.clapper = this._addSprite(width * 0.65, height * 0.6, TAP_CLAP_ASSETS.clapperAtlas);
+    this.leader = this._addSprite(width * 0.3, height * 0.58, TAP_CLAP_ASSETS.leaderAtlas);
+    this.clapper = this._addSprite(width * 0.7, height * 0.58, TAP_CLAP_ASSETS.clapperAtlas);
+    this.fitSpriteToHeight(this.leader, 0.3);
+    this.fitSpriteToHeight(this.clapper, 0.3);
 
     this._play(this.leader, POSES.idle);
     this._play(this.clapper, POSES.idle);
+
+    this.initHud();
+  }
+
+  /**
+   * @override
+   * @returns {string} The tap-clap instruction line.
+   */
+  getInstruction() {
+    return 'Tap anywhere on the beat — clap along with the leader!';
   }
 
   // ==========================================================================
@@ -121,6 +133,7 @@ class TapClapGame extends RhythmMinigame {
    */
   leaderClap(_cue) {
     this._play(this.leader, POSES.leaderClap);
+    this.flashCue('TAP!');
   }
 
   /**
@@ -349,28 +362,6 @@ class TapClapGame extends RhythmMinigame {
         }
       }
     });
-  }
-
-  /**
-   * Best-effort scene width, defaulting to a portrait canvas width.
-   * @returns {number} Width in pixels.
-   * @private
-   */
-  _sceneWidth() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const w = scale && typeof scale.width === 'number' ? scale.width : undefined;
-    return typeof w === 'number' ? w : 720;
-  }
-
-  /**
-   * Best-effort scene height, defaulting to a portrait canvas height.
-   * @returns {number} Height in pixels.
-   * @private
-   */
-  _sceneHeight() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const h = scale && typeof scale.height === 'number' ? scale.height : undefined;
-    return typeof h === 'number' ? h : 1280;
   }
 
   /**

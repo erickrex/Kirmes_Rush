@@ -184,8 +184,10 @@ class ReleaseGame extends RhythmMinigame {
     const width = this._sceneWidth();
     const height = this._sceneHeight();
 
-    this.coach = this._addSprite(width * 0.5, height * 0.42, RELEASE_ASSETS.coachAtlas);
-    this.player = this._addSprite(width * 0.5, height * 0.66, RELEASE_ASSETS.playerAtlas);
+    this.coach = this._addSprite(width * 0.5, height * 0.36, RELEASE_ASSETS.coachAtlas);
+    this.player = this._addSprite(width * 0.5, height * 0.6, RELEASE_ASSETS.playerAtlas);
+    this.fitSpriteToHeight(this.coach, 0.22);
+    this.fitSpriteToHeight(this.player, 0.24);
     this._play(this.coach, POSES.idle);
     this._play(this.player, POSES.idle);
 
@@ -193,7 +195,7 @@ class ReleaseGame extends RhythmMinigame {
     // edge so scaling/width reflects the charge fraction left-to-right.
     this._meterWidth = width * 0.7;
     const meterX = width * 0.5;
-    const meterY = height * 0.85;
+    const meterY = height * 0.82;
     const meterHeight = height * 0.04;
 
     this.meter = this._addRect(meterX, meterY, this._meterWidth, meterHeight, 0x222222);
@@ -214,6 +216,16 @@ class ReleaseGame extends RhythmMinigame {
     this.charging = false;
     this.chargeFraction = 0;
     this._applyCharge(0);
+
+    this.initHud();
+  }
+
+  /**
+   * @override
+   * @returns {string} The release-cue instruction line.
+   */
+  getInstruction() {
+    return 'Hold to charge, then RELEASE right on the beat!';
   }
 
   // ==========================================================================
@@ -271,13 +283,16 @@ class ReleaseGame extends RhythmMinigame {
 
   /**
    * Per-frame update hook. The charge is event-driven via
-   * {@link ReleaseGame#onHoldTick}, so this is a no-op.
+   * {@link ReleaseGame#onHoldTick}; this keeps the shared tempo beat indicator
+   * pulsing.
    * @param {number} _time - Current time (ms).
    * @param {number} _delta - Elapsed time since the last frame (ms).
-   * @param {Object} [_ctx] - Optional per-frame context.
+   * @param {Object} [ctx] - Optional per-frame context carrying `songBeat`.
    * @returns {void}
    */
-  update(_time, _delta, _ctx) {}
+  update(_time, _delta, ctx) {
+    this.updateBeatIndicator(ctx);
+  }
 
   // ==========================================================================
   // Cue_Action_Dispatch targets (named by release-cue.json)
@@ -296,6 +311,7 @@ class ReleaseGame extends RhythmMinigame {
     this._applyCharge(0);
     this._pulseMarker();
     this._play(this.coach, POSES.coachCue);
+    this.flashCue('HOLD, THEN RELEASE!');
   }
 
   /**
@@ -612,28 +628,6 @@ class ReleaseGame extends RhythmMinigame {
         }
       }
     });
-  }
-
-  /**
-   * Best-effort scene width, defaulting to a portrait canvas width.
-   * @returns {number} Width in pixels.
-   * @private
-   */
-  _sceneWidth() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const w = scale && typeof scale.width === 'number' ? scale.width : undefined;
-    return typeof w === 'number' ? w : 720;
-  }
-
-  /**
-   * Best-effort scene height, defaulting to a portrait canvas height.
-   * @returns {number} Height in pixels.
-   * @private
-   */
-  _sceneHeight() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const h = scale && typeof scale.height === 'number' ? scale.height : undefined;
-    return typeof h === 'number' ? h : 1280;
   }
 
   /**

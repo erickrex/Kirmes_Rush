@@ -70,6 +70,60 @@
       "id": "clap-4", "type": "expect", "beat": 8, "gesture": "tap", "targetBeat": 8,
       "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
       "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    { "id": "clap-cue-3", "type": "cue", "beat": 11, "action": "leaderClap" },
+    {
+      "id": "clap-5", "type": "expect", "beat": 12, "gesture": "tap", "targetBeat": 12,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    { "id": "clap-cue-4", "type": "cue", "beat": 13, "action": "leaderClap" },
+    {
+      "id": "clap-6", "type": "expect", "beat": 14, "gesture": "tap", "targetBeat": 14,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-7", "type": "expect", "beat": 15, "gesture": "tap", "targetBeat": 15,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-8", "type": "expect", "beat": 16, "gesture": "tap", "targetBeat": 16,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    { "id": "clap-cue-5", "type": "cue", "beat": 19, "action": "leaderClap" },
+    {
+      "id": "clap-9", "type": "expect", "beat": 20, "gesture": "tap", "targetBeat": 20,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-10", "type": "expect", "beat": 21, "gesture": "tap", "targetBeat": 21,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-11", "type": "expect", "beat": 22, "gesture": "tap", "targetBeat": 22,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    { "id": "clap-cue-6", "type": "cue", "beat": 25, "action": "leaderClap" },
+    {
+      "id": "clap-12", "type": "expect", "beat": 26, "gesture": "tap", "targetBeat": 26,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-13", "type": "expect", "beat": 27, "gesture": "tap", "targetBeat": 27,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
+    },
+    {
+      "id": "clap-14", "type": "expect", "beat": 28, "gesture": "tap", "targetBeat": 28,
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "clapPerfect", "onGood": "clapGood", "onBarely": "clapBarely", "onMiss": "clapMiss"
     }
   ]
 }

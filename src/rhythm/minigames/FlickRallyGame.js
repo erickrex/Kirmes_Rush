@@ -196,8 +196,10 @@ class FlickRallyGame extends RhythmMinigame {
 
     this.defaultDirection = this._resolveDefaultDirection();
 
-    this.server = this._addSprite(width * 0.5, height * 0.3, FLICK_RALLY_ASSETS.serverAtlas);
-    this.player = this._addSprite(width * 0.5, height * 0.72, FLICK_RALLY_ASSETS.playerAtlas);
+    this.server = this._addSprite(width * 0.5, height * 0.26, FLICK_RALLY_ASSETS.serverAtlas);
+    this.player = this._addSprite(width * 0.5, height * 0.74, FLICK_RALLY_ASSETS.playerAtlas);
+    this.fitSpriteToHeight(this.server, 0.2);
+    this.fitSpriteToHeight(this.player, 0.22);
     this._play(this.server, POSES.idle);
     this._play(this.player, POSES.idle);
 
@@ -218,6 +220,16 @@ class FlickRallyGame extends RhythmMinigame {
     this.ballReturned = false;
     this.ballDirection = null;
     this._moveBall(this._serveOrigin.x, this._serveOrigin.y);
+
+    this.initHud();
+  }
+
+  /**
+   * @override
+   * @returns {string} The flick-rally instruction line.
+   */
+  getInstruction() {
+    return 'Flick UP to smash the ball back on the beat!';
   }
 
   // ==========================================================================
@@ -237,6 +249,7 @@ class FlickRallyGame extends RhythmMinigame {
     this.ballDirection = null;
     this._play(this.server, POSES.serverServe);
     this._travelBall(this._playerTarget.x, this._playerTarget.y);
+    this.flashCue('FLICK UP!');
   }
 
   /**
@@ -582,28 +595,6 @@ class FlickRallyGame extends RhythmMinigame {
         }
       }
     });
-  }
-
-  /**
-   * Best-effort scene width, defaulting to a portrait canvas width.
-   * @returns {number} Width in pixels.
-   * @private
-   */
-  _sceneWidth() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const w = scale && typeof scale.width === 'number' ? scale.width : undefined;
-    return typeof w === 'number' ? w : 720;
-  }
-
-  /**
-   * Best-effort scene height, defaulting to a portrait canvas height.
-   * @returns {number} Height in pixels.
-   * @private
-   */
-  _sceneHeight() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const h = scale && typeof scale.height === 'number' ? scale.height : undefined;
-    return typeof h === 'number' ? h : 1280;
   }
 
   /**

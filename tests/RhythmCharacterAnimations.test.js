@@ -78,6 +78,7 @@ describe('registerRhythmCharacterAnims', () => {
     expect(idle.repeat).toBe(-1); // idle loops
     // cheer/hey both come from BF HEY!! frames for bf.
     expect(scene.created.get('rhythm-bf-cheer').frames).toHaveLength(5);
+    expect(scene.created.get('rhythm-bf-cheer').repeat).toBe(0); // cheer is a one-shot cue
     expect(scene.created.get('rhythm-bf-hey').repeat).toBe(0); // hey is one-shot
   });
 

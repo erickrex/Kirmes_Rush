@@ -167,8 +167,10 @@ class FillBotGame extends RhythmMinigame {
     const width = this._sceneWidth();
     const height = this._sceneHeight();
 
-    this.bot = this._addSprite(width * 0.5, height * 0.45, FILL_BOT_ASSETS.botAtlas);
-    this.player = this._addSprite(width * 0.5, height * 0.68, FILL_BOT_ASSETS.playerAtlas);
+    this.bot = this._addSprite(width * 0.5, height * 0.38, FILL_BOT_ASSETS.botAtlas);
+    this.player = this._addSprite(width * 0.5, height * 0.62, FILL_BOT_ASSETS.playerAtlas);
+    this.fitSpriteToHeight(this.bot, 0.22);
+    this.fitSpriteToHeight(this.player, 0.24);
     this._play(this.bot, POSES.idle);
     this._play(this.player, POSES.idle);
 
@@ -176,7 +178,7 @@ class FillBotGame extends RhythmMinigame {
     // left edge so scaling/width reflects the fill fraction left-to-right.
     this._meterWidth = width * 0.7;
     const meterX = width * 0.5;
-    const meterY = height * 0.85;
+    const meterY = height * 0.82;
     const meterHeight = height * 0.04;
 
     this.meter = this._addRect(meterX, meterY, this._meterWidth, meterHeight, 0x222222);
@@ -187,6 +189,16 @@ class FillBotGame extends RhythmMinigame {
 
     this.fillFraction = 0;
     this._applyFill(0);
+
+    this.initHud();
+  }
+
+  /**
+   * @override
+   * @returns {string} The fill-bot instruction line.
+   */
+  getInstruction() {
+    return 'Press and HOLD to fill the meter, then let go when it is full!';
   }
 
   // ==========================================================================
@@ -229,13 +241,16 @@ class FillBotGame extends RhythmMinigame {
 
   /**
    * Per-frame update hook. The fill meter is event-driven via
-   * {@link FillBotGame#onHoldTick}, so this is a no-op.
+   * {@link FillBotGame#onHoldTick}; this keeps the shared tempo beat indicator
+   * pulsing (R2.4).
    * @param {number} _time - Current time (ms).
    * @param {number} _delta - Elapsed time since the last frame (ms).
-   * @param {Object} [_ctx] - Optional per-frame context.
+   * @param {Object} [ctx] - Optional per-frame context carrying `songBeat`.
    * @returns {void}
    */
-  update(_time, _delta, _ctx) {}
+  update(_time, _delta, ctx) {
+    this.updateBeatIndicator(ctx);
+  }
 
   // ==========================================================================
   // Cue_Action_Dispatch targets (named by fill-bot.json)
@@ -251,6 +266,7 @@ class FillBotGame extends RhythmMinigame {
     this.targetSpanMs = DEFAULT_TARGET_SPAN_MS;
     this._applyFill(0);
     this._play(this.bot, POSES.botCheer);
+    this.flashCue('HOLD!');
   }
 
   /**
@@ -540,28 +556,6 @@ class FillBotGame extends RhythmMinigame {
         }
       }
     });
-  }
-
-  /**
-   * Best-effort scene width, defaulting to a portrait canvas width.
-   * @returns {number} Width in pixels.
-   * @private
-   */
-  _sceneWidth() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const w = scale && typeof scale.width === 'number' ? scale.width : undefined;
-    return typeof w === 'number' ? w : 720;
-  }
-
-  /**
-   * Best-effort scene height, defaulting to a portrait canvas height.
-   * @returns {number} Height in pixels.
-   * @private
-   */
-  _sceneHeight() {
-    const scale = /** @type {any} */ (this.scene) && /** @type {any} */ (this.scene).scale;
-    const h = scale && typeof scale.height === 'number' ? scale.height : undefined;
-    return typeof h === 'number' ? h : 1280;
   }
 
   /**
