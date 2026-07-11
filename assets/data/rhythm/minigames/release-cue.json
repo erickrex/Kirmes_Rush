@@ -60,6 +60,30 @@
       "id": "release-2", "type": "expect", "beat": 8, "gesture": "release", "targetBeat": 8,
       "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
       "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    },
+    { "id": "charge-cue-3", "type": "cue", "beat": 10, "action": "chargeCue" },
+    {
+      "id": "release-3", "type": "expect", "beat": 12, "gesture": "release", "targetBeat": 12,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    },
+    { "id": "charge-cue-4", "type": "cue", "beat": 14, "action": "chargeCue" },
+    {
+      "id": "release-4", "type": "expect", "beat": 16, "gesture": "release", "targetBeat": 16,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    },
+    { "id": "charge-cue-5", "type": "cue", "beat": 18, "action": "chargeCue" },
+    {
+      "id": "release-5", "type": "expect", "beat": 20, "gesture": "release", "targetBeat": 20,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
+    },
+    { "id": "charge-cue-6", "type": "cue", "beat": 22, "action": "chargeCue" },
+    {
+      "id": "release-6", "type": "expect", "beat": 24, "gesture": "release", "targetBeat": 24,
+      "windowMs": { "perfect": 50, "good": 100, "barely": 160 },
+      "onPerfect": "releasePerfect", "onGood": "releaseGood", "onBarely": "releaseBarely", "onMiss": "releaseMiss"
     }
   ]
 }

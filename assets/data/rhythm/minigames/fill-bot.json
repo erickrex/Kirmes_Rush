@@ -62,6 +62,27 @@
       "targetSpanBeats": 2,
       "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
       "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
+    },
+    { "id": "fill-cue-3", "type": "cue", "beat": 13, "action": "fillCue" },
+    {
+      "id": "fill-3", "type": "expect", "beat": 14, "gesture": "hold", "targetBeat": 14,
+      "targetSpanBeats": 4,
+      "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+      "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
+    },
+    { "id": "fill-cue-4", "type": "cue", "beat": 19, "action": "fillCue" },
+    {
+      "id": "fill-4", "type": "expect", "beat": 20, "gesture": "hold", "targetBeat": 20,
+      "targetSpanBeats": 2,
+      "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+      "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
+    },
+    { "id": "fill-cue-5", "type": "cue", "beat": 23, "action": "fillCue" },
+    {
+      "id": "fill-5", "type": "expect", "beat": 24, "gesture": "hold", "targetBeat": 24,
+      "targetSpanBeats": 4,
+      "windowMs": { "perfect": 60, "good": 120, "barely": 200 },
+      "onPerfect": "fillPerfect", "onGood": "fillGood", "onBarely": "fillBarely", "onMiss": "fillMiss"
     }
   ]
 }

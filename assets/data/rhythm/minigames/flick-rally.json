@@ -61,8 +61,51 @@
       "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
       "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
     },
+    { "id": "serve-cue-3", "type": "cue", "beat": 7, "action": "serveCue" },
     {
       "id": "flick-3", "type": "expect", "beat": 8, "gesture": "flick", "targetBeat": 8, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-4", "type": "cue", "beat": 9, "action": "serveCue" },
+    {
+      "id": "flick-4", "type": "expect", "beat": 10, "gesture": "flick", "targetBeat": 10, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-5", "type": "cue", "beat": 11, "action": "serveCue" },
+    {
+      "id": "flick-5", "type": "expect", "beat": 12, "gesture": "flick", "targetBeat": 12, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-6", "type": "cue", "beat": 13, "action": "serveCue" },
+    {
+      "id": "flick-6", "type": "expect", "beat": 14, "gesture": "flick", "targetBeat": 14, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-7", "type": "cue", "beat": 15, "action": "serveCue" },
+    {
+      "id": "flick-7", "type": "expect", "beat": 16, "gesture": "flick", "targetBeat": 16, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-8", "type": "cue", "beat": 17, "action": "serveCue" },
+    {
+      "id": "flick-8", "type": "expect", "beat": 18, "gesture": "flick", "targetBeat": 18, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-9", "type": "cue", "beat": 19, "action": "serveCue" },
+    {
+      "id": "flick-9", "type": "expect", "beat": 20, "gesture": "flick", "targetBeat": 20, "direction": "up",
+      "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
+      "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
+    },
+    { "id": "serve-cue-10", "type": "cue", "beat": 21, "action": "serveCue" },
+    {
+      "id": "flick-10", "type": "expect", "beat": 22, "gesture": "flick", "targetBeat": 22, "direction": "up",
       "windowMs": { "perfect": 45, "good": 90, "barely": 140 },
       "onPerfect": "flickPerfect", "onGood": "flickGood", "onBarely": "flickBarely", "onMiss": "flickMiss"
     }

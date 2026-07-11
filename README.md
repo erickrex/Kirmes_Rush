@@ -58,7 +58,7 @@ assets/
   images/ music/ sounds/ songs/ fonts/
 tests/             Unit, integration, and property tests (Vitest, fast-check)
 docs/              ARCHITECTURE.md and the Phaser 4 cutover notes
-tools/             Legacy build/packaging tools (itch.io, Newgrounds, song conversion)
+tools/             Legacy song-conversion tooling
 ```
 
 ## Architecture Notes
@@ -83,7 +83,7 @@ Verification for a clean change: `npm run lint`, `npm run typecheck`, `npm run t
 
 ## Build & Distribution
 
-`npm run build` outputs to `dist/`, isolating the Phaser engine into its own cached chunk. Additional packaging tools for itch.io, Newgrounds, and Windows builds live under `tools/legacy/` and are exposed via the `tool:*` npm scripts.
+`pnpm build` outputs to `dist/`, isolating the Phaser engine into its own cached chunk.
 
 ## License
 

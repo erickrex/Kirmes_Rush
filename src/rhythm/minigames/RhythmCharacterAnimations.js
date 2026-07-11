@@ -44,11 +44,15 @@ const POSE_FRAME_PREFIXES = Object.freeze({
 });
 
 /**
- * Poses that loop continuously; all other poses play once as a momentary
- * reaction (controllers settle them back to `idle` on completion).
+ * Poses that loop continuously. Only `idle` loops: it is the resting pose every
+ * controller returns to. `cheer` and `hey` are momentary cue/reaction poses that
+ * play once and settle back to `idle` on completion (see the reaction handlers
+ * in the concrete controllers), so they must not be registered as looping — a
+ * looping reaction never fires `animationcomplete` and would freeze the sprite
+ * mid-cheer instead of pulsing once per beat.
  * @type {Set<string>}
  */
-const LOOPED_POSES = new Set(['idle', 'cheer']);
+const LOOPED_POSES = new Set(['idle']);
 
 /**
  * Playback rate (fps) for the registered character animations.
